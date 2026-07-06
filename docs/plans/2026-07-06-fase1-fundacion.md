@@ -143,6 +143,11 @@ enum CompetencyType {
   rol
 }
 
+enum Alcance {
+  sow    // comprometido en el plan de trabajo
+  aliado // valor adicional intencional — inversión en la alianza (diferencial VP)
+}
+
 // ── Capa 1: Ejecución personal ─────────────────────────
 model User {
   id             String   @id @default(cuid())
@@ -222,6 +227,8 @@ model Task {
   ajustadoMin   Int?
   deadline      DateTime?  @db.Date
   estatus       TaskStatus @default(backlog)
+  alcance       Alcance    @default(sow)
+  dolorCliente  String? // qué dolor del cliente atiende (requerido en UI/skill si alcance=aliado)
   dodItems      DodItem[]
   blocks        Block[]
   timeEntries   TimeEntry[]
@@ -297,6 +304,7 @@ model Project {
   fechaFin        DateTime?     @db.Date
   presupuestoHoras Decimal?     @db.Decimal(7, 2)
   tarifaHora      Decimal?      @db.Decimal(12, 2)
+  origen          String? // recompra derivada de qué relación/proyecto — ROI de alianza
   deliverables    Deliverable[]
   issues          Issue[]
   tasks           Task[]
@@ -316,6 +324,7 @@ model Deliverable {
   fechaComprometida DateTime?        @db.Date
   presupuestoHoras Decimal?          @db.Decimal(7, 2)
   estatus          DeliverableStatus @default(borrador)
+  alcance          Alcance           @default(sow)
   cartaUrl         String?
   tasks            Task[]
   evidences        Evidence[]

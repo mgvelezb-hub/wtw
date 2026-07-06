@@ -37,9 +37,24 @@ Limitaciones estructurales que motivan la v2:
 ## Las 4 capas del producto
 
 1. **Ejecución personal (WTW)** — ritual semanal, triage de capacidad, factor de realismo, DoD, cronómetros. Se conserva íntegra: es la ventaja competitiva.
-2. **Engagement (método top-tier)** — workplan hacia atrás desde entregables, hypothesis-driven, gates de calidad, cadencia cliente.
+2. **Engagement (método top-tier)** — workplan hacia atrás desde entregables, hypothesis-driven, gates de calidad, cadencia cliente. **Alcance dual:** todo trabajo se clasifica `sow` (comprometido en el plan) o `aliado` (valor adicional intencional fuera del plan).
 3. **Economía de firma** — utilización, burn vs. presupuesto, % dedicación por proyecto. Sale gratis de los cronómetros (sin timesheet aparte).
 4. **Desarrollo profesional** — competencias VP por escalafón, evidencia anclada a trabajo real, caso de promoción.
+
+### El modelo Aliado Estratégico (diferencial VP)
+
+El fuerte de VP no es solo entregar lo prometido: es **generar confianza ejecutando actividades fuera del plan de trabajo** — meterse a las entrañas del cliente, ver los dolores y ayudar. Eso posiciona a VP como aliado estratégico y genera recompras orgánicas en otros proyectos/soluciones. Las extensiones de timeline que esto provoca son gestionables *precisamente porque son intencionales*.
+
+Implicación de producto — **el trabajo fuera del plan NO es negativo**, es una categoría propia que se registra, se valoriza y se cosecha:
+
+- Al capturar trabajo nuevo fuera del SOW, se marca `alcance: aliado` + **qué dolor del cliente atiende** (sin fricción, un campo)
+- **Ledger de valor adicional** por cliente/proyecto: actividades, horas reales (de los cronómetros), dolores atendidos, valorizado a tarifa ("MX$ X de valor entregado no cobrado")
+- **Semáforos que no castigan**: el burn separa horas SOW vs. horas aliado; una extensión de timeline se atribuye — "el proyecto se extendió 3 semanas: 2 por inversión aliado (elegida), 1 por desviación real" — conversaciones distintas
+- **Momentos de cosecha**: reporte exportable de valor adicional en puntos clave (cierre de fase, QBR, negociación) → decide VP si se cobra como alcance adicional o se posiciona como cortesía estratégica con monto visible
+- **ROI de relación** (fase equipo): recompras y proyectos nuevos ligados al cliente donde se invirtió — medir que la alianza funciona
+- Utilización en 3 cubetas: **facturable / inversión aliado / interno** — la inversión aliado deja de contaminar la métrica de fuga
+
+Ninguna herramienta PSA hace esto: todas tratan el fuera-de-alcance como leakage a eliminar. Aquí es el motor de crecimiento comercial, medido.
 
 ## §1 — Modelo de datos (PostgreSQL + Prisma)
 
@@ -47,7 +62,7 @@ Limitaciones estructurales que motivan la v2:
 - `User` — email, passwordHash, horario laboral, comida, buffer %, URL .ics, nivel actual/objetivo, timezone
 - `Week` — userId, semana ISO, rango, factor usado, reflexión, estatus (planning/active/closed)
 - `Win` — weekId, posición 1–3, título, DoD, logrado/no
-- `Task` — userId, projectId, deliverableId?, winId?, weekId?, título, estimado min, ajustado min, DoD items, deadline, estatus (backlog/planned/in_progress/done/deferred), competencias[]
+- `Task` — userId, projectId, deliverableId?, winId?, weekId?, título, estimado min, ajustado min, DoD items, deadline, estatus (backlog/planned/in_progress/done/deferred), competencias[], **alcance (sow/aliado)**, **dolorCliente?** (qué dolor atiende si es aliado)
 - `Block` — fecha, inicio, fin, tipo (tarea/junta/hito/break), planMin, taskId?, título
 - `TimeEntry` — blockId/taskId, startedAt, stoppedAt, segundos. Un solo timer corriendo por usuario (enforced en servidor)
 - `CalendarEvent` — sincronizado del .ics por cron
@@ -57,8 +72,8 @@ Limitaciones estructurales que motivan la v2:
 **Factor de realismo automático:** promedio móvil (4 semanas) de real/estimado desde TimeEntries.
 
 ### Capa engagement
-- `Project` extendido — cliente, color, tipo (facturable/interno/desarrollo), fechas SOW, presupuesto horas, tarifa opcional, estatus
-- `Deliverable` — projectId, número SOW, nombre, hipótesis/respuesta esperada, fecha comprometida, presupuesto horas, estatus con gates (borrador → rev_interna → rev_cliente → aceptado), liga a carta de aceptación
+- `Project` extendido — cliente, color, tipo (facturable/interno/desarrollo), fechas SOW, presupuesto horas, tarifa opcional, estatus, **origen?** (recompra derivada de qué relación/proyecto — para ROI de alianza)
+- `Deliverable` — projectId, número SOW, nombre, hipótesis/respuesta esperada, fecha comprometida, presupuesto horas, estatus con gates (borrador → rev_interna → rev_cliente → aceptado), liga a carta de aceptación, **alcance (sow/aliado)** — un entregable completo puede ser valor adicional
 - `Issue` (RAID light) — projectId, descripción, responsable, fecha, estatus (formaliza pendientes PMO)
 
 ### Capa desarrollo profesional
@@ -104,8 +119,9 @@ DB = fuente de verdad; Obsidian = bitácora humana opcional.
 
 1. **Vaciado informado por entregables:** al planear la semana, la app/skill muestra entregables que vencen o están en riesgo → Wins se proponen desde el workplan
 2. **Burn vs. presupuesto por entregable:** horas reales vs. presupuestadas, semáforo económico
-3. **Utilización personal semanal:** % facturable automático vs. meta 70–80%
+3. **Utilización personal semanal:** 3 cubetas automáticas — facturable / inversión aliado / interno — vs. meta 70–80%
 4. **Status semanal generado:** avances por entregable + semáforos + horas desde la DB (reemplaza armado manual de slides)
+4b. **Ledger Aliado + reporte de cosecha:** valor adicional acumulado por cliente (actividades, horas, dolores atendidos, valorizado a tarifa) exportable en momentos de negociación; `/wtw-comprometer` al recibir trabajo nuevo pregunta si es inversión aliado y lo registra con su dolor
 5. **Gate de aceptación:** entregable aceptado → dispara carta-entregable
 6. **Evidencia de competencias sin fricción:** etiquetado al planear + captura en cierre semanal, anclada a trabajo fechado con DoD verificado
 7. **Caso de promoción exportable:** bitácora de evidencia por competencia
@@ -119,8 +135,8 @@ DB = fuente de verdad; Obsidian = bitácora humana opcional.
 | 2 — Mi Día | Vista diaria con timers + PWA | 🎯 switchover: se abandona tablero.html |
 | 3 — Semana + skills | Vista semanal + skills apuntando a la API + captura de evidencia en ritual | ritual completo en la app |
 | 4 — Proyectos + desarrollo | Vistas Proyectos/Entregables + Histórico + mapa de competencias + utilización | valor multi-proyecto y carrera |
-| 5 — Cliente + economía | Status semanal generado, semáforos SOW (absorbe avances-cliente), burn completo | cadencia cliente automatizada |
-| 6 — Equipo | Invitaciones, carga del equipo, ritual guiado en UI, módulo 360, staffing por desarrollo | compañeros VP entran |
+| 5 — Cliente + economía | Status semanal generado, semáforos SOW (absorbe avances-cliente), burn completo, **Ledger Aliado + reporte de cosecha valorizado** | cadencia cliente automatizada |
+| 6 — Equipo | Invitaciones, carga del equipo, ritual guiado en UI, módulo 360, staffing por desarrollo, **ROI de relación (recompras ligadas a inversión aliado)** | compañeros VP entran |
 
 El tablero actual sigue corriendo hasta el switchover de Fase 2. Gestión del proyecto con GSD (como RestaurantOS).
 
