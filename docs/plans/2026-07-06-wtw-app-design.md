@@ -53,8 +53,9 @@ Implicación de producto — **el trabajo fuera del plan NO es negativo**, es un
 - **Momentos de cosecha**: reporte exportable de valor adicional en puntos clave (cierre de fase, QBR, negociación) → decide VP si se cobra como alcance adicional o se posiciona como cortesía estratégica con monto visible
 - **ROI de relación** (fase equipo): recompras y proyectos nuevos ligados al cliente donde se invirtió — medir que la alianza funciona
 - Utilización en 3 cubetas: **facturable / inversión aliado / interno** — la inversión aliado deja de contaminar la métrica de fuga
+- **Gobernanza de la inversión:** `Project.presupuestoAliadoHoras` — la generosidad funciona porque es intencional, y la intención necesita presupuesto. `/wtw-comprometer` lo respeta: "buen trabajo aliado, pero ya invertiste 18 de 20h en Liverpool este trimestre — ¿consciente?". Sin límite, el modelo aliado se convierte en la excusa que se come la semana.
 
-Ninguna herramienta PSA hace esto: todas tratan el fuera-de-alcance como leakage a eliminar. Aquí es el motor de crecimiento comercial, medido.
+Ninguna herramienta PSA hace esto: todas tratan el fuera-de-alcance como leakage a eliminar. Aquí es el motor de crecimiento comercial, medido y gobernado.
 
 ## §1 — Modelo de datos (PostgreSQL + Prisma)
 
@@ -64,8 +65,10 @@ Ninguna herramienta PSA hace esto: todas tratan el fuera-de-alcance como leakage
 - `Win` — weekId, posición 1–3, título, DoD, logrado/no
 - `Task` — userId, projectId, deliverableId?, winId?, weekId?, título, estimado min, ajustado min, DoD items, deadline, estatus (backlog/planned/in_progress/done/deferred), competencias[], **alcance (sow/aliado)**, **dolorCliente?** (qué dolor atiende si es aliado)
 - `Block` — fecha, inicio, fin, tipo (tarea/junta/hito/break), planMin, taskId?, título
-- `TimeEntry` — blockId/taskId, startedAt, stoppedAt, segundos. Un solo timer corriendo por usuario (enforced en servidor)
+- `TimeEntry` — blockId/taskId, startedAt, stoppedAt, segundos, `manual` (correcciones a mano marcadas — honestidad de datos). Un solo timer corriendo por usuario (enforced en servidor)
 - `CalendarEvent` — sincronizado del .ics por cron
+- `DayOverride` — capacidad por día (viajes, festivos, vacaciones, jornadas atípicas): fecha, horario, nota — W26 probó que el override semanal no basta
+- `Allocation` — % de asignación objetivo por proyecto con vigencia (`pct`, `vigenteDesde/Hasta`): los jefes cambian asignaciones en cualquier momento; el real (TimeEntries) se compara contra el objetivo vigente
 
 **Carry desaparece como mecanismo:** una tarea inconclusa sigue `in_progress` y se le crea un bloque en el día nuevo; el tiempo acumulado vive en la tarea. Elimina la clase entera de bugs de copiado entre fechas.
 
@@ -73,8 +76,8 @@ Ninguna herramienta PSA hace esto: todas tratan el fuera-de-alcance como leakage
 
 ### Capa engagement
 - `Project` extendido — cliente, color, tipo (facturable/interno/desarrollo), fechas SOW, presupuesto horas, tarifa opcional, estatus, **origen?** (recompra derivada de qué relación/proyecto — para ROI de alianza)
-- `Deliverable` — projectId, número SOW, nombre, hipótesis/respuesta esperada, fecha comprometida, presupuesto horas, estatus con gates (borrador → rev_interna → rev_cliente → aceptado), liga a carta de aceptación, **alcance (sow/aliado)** — un entregable completo puede ser valor adicional
-- `Issue` (RAID light) — projectId, descripción, responsable, fecha, estatus (formaliza pendientes PMO)
+- `Deliverable` — projectId, número SOW, nombre, hipótesis/respuesta esperada, **fechaInicio + fechaComprometida (baseline inmutable) + fechaProyectada (forecast vivo)**, presupuesto horas, **avancePct declarado** (proyectado vs. real, como el scorecard Nadro), estatus con gates (borrador → rev_interna → rev_cliente → aceptado), liga a carta de aceptación, **alcance (sow/aliado)**. Modela entregables O frentes de trabajo (workstreams tipo "Homologación de información")
+- `Issue` (RAID completo, una tabla) — projectId, **tipo (riesgo/pendiente/acuerdo/decisión/cambio)**, descripción, responsable (interno O del cliente), fecha, estatus. El tipo `cambio` registra modificaciones al plan de trabajo (change control light)
 
 ### Capa desarrollo profesional
 - `Level` — escalafón VP (Analista → Consultor/Analista Sr → Gerente → Gerente Sr) con expectativas del PDF por nivel
@@ -139,6 +142,60 @@ DB = fuente de verdad; Obsidian = bitácora humana opcional.
 | 6 — Equipo | Invitaciones, carga del equipo, ritual guiado en UI, módulo 360, staffing por desarrollo, **ROI de relación (recompras ligadas a inversión aliado)** | compañeros VP entran |
 
 El tablero actual sigue corriendo hasta el switchover de Fase 2. Gestión del proyecto con GSD (como RestaurantOS).
+
+## §7 — Revisión 360 (2026-07-06, integrada)
+
+Hallazgos de dos pasadas de revisión: ceguera de taller + 5 lentes (PMO, usuario multi-proyecto, cliente, socios, usuario final). Referencia de formato cliente: scorecard Nadro "Costo de Servir" reporte #10.
+
+### Lente PMO
+- **Baseline vs. forecast vs. real**: `fechaComprometida` inmutable + `fechaProyectada` viva + `avancePct` declarado por entregable. El scorecard Nadro reporta "Proyectado 96% vs. Real 71%" — eso requiere curva de plan (fechaInicio/fin por entregable) contra avance declarado. El avance es **declarado, no derivado** de tareas (las tareas no son exhaustivas; PMO best practice)
+- **RAID completo en una tabla**: Issue.tipo = riesgo/pendiente/acuerdo/decisión/cambio. `cambio` = change control light (las "modificaciones al plan de trabajo" que hoy viven en Excel)
+- **Descartado por YAGNI**: grafo formal de dependencias entre tareas, EVM completo (CPI/SPI), gestión de recursos con skills matrix
+
+### Lente usuario multi-proyecto (asignaciones cambiantes)
+- **`Allocation`**: % objetivo por proyecto con vigencia temporal. El jefe dice "ahora 50% Liverpool" un miércoles → nueva fila con vigenteDesde; el histórico se preserva
+- **Cumplimiento de asignación**: vista Proyectos muestra objetivo vs. real ("te pidieron 50% Liverpool, llevas 68%") — señal para renegociar o reequilibrar la semana
+- `/wtw-semana` propone la mezcla de bloques respetando las asignaciones vigentes; `/wtw-comprometer` alerta cuando un compromiso nuevo rompe la mezcla
+
+### Lente cliente (formato Nadro como spec)
+La vista/status cliente replica el scorecard que ya funciona:
+- **Sucedió / Sucediendo / Por Suceder** — generado de: tareas done de la semana (por proyecto), bloques+tareas en curso con avancePct, próximos bloques/entregables
+- **Semáforos Tiempo / Costo / Riesgos** + avance proyectado vs. real + fechas inicio/término
+- **Apoyo Requerido**: Issues con responsable = cliente — accountability visible ("Entrega de información faltante, máx 4 semanas")
+- **Cadencia**: próximas reuniones desde CalendarEvents del proyecto
+- **Portal cliente con magic-link** (sin login): vista read-only por proyecto. **Frontera de visibilidad dura**: el cliente NUNCA ve horas internas, ledger aliado crudo, economía ni asignaciones — solo avance, entregables, semáforos, acuerdos y sus pendientes
+- El PPTX de status se genera desde estos mismos datos (python-pptx server-side o export) — se acaba el armado manual de cada martes
+
+### Lente socios VP
+- **Cockpit de firma** (Fase 6): un renglón por proyecto — semáforo, avance proy vs. real, burn, próximo hito, inversión aliado acumulada, último status. Legible en 2 minutos
+- **"Ahora mismo"**: timers corriendo del equipo + bloques del día = el minuto a minuto sin preguntar
+- **Feed de actividad por proyecto**: log append-only de eventos (tarea done, gate de entregable, issue abierto/cerrado, status emitido) — el socio abre un proyecto y lee la historia reciente
+- **Digest semanal automático**: resumen cross-proyecto generado (correo/WhatsApp), para leer en el café del lunes
+
+### Lente usuario final (fricción)
+Contratos de UX medibles (estilo "cierre de caja <90 seg" de RestaurantOS):
+- Arrancar/parar timer: **1 tap** desde abrir la app
+- Captura al inbox: **≤10 seg** (texto y listo; triage después)
+- Cierre del día: **≤3 min** guiado (qué terminé, estimado vs. real, qué se mueve)
+- Plan de la mañana: **≤2 min** si `/wtw-semana` ya corrió
+- La app abre SIEMPRE en "qué sigo haciendo ahora" (bloque actual + timer)
+- **Higiene de timers**: notificación de timer huérfano ("llevas 2h10 en un bloque de 30 min — ¿sigue siendo real?"), edición de TimeEntries marcada `manual`
+
+### Otros hallazgos integrados
+- **Inbox/captura**: `POST /api/v1/tasks` (estatus backlog, sin semana) desde Fase 1; vista inbox + triage en ritual desde Fase 3; atajo iOS/Siri después
+- **Mapa de dolores por cliente** (Fase 5): groupBy de `dolorCliente` — "7 dolores detectados en Liverpool" = borrador de la siguiente propuesta comercial
+- **Arranque caliente del factor** (Fase 3): script de importación de notas Obsidian W25–W27 + localStorage del tablero viejo
+- **Privacidad de evidencia** (regla desde ya, diseño en Fase 6): la evidencia de competencias es dato de carrera — visible solo para el dueño y su gerente, nunca pares
+- **Notificaciones PWA** (Fase 4): inicio de bloque, junta próxima, timer huérfano
+
+### Mapa a fases
+| Adición | Schema | UI/Feature |
+|---------|--------|-----------|
+| presupuestoAliadoHoras, DayOverride, TimeEntry.manual, Allocation, fechas+avancePct Deliverable, Issue.tipo, inbox endpoint | **Fase 1** | — |
+| Import histórico, comprometer con allocations/presupuesto aliado, vista inbox | — | Fase 3 |
+| Notificaciones PWA, cumplimiento asignación, edición TimeEntries | — | Fase 4 |
+| Status cliente formato Nadro + PPTX generado, portal magic-link, mapa dolores, RAID al cliente | portalToken | Fase 5 |
+| Cockpit socios, feed actividad, digest, 360, privacidad evidencia | Event log | Fase 6 |
 
 ## Riesgos y mitigaciones
 

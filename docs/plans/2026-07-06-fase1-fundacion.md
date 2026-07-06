@@ -138,6 +138,14 @@ enum IssueStatus {
   cerrado
 }
 
+enum IssueTipo {
+  riesgo
+  pendiente
+  acuerdo
+  decision
+  cambio // change control light: modificaciones al plan de trabajo
+}
+
 enum CompetencyType {
   individual
   rol
@@ -173,6 +181,8 @@ model User {
   calendarEvents CalendarEvent[]
   projects       Project[]
   evidences      Evidence[]
+  dayOverrides   DayOverride[]
+  allocations    Allocation[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -272,8 +282,34 @@ model TimeEntry {
   startedAt DateTime
   stoppedAt DateTime?
   seconds   Int       @default(0) // calculado al stop
+  manual    Boolean   @default(false) // corregido/agregado a mano — honestidad de datos
 
   @@index([userId, stoppedAt])
+}
+
+model DayOverride {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id])
+  fecha  DateTime @db.Date
+  inicio String? // null = día no laborable (vacaciones/festivo)
+  fin    String?
+  nota   String? // "vuelo a Cancún", "festivo", "jornada 9-21"
+
+  @@unique([userId, fecha])
+}
+
+model Allocation {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id])
+  pct          Int // % objetivo de dedicación
+  vigenteDesde DateTime  @db.Date
+  vigenteHasta DateTime? @db.Date // null = vigente
+
+  @@index([userId, vigenteDesde])
 }
 
 model CalendarEvent {
@@ -305,6 +341,8 @@ model Project {
   presupuestoHoras Decimal?     @db.Decimal(7, 2)
   tarifaHora      Decimal?      @db.Decimal(12, 2)
   origen          String? // recompra derivada de qué relación/proyecto — ROI de alianza
+  presupuestoAliadoHoras Decimal? @db.Decimal(7, 2) // gobernanza de inversión aliado
+  allocations     Allocation[]
   deliverables    Deliverable[]
   issues          Issue[]
   tasks           Task[]
@@ -321,7 +359,10 @@ model Deliverable {
   numeroSow        String?
   nombre           String
   hipotesis        String? // answer-first: respuesta esperada
-  fechaComprometida DateTime?        @db.Date
+  fechaInicio      DateTime?         @db.Date // para la curva de avance proyectado
+  fechaComprometida DateTime?        @db.Date // baseline SOW — inmutable
+  fechaProyectada  DateTime?         @db.Date // forecast vivo
+  avancePct        Int               @default(0) // declarado, no derivado (práctica PMO)
   presupuestoHoras Decimal?          @db.Decimal(7, 2)
   estatus          DeliverableStatus @default(borrador)
   alcance          Alcance           @default(sow)
@@ -336,9 +377,10 @@ model Issue {
   id              String      @id @default(cuid())
   projectId       String
   project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tipo            IssueTipo   @default(pendiente) // RAID completo en una tabla
   tema            String?
   descripcion     String
-  responsable     String?
+  responsable     String? // interno o del cliente ("Apoyo Requerido" del status)
   fechaCompromiso DateTime?   @db.Date
   estatus         IssueStatus @default(abierto)
   createdAt       DateTime    @default(now())
@@ -625,6 +667,7 @@ describe('createWeekPayload', () => {
 **Implementación:** la lógica vive en `src/app/api/v1/weeks/service.ts` (testeable sin HTTP); los `route.ts` son wrappers delgados:
 - `service.ts`: `createWeekPayload(userId, payload)` — transacción: upsert-por-nombre de projects referenciados, crea Week (rango desde `weekRange(isoWeek)`), Wins, Tasks (resolviendo `projectNombre`→projectId, `winPosicion`→winId, creando DodItems), Blocks (resolviendo `taskRef` → taskId por mapa ref→id). `getWeek(userId, isoWeek)` — include completo ordenado por fecha/orden.
 - `projects/route.ts`: `GET` lista proyectos del `apiUser(req)` (401 si null); `POST` crea `{nombre, cliente?, tipo?, color?}`.
+- `tasks/route.ts`: `POST` captura al inbox — `{titulo, projectNombre?, alcance?, dolorCliente?}` → Task con `estatus: backlog`, sin semana. Es el endpoint de captura rápida (≤10 seg); el triage ocurre en el ritual.
 - `weeks/route.ts`: `POST` → `createWeekPayload`; `weeks/[isoWeek]/route.ts`: `GET` → `getWeek`. Todos: 401 sin PAT válido, 422 con `error` legible si el payload no cumple (validar con checks explícitos, sin dependencia de zod por ahora).
 
 **Verificación:**
