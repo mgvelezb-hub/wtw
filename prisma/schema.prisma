@@ -95,8 +95,11 @@ model User {
   timezone        String          @default("America/Mexico_City")
   nivelActualId   String?
   nivelObjetivoId String?
+  managerId       String?
   nivelActual     Level?          @relation("actual", fields: [nivelActualId], references: [id])
   nivelObjetivo   Level?          @relation("objetivo", fields: [nivelObjetivoId], references: [id])
+  manager         User?           @relation("management", fields: [managerId], references: [id])
+  reports         User[]          @relation("management")
   weeks           Week[]
   tasks           Task[]
   timeEntries     TimeEntry[]
