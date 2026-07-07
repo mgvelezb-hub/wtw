@@ -13,6 +13,7 @@ import {
   undoBlockDoneAction,
 } from './actions'
 import { createManualEntryAction } from './timeentry-actions'
+import { scheduleTaskAction, moveBlockAction } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
@@ -140,6 +141,13 @@ export function DiaBoard(p: DiaBoardProps) {
             <Link
               key={t.fecha}
               href={`/dia?dia=${t.fecha}`}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault()
+                const data = e.dataTransfer.getData('text/plain')
+                if (data.startsWith('block:')) startTransition(() => void moveBlockAction(data.slice(6), t.fecha))
+                else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
+              }}
               className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm ${
                 active ? 'border-[#0c4a45] bg-[#0c4a45] text-white' : 'border-neutral-200 bg-white text-neutral-600'
               }`}
@@ -162,7 +170,17 @@ export function DiaBoard(p: DiaBoardProps) {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        <div className="space-y-3">
+        <div
+          className="space-y-3"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            const data = e.dataTransfer.getData('text/plain')
+            if (data.startsWith('pend:')) {
+              e.preventDefault()
+              startTransition(() => void scheduleTaskAction(data.slice(5), p.selectedDay))
+            }
+          }}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm">
             <div className="flex gap-5">
               <span className="text-[#0c4a45]">
@@ -234,7 +252,9 @@ export function DiaBoard(p: DiaBoardProps) {
               {p.pendientes.slice(0, 12).map((pe) => (
                 <div
                   key={pe.id}
-                  className={`rounded-lg border bg-white p-2.5 text-sm shadow-sm ${
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
+                  className={`cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-sm active:cursor-grabbing ${
                     pe.urgente ? 'border-neutral-200 border-l-4 border-l-red-400' : 'border-neutral-200'
                   }`}
                 >
@@ -242,11 +262,20 @@ export function DiaBoard(p: DiaBoardProps) {
                     {pe.urgente && <span className="text-red-500">★ </span>}
                     {pe.titulo}
                   </p>
-                  <div className="mt-1 flex items-center gap-2 text-xs">
-                    {pe.estimadoMin != null && (
-                      <span className="rounded bg-[#e8b94a]/30 px-1.5 py-0.5 text-[#4a3a10]">{horas(pe.estimadoMin)}</span>
-                    )}
-                    {pe.proyecto && <span className="text-neutral-400">{pe.proyecto}</span>}
+                  <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      {pe.estimadoMin != null && (
+                        <span className="rounded bg-[#e8b94a]/30 px-1.5 py-0.5 text-[#4a3a10]">{horas(pe.estimadoMin)}</span>
+                      )}
+                      {pe.proyecto && <span className="text-neutral-400">{pe.proyecto}</span>}
+                    </div>
+                    <button
+                      disabled={pending}
+                      onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
+                      className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-semibold text-[#4a3a10] hover:bg-[#dcae3e]"
+                    >
+                      + Hoy
+                    </button>
                   </div>
                 </div>
               ))}
@@ -305,11 +334,15 @@ function BlockCard({
   }
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
+    <div
+      draggable
+      onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
+      className="cursor-grab rounded-lg border border-neutral-200 bg-white p-3 shadow-sm active:cursor-grabbing"
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-neutral-500">
-            {b.inicio}–{b.fin}
+            {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
           </p>
           <p className="font-medium text-neutral-900">{b.titulo}</p>
         </div>
