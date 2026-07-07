@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
-import { updateSettings } from './actions'
+import { updateSettings, logoutAction } from './actions'
 
 // Shape plano y serializable — nunca pasar el modelo User de Prisma completo
 // a un Client Component: expondría passwordHash/apiTokenHash al cliente y
@@ -72,6 +72,14 @@ export function SettingsForm({ user }: { user: SettingsUser }) {
         className="w-full rounded-md bg-[#0A7C82] px-4 py-2 text-sm font-semibold text-white hover:bg-[#086a6f] disabled:opacity-50"
       >
         {pending ? 'Guardando…' : 'Guardar'}
+      </button>
+
+      <button
+        type="submit"
+        formAction={logoutAction}
+        className="w-full rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-600 hover:bg-neutral-100"
+      >
+        Cerrar sesión
       </button>
     </form>
   )
