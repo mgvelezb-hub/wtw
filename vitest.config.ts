@@ -11,6 +11,8 @@ export default defineConfig({
     globals: true,
     setupFiles: [],
     fileParallelism: false, // tests comparten la DB dev — sin paralelismo entre archivos
+    testTimeout: 20_000, // cada roundtrip a Neon tarda ~1-2s; tests con varias escrituras superan el default de 5s
+    hookTimeout: 20_000,
   },
   resolve: {
     alias: {
