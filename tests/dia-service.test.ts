@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
-import { getDayBlocks } from '@/app/dia/service'
+import {
+  getDayBlocks,
+  toggleDodItem,
+  markTaskDone,
+  undoTaskDone,
+  markBlockDone,
+  undoBlockDone,
+} from '@/app/dia/service'
 import { startTimer, stopTimer } from '@/app/api/v1/timer/service'
 
 const TEST_EMAIL = 'test-dia@vp.mx'
@@ -94,5 +101,61 @@ describe('getDayBlocks', () => {
     await prisma.task.update({ where: { id: task.id }, data: { estatus: 'done' } })
     const blocks = await getDayBlocks(user.id, TODAY)
     expect(blocks[0].done).toBe(true)
+  })
+})
+
+describe('toggleDodItem', () => {
+  it('alterna done y devuelve el item actualizado', async () => {
+    const { user, task } = await setupDay()
+    const dod = await prisma.dodItem.findFirstOrThrow({ where: { taskId: task.id } })
+    const updated = await toggleDodItem(dod.id, user.id)
+    expect(updated.done).toBe(true)
+  })
+
+  it('lanza si el dodItem no pertenece al usuario', async () => {
+    const { task } = await setupDay()
+    const dod = await prisma.dodItem.findFirstOrThrow({ where: { taskId: task.id } })
+    await expect(toggleDodItem(dod.id, 'otro-usuario-id')).rejects.toThrow()
+  })
+})
+
+describe('markTaskDone / undoTaskDone', () => {
+  it('marca done y detiene el timer si estaba corriendo', async () => {
+    const { user, task } = await setupDay()
+    await startTimer(user.id, task.id)
+    await markTaskDone(task.id, user.id)
+    const updated = await prisma.task.findUniqueOrThrow({ where: { id: task.id } })
+    expect(updated.estatus).toBe('done')
+    expect(await prisma.timeEntry.findFirst({ where: { taskId: task.id, stoppedAt: null } })).toBeNull()
+  })
+
+  it('undoTaskDone regresa a in_progress si ya tiene tiempo registrado', async () => {
+    const { user, task } = await setupDay()
+    await startTimer(user.id, task.id)
+    await markTaskDone(task.id, user.id)
+    await undoTaskDone(task.id, user.id)
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).estatus).toBe('in_progress')
+  })
+
+  it('undoTaskDone regresa a planned si nunca se cronometró', async () => {
+    const { user, task } = await setupDay()
+    await prisma.task.update({ where: { id: task.id }, data: { estatus: 'done' } })
+    await undoTaskDone(task.id, user.id)
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: task.id } })).estatus).toBe('planned')
+  })
+})
+
+describe('markBlockDone / undoBlockDone', () => {
+  it('marca y desmarca un bloque sin tarea (junta)', async () => {
+    const { user, junta } = await setupDay()
+    await markBlockDone(junta.id, user.id)
+    expect((await prisma.block.findUniqueOrThrow({ where: { id: junta.id } })).done).toBe(true)
+    await undoBlockDone(junta.id, user.id)
+    expect((await prisma.block.findUniqueOrThrow({ where: { id: junta.id } })).done).toBe(false)
+  })
+
+  it('rechaza marcar done un bloque tipo tarea (debe usar markTaskDone)', async () => {
+    const { user, block } = await setupDay()
+    await expect(markBlockDone(block.id, user.id)).rejects.toThrow()
   })
 })
