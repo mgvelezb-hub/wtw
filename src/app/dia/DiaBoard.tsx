@@ -12,6 +12,7 @@ import {
   markBlockDoneAction,
   undoBlockDoneAction,
 } from './actions'
+import { createManualEntryAction } from './timeentry-actions'
 
 function fmt(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
@@ -143,7 +144,22 @@ function BlockCard({
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
             <div className={`h-full ${over ? 'bg-red-500' : 'bg-[#0A7C82]'}`} style={{ width: `${pct}%` }} />
           </div>
-          <p className={`mt-1 text-xs ${over ? 'text-red-600' : 'text-neutral-500'}`}>{fmt(seconds)}</p>
+          <p className={`mt-1 flex items-center gap-1.5 text-xs ${over ? 'text-red-600' : 'text-neutral-500'}`}>
+            {fmt(seconds)}
+            <button
+              type="button"
+              disabled={pending}
+              title="Agregar tiempo manual (olvidé cronometrar)"
+              onClick={() => {
+                const minutos = window.prompt('¿Cuántos minutos agregar?')
+                const n = minutos ? Number(minutos) : NaN
+                if (!Number.isNaN(n) && n > 0) startTransition(() => void createManualEntryAction(b.taskId!, n))
+              }}
+              className="text-neutral-300 hover:text-neutral-500"
+            >
+              ✎
+            </button>
+          </p>
         </>
       )}
 

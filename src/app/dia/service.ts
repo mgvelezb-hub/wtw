@@ -88,3 +88,17 @@ export async function undoBlockDone(blockId: string, userId: string) {
   await assertOwnedBlock(blockId, userId)
   return prisma.block.update({ where: { id: blockId }, data: { done: false } })
 }
+
+export async function createManualEntry(taskId: string, userId: string, seconds: number) {
+  await assertOwnedTask(taskId, userId)
+  const now = new Date()
+  return prisma.timeEntry.create({
+    data: { userId, taskId, startedAt: new Date(now.getTime() - seconds * 1000), stoppedAt: now, seconds, manual: true },
+  })
+}
+
+export async function editEntry(entryId: string, userId: string, seconds: number) {
+  const entry = await prisma.timeEntry.findUnique({ where: { id: entryId } })
+  if (!entry || entry.userId !== userId) throw new Error('entry no encontrado')
+  return prisma.timeEntry.update({ where: { id: entryId }, data: { seconds, manual: true } })
+}

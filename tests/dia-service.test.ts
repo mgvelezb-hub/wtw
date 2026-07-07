@@ -8,6 +8,8 @@ import {
   undoTaskDone,
   markBlockDone,
   undoBlockDone,
+  createManualEntry,
+  editEntry,
 } from '@/app/dia/service'
 import { startTimer, stopTimer } from '@/app/api/v1/timer/service'
 
@@ -157,5 +159,29 @@ describe('markBlockDone / undoBlockDone', () => {
   it('rechaza marcar done un bloque tipo tarea (debe usar markTaskDone)', async () => {
     const { user, block } = await setupDay()
     await expect(markBlockDone(block.id, user.id)).rejects.toThrow()
+  })
+})
+
+describe('createManualEntry / editEntry', () => {
+  it('crea una entrada manual marcada como tal', async () => {
+    const { user, task } = await setupDay()
+    const entry = await createManualEntry(task.id, user.id, 1800)
+    expect(entry.manual).toBe(true)
+    expect(entry.seconds).toBe(1800)
+  })
+
+  it('editEntry corrige segundos y marca manual', async () => {
+    const { user, task } = await setupDay()
+    const entry = await startTimer(user.id, task.id)
+    await stopTimer(user.id)
+    const edited = await editEntry(entry.id, user.id, 600)
+    expect(edited.seconds).toBe(600)
+    expect(edited.manual).toBe(true)
+  })
+
+  it('editEntry lanza si la entrada no pertenece al usuario', async () => {
+    const { task } = await setupDay()
+    const entry = await createManualEntry(task.id, (await prisma.user.findFirstOrThrow({ where: { email: TEST_EMAIL } })).id, 60)
+    await expect(editEntry(entry.id, 'otro-id', 100)).rejects.toThrow()
   })
 })
