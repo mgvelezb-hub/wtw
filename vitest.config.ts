@@ -5,7 +5,9 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    // Fase 1: solo tests de servidor. Tests de componentes usarán
+    // `// @vitest-environment jsdom` por archivo.
+    environment: 'node',
     globals: true,
     setupFiles: [],
     fileParallelism: false, // tests comparten la DB dev — sin paralelismo entre archivos
