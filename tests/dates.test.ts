@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isoWeekOf, weekRange } from '@/lib/dates'
+import { isoWeekOf, weekRange, todayStr } from '@/lib/dates'
 
 describe('isoWeekOf', () => {
   it('calcula semana ISO con año correcto', () => {
@@ -19,5 +19,14 @@ describe('weekRange', () => {
   it('cruza años correctamente', () => {
     const { inicio } = weekRange('2026-W01')
     expect(inicio.toISOString().slice(0, 10)).toBe('2025-12-29')
+  })
+})
+
+describe('todayStr', () => {
+  it('formatea una fecha dada como AAAA-MM-DD', () => {
+    expect(todayStr(new Date('2026-07-07T15:30:00Z'))).toBe('2026-07-07')
+  })
+  it('sin argumento usa la fecha actual', () => {
+    expect(todayStr()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 })

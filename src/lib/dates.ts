@@ -17,3 +17,7 @@ export function weekRange(isoWeek: string): { inicio: Date; fin: Date } {
   friday.setUTCDate(monday.getUTCDate() + 4)
   return { inicio: monday, fin: friday }
 }
+
+export function todayStr(d: Date = new Date()): string {
+  return d.toISOString().slice(0, 10)
+}
