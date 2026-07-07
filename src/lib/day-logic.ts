@@ -5,12 +5,12 @@ export type DayBlock = {
   done: boolean
 }
 
-export type CurrentPick =
-  | { kind: 'current'; block: DayBlock }
-  | { kind: 'next'; block: DayBlock }
+export type CurrentPick<T extends DayBlock> =
+  | { kind: 'current'; block: T }
+  | { kind: 'next'; block: T }
   | { kind: 'none'; block: null }
 
-export function pickCurrentBlock(blocks: DayBlock[], nowHHMM: string): CurrentPick {
+export function pickCurrentBlock<T extends DayBlock>(blocks: T[], nowHHMM: string): CurrentPick<T> {
   const activos = blocks.filter((b) => !b.done && b.inicio !== 'flex')
 
   const current = activos.find((b) => b.inicio <= nowHHMM && nowHHMM < b.fin)
