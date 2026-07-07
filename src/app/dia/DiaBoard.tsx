@@ -20,28 +20,32 @@ function fmt(totalSeconds: number): string {
   return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':')
 }
 
-function nowHHMM(): string {
-  const d = new Date()
+function hhmm(ms: number): string {
+  const d = new Date(ms)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function liveSeconds(b: DayBlockView, tickMs: number): number {
-  if (!b.runningSince) return b.accumulatedSeconds
+function liveSeconds(b: DayBlockView, tickMs: number | null): number {
+  if (tickMs === null || !b.runningSince) return b.accumulatedSeconds
   return b.accumulatedSeconds + (tickMs - new Date(b.runningSince).getTime()) / 1000
 }
 
 export function DiaBoard({ blocks }: { blocks: DayBlockView[] }) {
-  const [tick, setTick] = useState(() => Date.now())
+  // null hasta montar en cliente: SSR y el primer render del cliente deben
+  // coincidir exactamente — Date.now() difiere entre ambos y React lo marca
+  // como hydration mismatch (ver server-only.ts para el mismo principio).
+  const [tick, setTick] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
 
   useEffect(() => {
+    setTick(Date.now())
     const id = setInterval(() => setTick(Date.now()), 1000)
     return () => clearInterval(id)
   }, [])
 
   const activos = blocks.filter((b) => !b.done)
   const completados = blocks.filter((b) => b.done)
-  const pick = pickCurrentBlock(activos, nowHHMM())
+  const pick = tick === null ? { kind: 'none' as const, block: null } : pickCurrentBlock(activos, hhmm(tick))
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4">
@@ -84,7 +88,7 @@ function BlockCard({
   startTransition,
 }: {
   block: DayBlockView
-  tick: number
+  tick: number | null
   pending: boolean
   startTransition: (fn: () => void) => void
 }) {
@@ -95,14 +99,14 @@ function BlockCard({
 
   return (
     <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-xs text-neutral-500">
             {b.inicio}–{b.fin}
           </p>
           <p className="font-medium text-neutral-900">{b.titulo}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           {isTarea && !b.done && (
             <button
               disabled={pending}

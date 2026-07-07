@@ -24,5 +24,7 @@ export default async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$|.*\\.ico$).*)'],
+  // El manifest PWA, sus íconos y el service worker son metadata pública —
+  // el navegador/SO los puede pedir sin sesión (instalación, prefetch de icono).
+  matcher: ['/((?!api|_next/static|_next/image|manifest.webmanifest|pwa/|sw.js|.*\\.png$|.*\\.ico$).*)'],
 }
