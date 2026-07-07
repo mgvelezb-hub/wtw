@@ -264,6 +264,7 @@ model Project {
   tarifaHora             Decimal?      @db.Decimal(12, 2)
   origen                 String? // recompra derivada de qué relación/proyecto — ROI de alianza
   presupuestoAliadoHoras Decimal?      @db.Decimal(7, 2) // gobernanza de inversión aliado
+  portalTokenHash        String?       @unique // hash del magic-link del portal cliente
   allocations            Allocation[]
   deliverables           Deliverable[]
   issues                 Issue[]
