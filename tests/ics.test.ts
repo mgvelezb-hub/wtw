@@ -29,7 +29,9 @@ describe('parseIcs', () => {
     expect(evt.allDay).toBe(true)
   })
   it('ignora líneas plegadas (folding) reuniéndolas', () => {
-    const folded = SAMPLE.replace('SUMMARY:Junta con cliente', 'SUMMARY:Junta con\r\n cliente largo')
+    // El fold real inserta CRLF+WSP en cualquier punto, incluso a mitad de palabra —
+    // el WSP es un artefacto a remover, no debe comerse contenido real.
+    const folded = SAMPLE.replace('SUMMARY:Junta con cliente', 'SUMMARY:Junta con cli\r\n ente largo')
     const events = parseIcs(folded)
     expect(events[0].summary).toBe('Junta con cliente largo')
   })
