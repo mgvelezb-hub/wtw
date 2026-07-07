@@ -90,20 +90,6 @@ async function seedProjects(userId: string) {
   return byNombre
 }
 
-async function seedDeliverables(projects: Map<string, string>) {
-  const liverpoolId = projects.get('Liverpool')!
-  const deliverables = [
-    { nombre: 'Gemelo digital', hipotesis: 'Modelo de simulación valida el esquema de asignación por región' },
-    { nombre: 'KPIs de transporte', hipotesis: '$/pieza por O-D expone las regiones con mayor deterioro vs. 2025' },
-  ]
-  for (const d of deliverables) {
-    const existing = await prisma.deliverable.findFirst({ where: { projectId: liverpoolId, nombre: d.nombre } })
-    if (!existing) {
-      await prisma.deliverable.create({ data: { projectId: liverpoolId, ...d } })
-    }
-  }
-}
-
 async function seedActiveWeek(userId: string) {
   const isoWeek = isoWeekOf(new Date())
   const existing = await prisma.week.findUnique({ where: { userId_isoWeek: { userId, isoWeek } } })
@@ -127,7 +113,6 @@ async function main() {
   await seedCompetencies()
   const user = await seedUser(levels)
   const projects = await seedProjects(user.id)
-  await seedDeliverables(projects)
   const week = await seedActiveWeek(user.id)
 
   console.log('Seed completo:')

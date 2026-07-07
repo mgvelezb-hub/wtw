@@ -10,6 +10,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     setupFiles: [],
+    globalSetup: ['./tests/global-teardown.ts'], // solo exporta teardown() — corre al final de toda la suite
     fileParallelism: false, // tests comparten la DB dev — sin paralelismo entre archivos
     testTimeout: 20_000, // cada roundtrip a Neon tarda ~1-2s; tests con varias escrituras superan el default de 5s
     hookTimeout: 20_000,
