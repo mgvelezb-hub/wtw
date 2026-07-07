@@ -26,5 +26,8 @@ export default async function proxy(req: NextRequest) {
 export const config = {
   // El manifest PWA, sus íconos y el service worker son metadata pública —
   // el navegador/SO los puede pedir sin sesión (instalación, prefetch de icono).
-  matcher: ['/((?!api|_next/static|_next/image|manifest.webmanifest|pwa/|sw.js|.*\\.png$|.*\\.ico$).*)'],
+  // El portal cliente (/portal/[token]) tiene su PROPIA autorización por token
+  // (ver getPortalData) — nunca debe exigir cookie de sesión ni redirigir a
+  // Mau lejos de ahí si está logueado (quiere poder previsualizarlo).
+  matcher: ['/((?!api|_next/static|_next/image|manifest.webmanifest|pwa/|sw.js|portal/|.*\\.png$|.*\\.ico$).*)'],
 }
