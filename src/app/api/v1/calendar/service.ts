@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { parseIcs } from '@/lib/ics'
+import { isoWeekOf, weekRange } from '@/lib/dates'
 
 function hhmm(d: Date): string {
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
@@ -11,15 +12,37 @@ export async function syncCalendar(userId: string): Promise<{ synced: number }> 
 
   const res = await fetch(user.icsUrl)
   if (!res.ok) throw new Error(`ICS fetch falló: ${res.status}`)
-  const events = parseIcs(await res.text()).filter((e) => !e.allDay)
 
-  for (const e of events) {
-    const fecha = new Date(e.start.toISOString().slice(0, 10))
-    await prisma.calendarEvent.upsert({
-      where: { userId_externalId: { userId, externalId: e.uid } },
-      create: { userId, externalId: e.uid, fecha, inicio: hhmm(e.start), fin: hhmm(e.end), titulo: e.summary },
-      update: { fecha, inicio: hhmm(e.start), fin: hhmm(e.end), titulo: e.summary },
-    })
-  }
+  // Ventana: del lunes de esta semana a +8 semanas. Se expande la recurrencia
+  // (RRULE) dentro de este rango — las juntas semanales (SCRUM, internas) tienen
+  // su VEVENT anclado en el pasado y sin expansión no aparecerían nunca.
+  const cutoff = weekRange(isoWeekOf(new Date())).inicio
+  const horizon = new Date(cutoff.getTime() + 8 * 7 * 86400000)
+
+  const events = parseIcs(await res.text(), { start: cutoff, end: horizon }).filter(
+    (e) =>
+      !e.allDay && // los de día completo (OOO, cumpleaños) no ocupan un horario
+      !e.summary.startsWith('Cancelado:') // eventos cancelados no consumen tiempo
+  )
+
+  // Espejo de solo-lectura: reemplazar la ventana completa en 2 queries en vez
+  // de N upserts secuenciales (cada roundtrip a Neon ~1-2s → minutos con 400).
+  await prisma.$transaction([
+    prisma.calendarEvent.deleteMany({ where: { userId } }),
+    prisma.calendarEvent.createMany({
+      data: events.map((e) => ({
+        userId,
+        // externalId compuesto: instancias de una misma serie comparten UID base;
+        // fecha+hora+título garantiza unicidad e idempotencia entre syncs.
+        externalId: `${e.start.toISOString().slice(0, 10)}|${hhmm(e.start)}|${e.summary}`,
+        fecha: new Date(e.start.toISOString().slice(0, 10)),
+        inicio: hhmm(e.start),
+        fin: hhmm(e.end),
+        titulo: e.summary,
+      })),
+      skipDuplicates: true, // UIDs repetidos de recurrentes (RECURRENCE-ID)
+    }),
+  ])
+
   return { synced: events.length }
 }
