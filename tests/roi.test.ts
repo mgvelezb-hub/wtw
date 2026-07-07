@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
-import { getROIRelacion } from '@/app/roi/service'
+import { getROIRelacion } from '@/app/(app)/roi/service'
 
 const TEST_EMAIL = 'test-roi@vp.mx'
 beforeEach(() => deleteTestUser(TEST_EMAIL))

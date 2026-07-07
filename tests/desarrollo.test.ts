@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
-import { getCoberturaCompetencias } from '@/app/desarrollo/service'
+import { getCoberturaCompetencias } from '@/app/(app)/desarrollo/service'
 
 const TEST_EMAIL = 'test-dev@vp.mx'
 beforeEach(() => deleteTestUser(TEST_EMAIL))

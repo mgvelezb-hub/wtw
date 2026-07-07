@@ -3,7 +3,6 @@ import { decrypt } from '@/lib/session'
 
 const PUBLIC_ROUTES = ['/login']
 const AUTH_ROUTE = '/login'
-const DEFAULT_ROUTE = '/dia'
 
 export default async function proxy(req: NextRequest) {
   const path = req.nextUrl.pathname
@@ -12,12 +11,12 @@ export default async function proxy(req: NextRequest) {
   const cookie = req.cookies.get('session')?.value
   const session = await decrypt(cookie)
 
+  // El proxy corre en Edge (sin acceso a DB): solo valida la FIRMA del JWT como
+  // guardia rápida contra rutas protegidas. La decisión "sesión válida → /dia"
+  // vive en la página de login (verifySession, con DB) para evitar el loop
+  // login↔dia con cookies de usuarios borrados.
   if (!isPublic && !session) {
     return NextResponse.redirect(new URL(AUTH_ROUTE, req.nextUrl))
-  }
-
-  if (isPublic && session) {
-    return NextResponse.redirect(new URL(DEFAULT_ROUTE, req.nextUrl))
   }
 
   return NextResponse.next()

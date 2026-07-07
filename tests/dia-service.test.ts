@@ -10,7 +10,7 @@ import {
   undoBlockDone,
   createManualEntry,
   editEntry,
-} from '@/app/dia/service'
+} from '@/app/(app)/dia/service'
 import { startTimer, stopTimer } from '@/app/api/v1/timer/service'
 
 const TEST_EMAIL = 'test-dia@vp.mx'

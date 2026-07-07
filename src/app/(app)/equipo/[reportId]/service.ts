@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { getCoberturaCompetencias } from '@/app/desarrollo/service'
+import { getCoberturaCompetencias } from '@/app/(app)/desarrollo/service'
 
 export async function getCoberturaParaManager(managerId: string, reportId: string) {
   const report = await prisma.user.findUnique({ where: { id: reportId } })

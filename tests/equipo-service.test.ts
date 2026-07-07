@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
-import { inviteColleague, listReports } from '@/app/equipo/service'
+import { inviteColleague, listReports } from '@/app/(app)/equipo/service'
 
 const MANAGER_EMAIL = 'test-manager@vp.mx'
 const REPORT_EMAIL = 'test-report@vp.mx'
