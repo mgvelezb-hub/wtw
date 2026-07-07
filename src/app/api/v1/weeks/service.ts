@@ -145,9 +145,14 @@ export async function appendBlocks(
   const wins = await prisma.win.findMany({ where: { weekId: week.id } })
   for (const w of wins) winByPosicion.set(w.posicion, w.id)
 
-  return prisma.$transaction((tx) =>
+  await prisma.$transaction((tx) =>
     createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, week.blocks.length)
   )
+
+  // createTasksAndBlocks no devuelve nada — sin este refetch, la respuesta
+  // del endpoint serializaba a `{}` (JSON.stringify descarta claves undefined),
+  // dejando a quien llama sin forma de confirmar qué se creó.
+  return getWeek(userId, isoWeek)
 }
 
 export async function getWeek(userId: string, isoWeek: string) {
