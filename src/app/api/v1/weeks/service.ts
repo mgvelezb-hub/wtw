@@ -37,6 +37,71 @@ export type CreateWeekPayload = {
   blocks: BlockInput[]
 }
 
+type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+
+async function createTasksAndBlocks(
+  tx: TxClient,
+  userId: string,
+  weekId: string,
+  tasks: TaskInput[],
+  blocks: BlockInput[],
+  winByPosicion: Map<number, string>,
+  ordenInicial: number
+) {
+  const projectIdByNombre = new Map<string, string>()
+  const taskIdByRef = new Map<string, string>()
+
+  for (const t of tasks) {
+    let projectId: string | undefined
+    if (t.projectNombre) {
+      projectId = projectIdByNombre.get(t.projectNombre)
+      if (!projectId) {
+        const project = await tx.project.upsert({
+          where: { userId_nombre: { userId, nombre: t.projectNombre } },
+          create: { userId, nombre: t.projectNombre },
+          update: {},
+        })
+        projectId = project.id
+        projectIdByNombre.set(t.projectNombre, projectId)
+      }
+    }
+
+    const task = await tx.task.create({
+      data: {
+        userId,
+        weekId,
+        projectId,
+        winId: t.winPosicion ? winByPosicion.get(t.winPosicion) : undefined,
+        titulo: t.titulo,
+        estimadoMin: t.estimadoMin,
+        ajustadoMin: t.ajustadoMin,
+        deadline: t.deadline ? new Date(t.deadline) : undefined,
+        alcance: t.alcance ?? 'sow',
+        dolorCliente: t.dolorCliente,
+        estatus: 'planned',
+        dodItems: { create: (t.dod ?? []).map((texto, orden) => ({ texto, orden })) },
+      },
+    })
+    taskIdByRef.set(t.ref, task.id)
+  }
+
+  for (const [i, b] of blocks.entries()) {
+    await tx.block.create({
+      data: {
+        weekId,
+        taskId: b.taskRef ? taskIdByRef.get(b.taskRef) : undefined,
+        fecha: new Date(b.fecha),
+        inicio: b.inicio,
+        fin: b.fin,
+        tipo: b.tipo,
+        titulo: b.titulo,
+        planMin: b.planMin,
+        orden: ordenInicial + i,
+      },
+    })
+  }
+}
+
 export async function createWeekPayload(userId: string, payload: CreateWeekPayload) {
   const { inicio, fin } = weekRange(payload.isoWeek)
 
@@ -62,63 +127,27 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
       winByPosicion.set(w.posicion, win.id)
     }
 
-    const projectIdByNombre = new Map<string, string>()
-    const taskIdByRef = new Map<string, string>()
-
-    for (const t of payload.tasks) {
-      let projectId: string | undefined
-      if (t.projectNombre) {
-        projectId = projectIdByNombre.get(t.projectNombre)
-        if (!projectId) {
-          const project = await tx.project.upsert({
-            where: { userId_nombre: { userId, nombre: t.projectNombre } },
-            create: { userId, nombre: t.projectNombre },
-            update: {},
-          })
-          projectId = project.id
-          projectIdByNombre.set(t.projectNombre, projectId)
-        }
-      }
-
-      const task = await tx.task.create({
-        data: {
-          userId,
-          weekId: week.id,
-          projectId,
-          winId: t.winPosicion ? winByPosicion.get(t.winPosicion) : undefined,
-          titulo: t.titulo,
-          estimadoMin: t.estimadoMin,
-          ajustadoMin: t.ajustadoMin,
-          deadline: t.deadline ? new Date(t.deadline) : undefined,
-          alcance: t.alcance ?? 'sow',
-          dolorCliente: t.dolorCliente,
-          estatus: 'planned',
-          dodItems: {
-            create: (t.dod ?? []).map((texto, orden) => ({ texto, orden })),
-          },
-        },
-      })
-      taskIdByRef.set(t.ref, task.id)
-    }
-
-    for (const [orden, b] of payload.blocks.entries()) {
-      await tx.block.create({
-        data: {
-          weekId: week.id,
-          taskId: b.taskRef ? taskIdByRef.get(b.taskRef) : undefined,
-          fecha: new Date(b.fecha),
-          inicio: b.inicio,
-          fin: b.fin,
-          tipo: b.tipo,
-          titulo: b.titulo,
-          planMin: b.planMin,
-          orden,
-        },
-      })
-    }
+    await createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, 0)
 
     return week
   })
+}
+
+export async function appendBlocks(
+  userId: string,
+  isoWeek: string,
+  payload: { tasks: TaskInput[]; blocks: BlockInput[] }
+) {
+  const week = await prisma.week.findUnique({ where: { userId_isoWeek: { userId, isoWeek } }, include: { blocks: true } })
+  if (!week) throw new Error('semana no encontrada')
+
+  const winByPosicion = new Map<number, string>()
+  const wins = await prisma.win.findMany({ where: { weekId: week.id } })
+  for (const w of wins) winByPosicion.set(w.posicion, w.id)
+
+  return prisma.$transaction((tx) =>
+    createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, week.blocks.length)
+  )
 }
 
 export async function getWeek(userId: string, isoWeek: string) {
