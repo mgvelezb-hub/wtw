@@ -1,30 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { createWeekPayload, getWeek } from '@/app/api/v1/weeks/service'
+import { deleteTestUser } from './helpers/cleanup'
 
-async function cleanDb() {
-  await prisma.$transaction([
-    prisma.evidence.deleteMany(),
-    prisma.timeEntry.deleteMany(),
-    prisma.block.deleteMany(),
-    prisma.dodItem.deleteMany(),
-    prisma.task.deleteMany(),
-    prisma.win.deleteMany(),
-    prisma.week.deleteMany(),
-    prisma.issue.deleteMany(),
-    prisma.deliverable.deleteMany(),
-    prisma.allocation.deleteMany(),
-    prisma.project.deleteMany(),
-    prisma.user.deleteMany({ where: { email: 'test-weeks@vp.mx' } }),
-  ])
-}
+const TEST_EMAIL = 'test-weeks@vp.mx'
 
-beforeEach(cleanDb)
+beforeEach(() => deleteTestUser(TEST_EMAIL))
 
 describe('createWeekPayload', () => {
   it('crea semana con wins, tasks con dod, y blocks ligados', async () => {
     const user = await prisma.user.create({
-      data: { email: 'test-weeks@vp.mx', nombre: 'Test', passwordHash: 'x' },
+      data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' },
     })
 
     const payload = {
@@ -74,7 +60,7 @@ describe('createWeekPayload', () => {
 
   it('reutiliza un proyecto existente por nombre en vez de duplicarlo', async () => {
     const user = await prisma.user.create({
-      data: { email: 'test-weeks@vp.mx', nombre: 'Test', passwordHash: 'x' },
+      data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' },
     })
     const existing = await prisma.project.create({ data: { userId: user.id, nombre: 'Cuervo' } })
 
@@ -94,7 +80,7 @@ describe('createWeekPayload', () => {
 
   it('rechaza semana duplicada por usuario', async () => {
     const user = await prisma.user.create({
-      data: { email: 'test-weeks@vp.mx', nombre: 'Test', passwordHash: 'x' },
+      data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' },
     })
     const payload = { isoWeek: '2026-W28', factorUsado: 1.4, wins: [], tasks: [], blocks: [] }
     await createWeekPayload(user.id, payload)
@@ -105,14 +91,14 @@ describe('createWeekPayload', () => {
 describe('getWeek', () => {
   it('devuelve null si el usuario no tiene esa semana', async () => {
     const user = await prisma.user.create({
-      data: { email: 'test-weeks@vp.mx', nombre: 'Test', passwordHash: 'x' },
+      data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' },
     })
     expect(await getWeek(user.id, '2026-W99')).toBeNull()
   })
 
   it('devuelve la semana completa ordenada', async () => {
     const user = await prisma.user.create({
-      data: { email: 'test-weeks@vp.mx', nombre: 'Test', passwordHash: 'x' },
+      data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' },
     })
     await createWeekPayload(user.id, {
       isoWeek: '2026-W28',

@@ -1,23 +1,18 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { startTimer, stopTimer, runningEntry } from '@/app/api/v1/timer/service'
+import { deleteTestUser } from './helpers/cleanup'
 
-async function cleanDb() {
-  await prisma.$transaction([
-    prisma.timeEntry.deleteMany(),
-    prisma.task.deleteMany(),
-    prisma.user.deleteMany({ where: { email: 'test-timer@vp.mx' } }),
-  ])
-}
+const TEST_EMAIL = 'test-timer@vp.mx'
 
 async function setup() {
-  const user = await prisma.user.create({ data: { email: 'test-timer@vp.mx', nombre: 'Test', passwordHash: 'x' } })
+  const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'Test', passwordHash: 'x' } })
   const taskA = await prisma.task.create({ data: { userId: user.id, titulo: 'Tarea A' } })
   const taskB = await prisma.task.create({ data: { userId: user.id, titulo: 'Tarea B' } })
   return { user, taskA, taskB }
 }
 
-beforeEach(cleanDb)
+beforeEach(() => deleteTestUser(TEST_EMAIL))
 
 describe('startTimer', () => {
   it('crea entry corriendo y pone la task en in_progress', async () => {
