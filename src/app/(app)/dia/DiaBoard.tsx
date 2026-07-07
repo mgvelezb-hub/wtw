@@ -6,6 +6,7 @@ import type { DayBlockView, PendienteView } from './service'
 import {
   startTimerAction,
   stopTimerAction,
+  cancelTimerAction,
   toggleDodItemAction,
   markTaskDoneAction,
   undoTaskDoneAction,
@@ -17,6 +18,7 @@ import { scheduleTaskAction, moveBlockAction } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
+type StartTransitionFn = (fn: () => void) => void
 
 export type DiaBoardProps = {
   isoWeek: string
@@ -61,6 +63,28 @@ function liveSeconds(b: DayBlockView, tickMs: number | null): number {
   return b.accumulatedSeconds + (tickMs - new Date(b.runningSince).getTime()) / 1000
 }
 
+function nowHHMM(tickMs: number): string {
+  const d = new Date(tickMs)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Pastel de fondo + el color del proyecto como texto — mismo patrón de contraste
+// que el tablero original (fill suave + texto saturado, no outline sobre blanco).
+function pillStyle(color: string): React.CSSProperties {
+  return { backgroundColor: `${color}1f`, borderColor: `${color}55`, color }
+}
+
+function ProyectoBadge({ proyecto }: { proyecto: NonNullable<DayBlockView['proyecto']> }) {
+  return (
+    <span
+      className="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+      style={pillStyle(proyecto.color)}
+    >
+      {proyecto.nombre}
+    </span>
+  )
+}
+
 export function DiaBoard(p: DiaBoardProps) {
   const [tick, setTick] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
@@ -77,6 +101,15 @@ export function DiaBoard(p: DiaBoardProps) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
+      <RunningHero
+        blocks={activos}
+        tick={tick}
+        esHoy={esHoy}
+        selectedLabel={p.selectedLabel}
+        pending={pending}
+        startTransition={startTransition}
+      />
+
       <header>
         <p className="text-xs font-semibold uppercase tracking-wider text-[#0d6d63]">
           Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
@@ -84,11 +117,11 @@ export function DiaBoard(p: DiaBoardProps) {
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-[#0c4a45]">{p.rango}</h1>
           <div className="flex flex-wrap gap-2">
-            <span className="rounded-full bg-[#d3e4e0] px-3 py-1 text-xs font-medium text-[#0c4a45]">
+            <span className="rounded-full bg-[#d3e4e0] px-3 py-1 text-xs font-semibold text-[#0c4a45]">
               Factor realismo {p.factorUsado.toFixed(1)}
             </span>
             {p.desbloqueador && (
-              <span className="rounded-full bg-[#e8b94a] px-3 py-1 text-xs font-semibold text-[#4a3a10]">
+              <span className="rounded-full bg-[#e8b94a] px-3 py-1 text-xs font-bold text-[#4a3a10]">
                 ⚡ {p.desbloqueador}
               </span>
             )}
@@ -98,7 +131,7 @@ export function DiaBoard(p: DiaBoardProps) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#0c4a45]">🏆 Wins de la semana</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">🏆 Wins de la semana</h2>
           <ol className="space-y-2">
             {p.wins.map((w) => (
               <li key={w.posicion} className="flex gap-2 text-sm">
@@ -109,7 +142,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 >
                   {w.posicion}
                 </span>
-                <span className={w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-700'}>
+                <span className={w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-800'}>
                   {w.titulo}
                 </span>
               </li>
@@ -119,7 +152,7 @@ export function DiaBoard(p: DiaBoardProps) {
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-[#0c4a45]">📐 Capacidad</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">📐 Capacidad</h2>
           <div className="flex gap-6">
             <Stat n={p.trabajable.toFixed(0)} u="h" l="Trabajable" />
             <Stat n={p.carga.toFixed(0)} u="h" l="Carga" />
@@ -148,26 +181,16 @@ export function DiaBoard(p: DiaBoardProps) {
                 if (data.startsWith('block:')) startTransition(() => void moveBlockAction(data.slice(6), t.fecha))
                 else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
               }}
-              className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm ${
-                active ? 'border-[#0c4a45] bg-[#0c4a45] text-white' : 'border-neutral-200 bg-white text-neutral-600'
+              className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm font-medium ${
+                active ? 'border-[#0c4a45] bg-[#0c4a45] text-white' : 'border-neutral-200 bg-white text-neutral-700'
               }`}
             >
-              <span className="font-semibold">{t.abr}</span>
-              <span className="text-xs opacity-80">{t.num}</span>
+              <span className="font-bold">{t.abr}</span>
+              <span className="text-xs opacity-90">{t.num}</span>
             </Link>
           )
         })}
       </div>
-
-      {!esHoy && (
-        <div className="rounded-lg border-l-4 border-[#e8b94a] bg-[#0c4a45] px-4 py-3 text-sm text-white">
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#e8b94a]">Vista de planeación</span>
-          <p className="mt-0.5">
-            Estás viendo <strong>{p.selectedLabel}</strong>. El cronómetro en vivo funciona en el día de{' '}
-            <strong className="text-[#e8b94a]">hoy</strong>.
-          </p>
-        </div>
-      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <div
@@ -195,7 +218,7 @@ export function DiaBoard(p: DiaBoardProps) {
             </div>
             <a
               href="/api/v1/calendar/export"
-              className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-600 hover:bg-neutral-100"
+              className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
             >
               🚚 ICS
             </a>
@@ -206,8 +229,10 @@ export function DiaBoard(p: DiaBoardProps) {
           ))}
 
           {completados.length > 0 && (
-            <div className="space-y-2 opacity-60">
-              <h3 className="text-xs font-semibold uppercase text-neutral-500">Completados</h3>
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase text-neutral-500">
+                ✓ Terminadas ({completados.length})
+              </h3>
               {completados.map((b) => (
                 <BlockCard
                   key={b.id}
@@ -231,13 +256,13 @@ export function DiaBoard(p: DiaBoardProps) {
         <div className="space-y-4">
           {esHoy && (
             <div className="rounded-xl bg-[#0c4a45] p-4 text-white shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-wide text-[#9fd0c8]">Capacidad de hoy</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">Capacidad de hoy</p>
               <p className={`mt-1 text-3xl font-bold ${p.capacidadHoy < 0 ? 'text-[#e8b94a]' : 'text-white'}`}>
                 {p.capacidadHoy.toFixed(1)} h
               </p>
-              <p className="text-xs text-[#9fd0c8]">libres de ~{p.libresHoy.toFixed(0)} h</p>
+              <p className="text-xs font-medium text-[#c7e4de]">libres de ~{p.libresHoy.toFixed(0)} h</p>
               {p.capacidadHoy < 0 && (
-                <p className="mt-2 text-xs text-[#e8b94a]">
+                <p className="mt-2 text-xs font-semibold text-[#e8b94a]">
                   ⚠️ Sobrecargado {Math.abs(p.capacidadHoy).toFixed(1)} h — quita algo o muévelo a otro día.
                 </p>
               )}
@@ -245,34 +270,36 @@ export function DiaBoard(p: DiaBoardProps) {
           )}
 
           <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-            <h3 className="mb-2 text-sm font-semibold text-[#0c4a45]">
+            <h3 className="mb-2 text-sm font-bold text-[#0c4a45]">
               📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
             </h3>
-            <div className="space-y-2">
-              {p.pendientes.slice(0, 12).map((pe) => (
+            <div className="max-h-[32rem] space-y-2 overflow-y-auto">
+              {p.pendientes.map((pe) => (
                 <div
                   key={pe.id}
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
                   className={`cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-sm active:cursor-grabbing ${
-                    pe.urgente ? 'border-neutral-200 border-l-4 border-l-red-400' : 'border-neutral-200'
+                    pe.urgente ? 'border-neutral-200 border-l-4 border-l-red-500' : 'border-neutral-200'
                   }`}
                 >
-                  <p className="text-neutral-800">
-                    {pe.urgente && <span className="text-red-500">★ </span>}
+                  <p className="font-medium text-neutral-900">
+                    {pe.urgente && <span className="text-red-600">★ </span>}
                     {pe.titulo}
                   </p>
                   <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       {pe.estimadoMin != null && (
-                        <span className="rounded bg-[#e8b94a]/30 px-1.5 py-0.5 text-[#4a3a10]">{horas(pe.estimadoMin)}</span>
+                        <span className="rounded bg-[#f5deae] px-1.5 py-0.5 font-semibold text-[#4a3a10]">
+                          {horas(pe.estimadoMin)}
+                        </span>
                       )}
-                      {pe.proyecto && <span className="text-neutral-400">{pe.proyecto}</span>}
+                      {pe.proyecto && <span className="font-medium text-neutral-500">{pe.proyecto}</span>}
                     </div>
                     <button
                       disabled={pending}
                       onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
-                      className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-semibold text-[#4a3a10] hover:bg-[#dcae3e]"
+                      className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
                     >
                       + Hoy
                     </button>
@@ -295,7 +322,170 @@ function Stat({ n, u, l, accent }: { n: string; u: string; l: string; accent?: b
         {n}
         <span className="text-sm font-medium">{u}</span>
       </p>
-      <p className="text-[10px] uppercase tracking-wide text-neutral-400">{l}</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">{l}</p>
+    </div>
+  )
+}
+
+// Hero fijo arriba: el bloque "ahora" — con cronómetro grande y controles cuando
+// es una tarea en curso. Replica el .hero del tablero original (teal-900, DoD
+// inline, Pausar/Terminar/Cancelar), en vez de un timer perdido dentro de la card.
+function RunningHero({
+  blocks,
+  tick,
+  esHoy,
+  selectedLabel,
+  pending,
+  startTransition,
+}: {
+  blocks: DayBlockView[]
+  tick: number | null
+  esHoy: boolean
+  selectedLabel: string
+  pending: boolean
+  startTransition: StartTransitionFn
+}) {
+  if (!esHoy) {
+    return (
+      <div className="sticky top-14 z-10 rounded-xl border-l-4 border-[#e8b94a] bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
+        <p className="text-xs font-bold uppercase tracking-wide text-[#e8b94a]">Vista de planeación</p>
+        <p className="mt-1 text-sm">
+          Estás viendo <strong>{selectedLabel}</strong>. El cronómetro en vivo funciona en el día de{' '}
+          <strong className="text-[#e8b94a]">hoy</strong>.
+        </p>
+      </div>
+    )
+  }
+
+  const now = tick !== null ? nowHHMM(tick) : null
+  const running = blocks.find((b) => b.runningSince)
+  const current =
+    running ?? (now ? blocks.find((b) => b.inicio !== 'flex' && b.inicio <= now && now < b.fin) : undefined)
+
+  if (!current) {
+    const next = now
+      ? blocks
+          .filter((b) => b.inicio !== 'flex' && b.inicio > now)
+          .sort((a, b) => a.inicio.localeCompare(b.inicio))[0]
+      : undefined
+    return (
+      <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" /> Sin bloque ahora
+        </p>
+        <p className="mt-1 text-sm text-white/90">
+          {next ? (
+            <>
+              Siguiente: <strong className="text-white">{next.titulo}</strong> a las {next.inicio}.
+            </>
+          ) : (
+            'Sin más bloques agendados hoy.'
+          )}
+        </p>
+      </div>
+    )
+  }
+
+  const isTareaCronometrable = current.tipo === 'tarea' && !current.externa
+  if (!isTareaCronometrable) {
+    return (
+      <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" /> Ahora · {current.inicio}–{current.fin}
+        </p>
+        <p className="mt-1 text-lg font-bold">
+          {current.externa ? '📅 ' : ''}
+          {current.titulo}
+        </p>
+      </div>
+    )
+  }
+
+  const seconds = liveSeconds(current, tick)
+  const over = seconds > current.planMin * 60
+  const isRunning = !!current.runningSince
+
+  return (
+    <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" />
+        {isRunning ? 'En curso' : 'Ahora'} · {current.inicio}–{current.fin}
+      </p>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-lg font-bold">{current.titulo}</p>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {current.proyecto && <ProyectoBadge proyecto={current.proyecto} />}
+            {current.winPosicion && (
+              <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
+                Win {current.winPosicion}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right">
+          <p className={`font-mono text-3xl font-bold tabular-nums ${over ? 'text-[#e8b94a]' : 'text-white'}`}>
+            {fmt(seconds)}
+          </p>
+          <p className="text-xs font-medium text-[#c7e4de]">de {current.planMin}m planeado</p>
+        </div>
+      </div>
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
+        <div
+          className={`h-full ${over ? 'bg-[#e8b94a]' : 'bg-[#3fb6a8]'}`}
+          style={{ width: `${Math.min(100, (seconds / (current.planMin * 60)) * 100)}%` }}
+        />
+      </div>
+      {current.dodItems.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {current.dodItems.map((d) => (
+            <li key={d.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={d.done}
+                disabled={pending}
+                onChange={() => startTransition(() => void toggleDodItemAction(d.id))}
+              />
+              <span className={d.done ? 'text-white/50 line-through' : 'text-white/95'}>{d.texto}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {isRunning ? (
+          <>
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => void stopTimerAction())}
+              className="rounded-md bg-white/15 px-3 py-1.5 text-sm font-bold text-white hover:bg-white/25"
+            >
+              ❚❚ Pausar
+            </button>
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => void markTaskDoneAction(current.taskId!))}
+              className="rounded-md bg-[#15803d] px-3 py-1.5 text-sm font-bold text-white hover:bg-[#12692f]"
+            >
+              ✓ Terminar
+            </button>
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => void cancelTimerAction(current.taskId!))}
+              className="rounded-md px-3 py-1.5 text-sm font-semibold text-white/70 hover:text-white"
+            >
+              ✕ Cancelar
+            </button>
+          </>
+        ) : (
+          <button
+            disabled={pending}
+            onClick={() => startTransition(() => void startTimerAction(current.taskId!))}
+            className="rounded-md bg-[#e8b94a] px-4 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+          >
+            ▶ {seconds > 0 ? 'Reanudar' : 'Iniciar'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -310,7 +500,7 @@ function BlockCard({
   block: DayBlockView
   tick: number | null
   pending: boolean
-  startTransition: (fn: () => void) => void
+  startTransition: StartTransitionFn
   enVivo: boolean
 }) {
   const isTarea = b.tipo === 'tarea'
@@ -322,12 +512,12 @@ function BlockCard({
       <div className="rounded-lg border border-neutral-200 border-l-4 border-l-[#0d6d63] bg-[#eef4f3] p-3">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs font-medium text-neutral-600">
               {b.inicio}–{b.fin}
             </p>
-            <p className="font-medium text-neutral-800">📅 {b.titulo}</p>
+            <p className="font-semibold text-neutral-900">📅 {b.titulo}</p>
           </div>
-          <span className="text-[10px] uppercase tracking-wide text-neutral-400">Outlook</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
         </div>
       </div>
     )
@@ -337,32 +527,39 @@ function BlockCard({
     <div
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
-      className="cursor-grab rounded-lg border border-neutral-200 bg-white p-3 shadow-sm active:cursor-grabbing"
+      className={`cursor-grab rounded-lg border p-3 shadow-sm active:cursor-grabbing ${
+        b.done ? 'border-neutral-200 bg-neutral-50' : 'border-neutral-200 bg-white'
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs font-medium text-neutral-500">
             {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
           </p>
-          <p className="font-medium text-neutral-900">{b.titulo}</p>
+          <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
+            {b.titulo}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {isTarea && (
-            <span className={`font-mono text-sm ${over ? 'text-red-600' : 'text-[#15803d]'}`}>
+          {isTarea && !b.runningSince && (
+            <span className={`font-mono text-sm font-semibold ${over ? 'text-red-600' : 'text-[#15803d]'}`}>
               {fmt(seconds)}
-              <span className="text-xs text-neutral-400"> / {b.planMin}m</span>
+              <span className="text-xs font-medium text-neutral-400"> / {b.planMin}m</span>
             </span>
           )}
-          {isTarea && !b.done && enVivo && (
+          {isTarea && !b.done && !b.runningSince && enVivo && (
             <button
               disabled={pending}
-              onClick={() =>
-                startTransition(() => void (b.runningSince ? stopTimerAction() : startTimerAction(b.taskId!)))
-              }
-              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-sm font-semibold text-[#4a3a10] hover:bg-[#dcae3e]"
+              onClick={() => startTransition(() => void startTimerAction(b.taskId!))}
+              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
             >
-              {b.runningSince ? '⏸ Pausar' : '▶ Iniciar'}
+              ▶ Iniciar
             </button>
+          )}
+          {isTarea && b.runningSince && (
+            <span className="rounded-full bg-[#d3e4e0] px-2 py-1 text-xs font-bold text-[#0c4a45]">
+              ⏱ en el hero
+            </span>
           )}
           <button
             disabled={pending}
@@ -377,7 +574,7 @@ function BlockCard({
                     : markBlockDoneAction(b.id))
               )
             }
-            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-200"
+            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-200"
           >
             {b.done ? '↺' : '✓'}
           </button>
@@ -386,38 +583,31 @@ function BlockCard({
 
       {(b.proyecto || b.winPosicion || b.aliado || b.gerente) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {b.proyecto && (
-            <span
-              className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase"
-              style={{ borderColor: b.proyecto.color, color: b.proyecto.color }}
-            >
-              {b.proyecto.nombre}
-            </span>
-          )}
+          {b.proyecto && <ProyectoBadge proyecto={b.proyecto} />}
           {b.winPosicion && (
-            <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#4a3a10]">
+            <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
               Win {b.winPosicion}
             </span>
           )}
           {b.aliado && (
-            <span className="rounded-full bg-[#15803d] px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+            <span className="rounded-full bg-[#15803d] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               Valor cliente
             </span>
           )}
           {b.gerente && (
-            <span className="rounded-full bg-[#5b4b8a] px-2 py-0.5 text-[10px] font-semibold uppercase text-white">
+            <span className="rounded-full bg-[#5b4b8a] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               → Gerente
             </span>
           )}
           {b.proyecto?.tipo === 'interno' && !b.aliado && (
-            <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-neutral-600">
+            <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-bold uppercase text-neutral-700">
               Interno
             </span>
           )}
         </div>
       )}
 
-      {isTarea && (
+      {isTarea && !b.runningSince && (
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
           <div
             className={`h-full ${over ? 'bg-red-500' : 'bg-[#0d6d63]'}`}
@@ -436,13 +626,13 @@ function BlockCard({
                 disabled={pending}
                 onChange={() => startTransition(() => void toggleDodItemAction(d.id))}
               />
-              <span className={d.done ? 'text-neutral-400 line-through' : 'text-neutral-700'}>{d.texto}</span>
+              <span className={d.done ? 'text-neutral-400 line-through' : 'text-neutral-800'}>{d.texto}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {isTarea && enVivo && (
+      {isTarea && enVivo && !b.done && (
         <button
           type="button"
           disabled={pending}
@@ -451,7 +641,7 @@ function BlockCard({
             const n = min ? Number(min) : NaN
             if (!Number.isNaN(n) && n > 0) startTransition(() => void createManualEntryAction(b.taskId!, n))
           }}
-          className="mt-2 text-[10px] font-medium text-neutral-400 hover:text-neutral-600"
+          className="mt-2 text-[10px] font-semibold text-neutral-500 hover:text-neutral-700"
         >
           ✎ agregar tiempo manual
         </button>

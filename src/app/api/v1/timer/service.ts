@@ -18,6 +18,13 @@ export async function stopTimer(userId: string) {
   })
 }
 
+// Descarta la corrida actual sin sumar tiempo (se inició por error).
+export async function cancelTimer(userId: string) {
+  const running = await runningEntry(userId)
+  if (!running) return null
+  return prisma.timeEntry.delete({ where: { id: running.id } })
+}
+
 export async function startTimer(userId: string, taskId: string) {
   await stopTimer(userId)
 

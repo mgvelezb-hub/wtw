@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
-import { startTimer, stopTimer } from '@/app/api/v1/timer/service'
+import { startTimer, stopTimer, cancelTimer } from '@/app/api/v1/timer/service'
+import { prisma } from '@/lib/prisma'
 import { toggleDodItem, markTaskDone, undoTaskDone, markBlockDone, undoBlockDone } from './service'
 
 async function userId(): Promise<string> {
@@ -18,6 +19,14 @@ export async function startTimerAction(taskId: string) {
 
 export async function stopTimerAction() {
   await stopTimer(await userId())
+  revalidatePath('/dia')
+}
+
+// Descarta la corrida actual (se inició por error) y regresa la tarea a planeada.
+export async function cancelTimerAction(taskId: string) {
+  const uid = await userId()
+  await cancelTimer(uid)
+  await prisma.task.update({ where: { id: taskId }, data: { estatus: 'planned' } })
   revalidatePath('/dia')
 }
 
