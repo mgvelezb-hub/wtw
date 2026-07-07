@@ -57,7 +57,7 @@ export function AppShell({ nombre, children }: { nombre: string; children: React
   const flat = NAV.flatMap((g) => g.items)
 
   return (
-    <div className="min-h-dvh bg-neutral-50 md:pl-56">
+    <div className="min-h-dvh bg-[#f4efe3] md:pl-56">
       <nav className="fixed inset-x-0 top-0 z-20 flex gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-2 py-2 md:inset-y-0 md:right-auto md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:px-3 md:py-4">
         <div className="hidden px-2 pb-4 md:block">
           <p className="text-base font-bold text-[#0A7C82]">WTW</p>

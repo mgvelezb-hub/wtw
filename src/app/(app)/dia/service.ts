@@ -1,11 +1,18 @@
 import { prisma } from '@/lib/prisma'
 import { runningEntry, stopTimer } from '@/app/api/v1/timer/service'
+import { getWeek } from '@/app/api/v1/weeks/service'
+import { capacityForWeek } from '@/app/api/v1/capacity/service'
+
+function toMin(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return (h || 0) * 60 + (m || 0)
+}
 
 export type DayBlockView = {
   id: string
   inicio: string
   fin: string
-  tipo: string
+  tipo: string // tarea | junta | hito | descanso | externa
   titulo: string
   planMin: number
   taskId: string | null
@@ -13,19 +20,35 @@ export type DayBlockView = {
   dodItems: { id: string; texto: string; done: boolean }[]
   accumulatedSeconds: number
   runningSince: string | null
+  externa: boolean // junta de Outlook: fija, sin cronómetro
+  proyecto: { nombre: string; color: string; tipo: string } | null
+  winPosicion: number | null
+  aliado: boolean // agrega valor al cliente fuera de SOW
+  gerente: boolean // aporta a competencias del escalafón
 }
 
 export async function getDayBlocks(userId: string, dateStr: string): Promise<DayBlockView[]> {
-  const [blocks, running] = await Promise.all([
+  const [blocks, running, eventos] = await Promise.all([
     prisma.block.findMany({
       where: { fecha: new Date(dateStr), week: { userId } },
-      include: { task: { include: { dodItems: { orderBy: { orden: 'asc' } }, timeEntries: true } } },
+      include: {
+        task: {
+          include: {
+            dodItems: { orderBy: { orden: 'asc' } },
+            timeEntries: true,
+            project: true,
+            win: true,
+            competencias: { select: { id: true } },
+          },
+        },
+      },
       orderBy: { orden: 'asc' },
     }),
     runningEntry(userId),
+    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(dateStr) } }),
   ])
 
-  return blocks.map((b) => {
+  const taskBlocks: DayBlockView[] = blocks.map((b) => {
     const task = b.task
     const accumulatedSeconds = task
       ? task.timeEntries.filter((e) => e.stoppedAt !== null).reduce((sum, e) => sum + e.seconds, 0)
@@ -43,8 +66,89 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       dodItems: task ? task.dodItems.map((d) => ({ id: d.id, texto: d.texto, done: d.done })) : [],
       accumulatedSeconds,
       runningSince: isRunning ? running!.startedAt.toISOString() : null,
+      externa: false,
+      proyecto: task?.project
+        ? { nombre: task.project.nombre, color: task.project.color, tipo: task.project.tipo }
+        : null,
+      winPosicion: task?.win ? task.win.posicion : null,
+      aliado: task?.alcance === 'aliado',
+      gerente: (task?.competencias?.length ?? 0) > 0,
     }
   })
+
+  // Juntas de Outlook como bloques fijos (sin cronómetro, no arrastrables)
+  const eventBlocks: DayBlockView[] = eventos.map((e) => ({
+    id: `cal-${e.id}`,
+    inicio: e.inicio,
+    fin: e.fin,
+    tipo: 'externa',
+    titulo: e.titulo,
+    planMin: Math.max(0, toMin(e.fin) - toMin(e.inicio)),
+    taskId: null,
+    done: false,
+    dodItems: [],
+    accumulatedSeconds: 0,
+    runningSince: null,
+    externa: true,
+    proyecto: null,
+    winPosicion: null,
+    aliado: false,
+    gerente: false,
+  }))
+
+  return [...taskBlocks, ...eventBlocks].sort((a, b) => a.inicio.localeCompare(b.inicio))
+}
+
+export type PendienteView = {
+  id: string
+  titulo: string
+  estimadoMin: number | null
+  urgente: boolean
+  proyecto: string | null
+}
+
+export async function getDiaView(userId: string, isoWeek: string, dateStr: string) {
+  const [week, capacidad, blocks, pendientesRaw] = await Promise.all([
+    getWeek(userId, isoWeek),
+    capacityForWeek(userId, isoWeek),
+    getDayBlocks(userId, dateStr),
+    prisma.task.findMany({
+      where: { userId, estatus: 'backlog' },
+      include: { project: true },
+      orderBy: [{ urgente: 'desc' }, { createdAt: 'desc' }],
+    }),
+  ])
+
+  const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
+  const realMin = blocks.reduce((s, b) => s + b.accumulatedSeconds, 0) / 60
+  const factorDia = planeadoMin > 0 && realMin > 0 ? realMin / planeadoMin : null
+
+  const diaCap = capacidad.dias.find((d) => d.fecha === dateStr)
+  const libresHoy = diaCap ? diaCap.horasLibres : 0
+  const capacidadHoy = libresHoy - planeadoMin / 60
+
+  const cargaSemMin = week?.tasks.reduce((s, t) => s + (t.ajustadoMin ?? t.estimadoMin ?? 0), 0) ?? 0
+
+  const pendientes: PendienteView[] = pendientesRaw.map((t) => ({
+    id: t.id,
+    titulo: t.titulo,
+    estimadoMin: t.estimadoMin,
+    urgente: t.urgente,
+    proyecto: t.project?.nombre ?? null,
+  }))
+
+  return {
+    week,
+    capacidad,
+    cargaSemHoras: cargaSemMin / 60,
+    blocks,
+    planeadoMin,
+    realMin,
+    factorDia,
+    libresHoy,
+    capacidadHoy,
+    pendientes,
+  }
 }
 
 async function assertOwnedTask(taskId: string, userId: string) {

@@ -121,6 +121,7 @@ model Week {
   rangoFin        DateTime   @db.Date
   factorUsado     Decimal    @db.Decimal(4, 2)
   reflexion       String?
+  desbloqueador   String? // la actividad clave que destraba la semana (chip dorado)
   estatus         WeekStatus @default(planning)
   horarioOverride String?
   wins            Win[]
@@ -164,6 +165,7 @@ model Task {
   estatus       TaskStatus   @default(backlog)
   alcance       Alcance      @default(sow)
   dolorCliente  String? // qué dolor del cliente atiende (requerido en UI/skill si alcance=aliado)
+  urgente       Boolean  @default(false) // pendiente urgente no agendado (panel derecho, ★)
   dodItems      DodItem[]
   blocks        Block[]
   timeEntries   TimeEntry[]
