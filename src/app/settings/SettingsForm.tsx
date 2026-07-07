@@ -2,9 +2,21 @@
 
 import { useActionState } from 'react'
 import { updateSettings } from './actions'
-import type { User } from '@prisma/client'
 
-export function SettingsForm({ user }: { user: User }) {
+// Shape plano y serializable — nunca pasar el modelo User de Prisma completo
+// a un Client Component: expondría passwordHash/apiTokenHash al cliente y
+// factorManual (Decimal) no es serializable a través del límite RSC.
+export type SettingsUser = {
+  horarioInicio: string
+  horarioFin: string
+  comidaInicio: string
+  comidaFin: string
+  bufferPct: number
+  factorManual: number | null
+  icsUrl: string | null
+}
+
+export function SettingsForm({ user }: { user: SettingsUser }) {
   const [state, formAction, pending] = useActionState(updateSettings, undefined)
 
   return (
@@ -41,7 +53,7 @@ export function SettingsForm({ user }: { user: User }) {
           name="factorManual"
           type="number"
           step="0.01"
-          defaultValue={user.factorManual ? Number(user.factorManual) : ''}
+          defaultValue={user.factorManual ?? ''}
           className="mt-1 w-full rounded-md border border-neutral-300 px-3 py-2"
         />
       </label>

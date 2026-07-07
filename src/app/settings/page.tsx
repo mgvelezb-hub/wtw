@@ -10,7 +10,17 @@ export default async function SettingsPage() {
 
   return (
     <main className="min-h-dvh bg-neutral-50">
-      <SettingsForm user={user} />
+      <SettingsForm
+        user={{
+          horarioInicio: user.horarioInicio,
+          horarioFin: user.horarioFin,
+          comidaInicio: user.comidaInicio,
+          comidaFin: user.comidaFin,
+          bufferPct: user.bufferPct,
+          factorManual: user.factorManual ? Number(user.factorManual) : null,
+          icsUrl: user.icsUrl,
+        }}
+      />
     </main>
   )
 }
