@@ -72,3 +72,22 @@ export async function moveBlockAction(blockId: string, dateStr: string) {
   })
   revalidatePath('/dia')
 }
+
+// "Llevar a hoy" — el bloque queda como estaba (mismo estimado/tiempo acumulado,
+// el TimeEntry no se toca), solo cambia su fecha y semana al día de hoy.
+export async function carryToTodayAction(blockId: string, todayStr: string) {
+  await moveBlockAction(blockId, todayStr)
+}
+
+export async function carryAllToTodayAction(blockIds: string[], todayStr: string) {
+  const userId = await uid()
+  const week = await weekForDate(userId, todayStr)
+  let orden = await nextOrden(userId, todayStr)
+  const blocks = await prisma.block.findMany({ where: { id: { in: blockIds }, week: { userId } } })
+  await prisma.$transaction(
+    blocks.map((b) =>
+      prisma.block.update({ where: { id: b.id }, data: { fecha: new Date(todayStr), weekId: week.id, orden: orden++ } })
+    )
+  )
+  revalidatePath('/dia')
+}

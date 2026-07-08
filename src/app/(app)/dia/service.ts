@@ -107,8 +107,34 @@ export type PendienteView = {
   proyecto: string | null
 }
 
-export async function getDiaView(userId: string, isoWeek: string, dateStr: string) {
-  const [week, capacidad, blocks, pendientesRaw] = await Promise.all([
+export type StrandedBlockView = { id: string; titulo: string; fecha: string; planMin: number }
+
+// Bloques de tarea de días YA PASADOS que nunca se marcaron como hechos — el
+// mecanismo de "carry" del tablero original (getPendingFromPastDays). Sin esto,
+// una tarea agendada ayer que no se terminó queda congelada: no es "hoy" así
+// que no se puede iniciar su cronómetro, y tampoco aparece en pendientes porque
+// ya tiene bloque asignado.
+export async function getStrandedBlocks(userId: string, todayStr: string): Promise<StrandedBlockView[]> {
+  const blocks = await prisma.block.findMany({
+    where: {
+      week: { userId },
+      fecha: { lt: new Date(todayStr) },
+      tipo: 'tarea',
+      task: { estatus: { in: ['planned', 'in_progress'] } },
+    },
+    include: { task: true },
+    orderBy: { fecha: 'asc' },
+  })
+  return blocks.map((b) => ({
+    id: b.id,
+    titulo: b.titulo,
+    fecha: b.fecha.toISOString().slice(0, 10),
+    planMin: b.planMin,
+  }))
+}
+
+export async function getDiaView(userId: string, isoWeek: string, dateStr: string, todayStr: string) {
+  const [week, capacidad, blocks, pendientesRaw, stranded] = await Promise.all([
     getWeek(userId, isoWeek),
     capacityForWeek(userId, isoWeek),
     getDayBlocks(userId, dateStr),
@@ -117,6 +143,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
       include: { project: true },
       orderBy: [{ urgente: 'desc' }, { createdAt: 'desc' }],
     }),
+    dateStr === todayStr ? getStrandedBlocks(userId, todayStr) : Promise.resolve([]),
   ])
 
   const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
@@ -148,6 +175,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     libresHoy,
     capacidadHoy,
     pendientes,
+    stranded,
   }
 }
 

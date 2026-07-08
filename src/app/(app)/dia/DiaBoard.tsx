@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
-import type { DayBlockView, PendienteView } from './service'
+import type { DayBlockView, PendienteView, StrandedBlockView } from './service'
 import {
   startTimerAction,
   stopTimerAction,
@@ -14,7 +14,7 @@ import {
   undoBlockDoneAction,
 } from './actions'
 import { createManualEntryAction } from './timeentry-actions'
-import { scheduleTaskAction, moveBlockAction } from './dnd-actions'
+import { scheduleTaskAction, moveBlockAction, carryToTodayAction, carryAllToTodayAction } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
@@ -41,6 +41,7 @@ export type DiaBoardProps = {
   libresHoy: number
   capacidadHoy: number
   pendientes: PendienteView[]
+  stranded: StrandedBlockView[]
 }
 
 function fmt(totalSeconds: number): string {
@@ -191,6 +192,41 @@ export function DiaBoard(p: DiaBoardProps) {
           )
         })}
       </div>
+
+      {esHoy && p.stranded.length > 0 && (
+        <div className="rounded-lg border border-[#e8b94a] bg-[#fdf6e3] px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-semibold text-[#7a5a00]">
+              ⚠️ Tienes {p.stranded.length} tarea{p.stranded.length > 1 ? 's' : ''} de días anteriores sin terminar.
+            </p>
+            <button
+              disabled={pending}
+              onClick={() =>
+                startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
+              }
+              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-xs font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+            >
+              Llevar todo a hoy
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1">
+            {p.stranded.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-2 text-[#7a5a00]">
+                <span>
+                  {s.titulo} <span className="text-xs opacity-70">({s.fecha})</span>
+                </span>
+                <button
+                  disabled={pending}
+                  onClick={() => startTransition(() => void carryToTodayAction(s.id, p.today))}
+                  className="shrink-0 text-xs font-semibold underline hover:no-underline"
+                >
+                  llevar a hoy
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <div

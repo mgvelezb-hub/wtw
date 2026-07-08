@@ -25,7 +25,7 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
   const selectedDay = dia && /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : today
   const isoWeek = isoWeekOf(new Date(selectedDay))
 
-  const view = await getDiaView(session.userId, isoWeek, selectedDay)
+  const view = await getDiaView(session.userId, isoWeek, selectedDay, today)
 
   if (!view.week) {
     return (
@@ -67,6 +67,7 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
       libresHoy={view.libresHoy}
       capacidadHoy={view.capacidadHoy}
       pendientes={view.pendientes}
+      stranded={view.stranded}
     />
   )
 }
