@@ -261,7 +261,16 @@ export function DiaBoard(p: DiaBoardProps) {
           </div>
 
           {activos.map((b) => (
-            <BlockCard key={b.id} block={b} tick={tick} pending={pending} startTransition={startTransition} enVivo={esHoy} />
+            <BlockCard
+              key={b.id}
+              block={b}
+              tick={tick}
+              pending={pending}
+              startTransition={startTransition}
+              enVivo={esHoy}
+              tabs={p.tabs}
+              selectedDay={p.selectedDay}
+            />
           ))}
 
           {completados.length > 0 && (
@@ -277,6 +286,8 @@ export function DiaBoard(p: DiaBoardProps) {
                   pending={pending}
                   startTransition={startTransition}
                   enVivo={esHoy}
+                  tabs={p.tabs}
+                  selectedDay={p.selectedDay}
                 />
               ))}
             </div>
@@ -332,13 +343,34 @@ export function DiaBoard(p: DiaBoardProps) {
                       )}
                       {pe.proyecto && <span className="font-medium text-neutral-500">{pe.proyecto}</span>}
                     </div>
-                    <button
-                      disabled={pending}
-                      onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
-                      className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
-                    >
-                      + Hoy
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <select
+                        disabled={pending}
+                        defaultValue=""
+                        onChange={(e) => {
+                          const fecha = e.target.value
+                          e.target.value = ''
+                          if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
+                        }}
+                        className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-[10px] font-medium text-neutral-600"
+                      >
+                        <option value="" disabled>
+                          Agendar a…
+                        </option>
+                        {p.tabs.map((t) => (
+                          <option key={t.fecha} value={t.fecha}>
+                            {t.abr} {t.num}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        disabled={pending}
+                        onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
+                        className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+                      >
+                        + Hoy
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -532,12 +564,16 @@ function BlockCard({
   pending,
   startTransition,
   enVivo,
+  tabs,
+  selectedDay,
 }: {
   block: DayBlockView
   tick: number | null
   pending: boolean
   startTransition: StartTransitionFn
   enVivo: boolean
+  tabs: DiaTab[]
+  selectedDay: string
 }) {
   const isTarea = b.tipo === 'tarea'
   const seconds = isTarea ? liveSeconds(b, tick) : 0
@@ -596,6 +632,27 @@ function BlockCard({
             <span className="rounded-full bg-[#d3e4e0] px-2 py-1 text-xs font-bold text-[#0c4a45]">
               ⏱ en el hero
             </span>
+          )}
+          {!b.runningSince && tabs.length > 0 && (
+            <select
+              disabled={pending}
+              defaultValue=""
+              onChange={(e) => {
+                const fecha = e.target.value
+                e.target.value = ''
+                if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
+              }}
+              className="rounded-md border border-neutral-300 bg-white px-1.5 py-1.5 text-xs font-medium text-neutral-600"
+            >
+              <option value="" disabled>
+                Mover a…
+              </option>
+              {tabs.filter((t) => t.fecha !== selectedDay).map((t) => (
+                <option key={t.fecha} value={t.fecha}>
+                  {t.abr} {t.num}
+                </option>
+              ))}
+            </select>
           )}
           <button
             disabled={pending}
