@@ -27,6 +27,7 @@ import {
   setBlockTimeAction,
   setBlockDurationAction,
   unscheduleBlockAction,
+  reorderDayAction,
 } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -67,6 +68,7 @@ function fmt(totalSeconds: number): string {
 }
 
 function horas(min: number): string {
+  if (min < 60) return `${Math.round(min)}min`
   const h = Math.floor(min / 60)
   const m = Math.round(min % 60)
   return m === 0 ? `${h}H` : `${h}H${String(m).padStart(2, '0')}`
@@ -303,6 +305,9 @@ export function DiaBoard(p: DiaBoardProps) {
             if (data.startsWith('pend:')) {
               e.preventDefault()
               startTransition(() => void scheduleTaskAction(data.slice(5), p.selectedDay))
+            } else if (data.startsWith('block:')) {
+              e.preventDefault()
+              startTransition(() => void reorderDayAction(p.selectedDay, data.slice(6), null))
             }
           }}
         >
@@ -751,14 +756,15 @@ function BlockCard({
       draggable={!b.runningSince}
       onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
       onDragOver={(e) => {
-        if (isTarea && b.inicio !== 'flex' && !b.done) e.preventDefault()
+        if (isTarea && !b.done) e.preventDefault()
       }}
       onDrop={(e) => {
         const data = e.dataTransfer.getData('text/plain')
-        if (data.startsWith('block:') && isTarea && b.inicio !== 'flex' && !b.done) {
+        if (data.startsWith('block:') && isTarea && !b.done) {
           e.preventDefault()
+          e.stopPropagation()
           const draggedId = data.slice(6)
-          if (draggedId !== b.id) startTransition(() => void setBlockTimeAction(draggedId, b.inicio))
+          if (draggedId !== b.id) startTransition(() => void reorderDayAction(selectedDay, draggedId, b.id))
         }
       }}
       className={`cursor-grab rounded-lg border p-3 shadow-sm active:cursor-grabbing ${

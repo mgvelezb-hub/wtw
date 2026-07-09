@@ -259,6 +259,58 @@ export async function setBlockTimeAction(blockId: string, newInicioHHMM: string)
   revalidatePath('/dia')
 }
 
+// Reordenar arrastrando: la mayoría de las tareas no tienen hora fija todavía
+// ("sin hora"), así que soltar sobre otro bloque no puede depender de que el
+// destino YA tenga hora — la posición donde se suelta es la que decide el
+// horario. Recalcula la hora de TODOS los bloques de tarea del día (fijos o
+// sin hora) en su nuevo orden, secuencial desde el inicio de jornada (o desde
+// ahora si ya se pasó, para no agendar en el pasado). Las juntas no entran en
+// esta secuencia — una tarea puede quedar encima de una junta a propósito.
+export async function reorderDayAction(dateStr: string, draggedBlockId: string, targetBlockId: string | null) {
+  const userId = await uid()
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
+
+  const blocks = await prisma.block.findMany({
+    where: { week: { userId }, fecha: new Date(dateStr), tipo: 'tarea' },
+    include: { task: true },
+    orderBy: { orden: 'asc' },
+  })
+
+  const pendientes = blocks
+    .filter((b) => (b.task ? b.task.estatus !== 'done' : !b.done))
+    .sort((a, b) => {
+      const ai = a.inicio === 'flex' ? '99:99' : a.inicio
+      const bi = b.inicio === 'flex' ? '99:99' : b.inicio
+      return ai.localeCompare(bi)
+    })
+
+  const dragged = pendientes.find((b) => b.id === draggedBlockId)
+  if (!dragged) throw new Error('bloque no encontrado')
+
+  const rest = pendientes.filter((b) => b.id !== draggedBlockId)
+  const targetIdx = targetBlockId ? rest.findIndex((b) => b.id === targetBlockId) : -1
+  const insertAt = targetIdx === -1 ? rest.length : targetIdx
+  rest.splice(insertAt, 0, dragged)
+
+  const isHoy = dateStr === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
+  const jornadaInicio = toMin(user.horarioInicio)
+  let cursor = isHoy ? Math.max(jornadaInicio, nowMinutesMx()) : jornadaInicio
+
+  const updates = rest.map((b, i) => {
+    const start = cursor
+    const end = start + b.planMin
+    cursor = end
+    return { id: b.id, inicio: fromMin(start), fin: fromMin(end), orden: i }
+  })
+
+  await prisma.$transaction(
+    updates.map((u) =>
+      prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin, orden: u.orden } })
+    )
+  )
+  revalidatePath('/dia')
+}
+
 // Ajuste manual de duración (fine-tuning) — empuja lo que venga después si ya
 // no cabe. Nunca jala hacia atrás lo que viene después (no cierra huecos solo).
 export async function setBlockDurationAction(blockId: string, newPlanMin: number) {
