@@ -3,7 +3,20 @@
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { isoWeekOf, weekRange } from '@/lib/dates'
+import { isoWeekOf, weekRange, nowMinutesMx } from '@/lib/dates'
+import { syncCalendar } from '@/app/api/v1/calendar/service'
+import { runningEntry } from '@/app/api/v1/timer/service'
+
+function toMin(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+function fromMin(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
 
 async function uid(): Promise<string> {
   const s = await verifySession()
@@ -122,4 +135,80 @@ export async function closeDayAction(todayStr: string) {
   )
   revalidatePath('/dia')
   return { moved: blocks.length, target }
+}
+
+// Actualiza las juntas reales del día (Teams/Meet vía Outlook) y recorre los
+// bloques de tarea que choquen con ellas — respeta la duración y el orden de
+// cada actividad planeada, solo empuja lo necesario. Si al final del día ya
+// no cabe todo antes de la jornada, los bloques que caen después se dejan
+// agendados igual (no se pierden) y se marcan como fuera de jornada en
+// getDayBlocks (comparando su fin contra horarioFin).
+export async function reflowTodayAction(todayStr: string) {
+  const userId = await uid()
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
+
+  if (user.icsUrl) {
+    try {
+      await syncCalendar(userId)
+    } catch {
+      // si el fetch del ICS falla, seguimos con las juntas que ya teníamos
+    }
+  }
+
+  const [eventos, blocks, running] = await Promise.all([
+    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(todayStr) } }),
+    prisma.block.findMany({
+      where: { week: { userId }, fecha: new Date(todayStr), tipo: 'tarea', inicio: { not: 'flex' } },
+      include: { task: true },
+      orderBy: { orden: 'asc' },
+    }),
+    runningEntry(userId),
+  ])
+
+  const fijos = eventos.map((e) => ({ inicio: toMin(e.inicio), fin: toMin(e.fin) }))
+
+  const movibles: typeof blocks = []
+  for (const b of blocks) {
+    const terminado = b.task ? b.task.estatus === 'done' : b.done
+    if (terminado) continue
+    const corriendoAhora = !!(running && b.taskId === running.taskId)
+    if (corriendoAhora) {
+      // la tarea que se está cronometrando no se mueve — cuenta como obstáculo fijo
+      fijos.push({ inicio: toMin(b.inicio), fin: toMin(b.fin) })
+      continue
+    }
+    movibles.push(b)
+  }
+  if (movibles.length === 0) return { reflowed: 0, fueraDeJornada: 0 }
+  fijos.sort((a, b) => a.inicio - b.inicio)
+
+  const jornadaFin = toMin(user.horarioFin)
+  let cursor = Math.max(nowMinutesMx(), toMin(movibles[0].inicio))
+  let fueraDeJornada = 0
+  const updates: { id: string; inicio: string; fin: string }[] = []
+
+  for (const b of movibles) {
+    let start = cursor
+    const dur = b.planMin
+    let empujado = true
+    while (empujado) {
+      empujado = false
+      for (const f of fijos) {
+        if (start < f.fin && start + dur > f.inicio) {
+          start = f.fin
+          empujado = true
+        }
+      }
+    }
+    const end = start + dur
+    if (end > jornadaFin) fueraDeJornada++
+    updates.push({ id: b.id, inicio: fromMin(start), fin: fromMin(end) })
+    cursor = end
+  }
+
+  await prisma.$transaction(
+    updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } }))
+  )
+  revalidatePath('/dia')
+  return { reflowed: updates.length, fueraDeJornada }
 }

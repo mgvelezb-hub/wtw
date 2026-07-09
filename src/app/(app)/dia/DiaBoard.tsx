@@ -21,6 +21,7 @@ import {
   carryToTodayAction,
   carryAllToTodayAction,
   closeDayAction,
+  reflowTodayAction,
 } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -281,12 +282,24 @@ export function DiaBoard(p: DiaBoardProps) {
                 Factor del día <strong className="text-[#0d6d63]">{p.factorDia ? p.factorDia.toFixed(2) : '—'}</strong>
               </span>
             </div>
-            <a
-              href="/api/v1/calendar/export"
-              className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
-            >
-              🚚 ICS
-            </a>
+            <div className="flex items-center gap-2">
+              {esHoy && (
+                <button
+                  disabled={pending}
+                  onClick={() => startTransition(() => void reflowTodayAction(p.today))}
+                  className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                  title="Trae las juntas más recientes de Outlook y recorre las tareas que choquen con ellas"
+                >
+                  🔄 Actualizar juntas
+                </button>
+              )}
+              <a
+                href="/api/v1/calendar/export"
+                className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+              >
+                🚚 ICS
+              </a>
+            </div>
           </div>
 
           {activos.map((b) => (
@@ -629,13 +642,22 @@ function BlockCard({
       draggable
       onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
       className={`cursor-grab rounded-lg border p-3 shadow-sm active:cursor-grabbing ${
-        b.done ? 'border-neutral-200 bg-neutral-50' : 'border-neutral-200 bg-white'
+        b.fueraDeJornada && !b.done
+          ? 'border-[#e8b94a] border-2 bg-[#fdf6e3]'
+          : b.done
+            ? 'border-neutral-200 bg-neutral-50'
+            : 'border-neutral-200 bg-white'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-neutral-500">
             {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
+            {b.fueraDeJornada && !b.done && (
+              <span className="ml-2 rounded bg-[#e8b94a] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
+                Fuera de jornada
+              </span>
+            )}
           </p>
           <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
             {b.titulo}

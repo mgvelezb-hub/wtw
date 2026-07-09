@@ -25,10 +25,11 @@ export type DayBlockView = {
   winPosicion: number | null
   aliado: boolean // agrega valor al cliente fuera de SOW
   gerente: boolean // aporta a competencias del escalafón
+  fueraDeJornada: boolean // el reflow de juntas lo empujó después de horarioFin
 }
 
 export async function getDayBlocks(userId: string, dateStr: string): Promise<DayBlockView[]> {
-  const [blocks, running, eventos] = await Promise.all([
+  const [blocks, running, eventos, user] = await Promise.all([
     prisma.block.findMany({
       where: { fecha: new Date(dateStr), week: { userId } },
       include: {
@@ -46,7 +47,9 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     }),
     runningEntry(userId),
     prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(dateStr) } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { horarioFin: true } }),
   ])
+  const jornadaFin = toMin(user.horarioFin)
 
   const taskBlocks: DayBlockView[] = blocks.map((b) => {
     const task = b.task
@@ -73,6 +76,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       winPosicion: task?.win ? task.win.posicion : null,
       aliado: task?.alcance === 'aliado',
       gerente: (task?.competencias?.length ?? 0) > 0,
+      fueraDeJornada: b.tipo === 'tarea' && b.inicio !== 'flex' && toMin(b.fin) > jornadaFin,
     }
   })
 
@@ -94,6 +98,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     winPosicion: null,
     aliado: false,
     gerente: false,
+    fueraDeJornada: false,
   }))
 
   return [...taskBlocks, ...eventBlocks].sort((a, b) => a.inicio.localeCompare(b.inicio))

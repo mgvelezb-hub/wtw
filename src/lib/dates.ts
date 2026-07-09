@@ -27,3 +27,17 @@ const USER_TZ = 'America/Mexico_City'
 export function todayStr(d: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: USER_TZ }).format(d)
 }
+
+// Minutos desde medianoche, hora de México — para comparar contra bloques/juntas
+// (que ya se guardan como "HH:MM" en hora local) sin usar el reloj UTC del servidor.
+export function nowMinutesMx(d: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: USER_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d)
+  const h = Number(parts.find((p) => p.type === 'hour')!.value)
+  const m = Number(parts.find((p) => p.type === 'minute')!.value)
+  return h * 60 + m
+}
