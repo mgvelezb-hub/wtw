@@ -12,9 +12,16 @@ import {
   undoTaskDoneAction,
   markBlockDoneAction,
   undoBlockDoneAction,
+  startDayAction,
 } from './actions'
 import { createManualEntryAction } from './timeentry-actions'
-import { scheduleTaskAction, moveBlockAction, carryToTodayAction, carryAllToTodayAction } from './dnd-actions'
+import {
+  scheduleTaskAction,
+  moveBlockAction,
+  carryToTodayAction,
+  carryAllToTodayAction,
+  closeDayAction,
+} from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
@@ -117,7 +124,7 @@ export function DiaBoard(p: DiaBoardProps) {
         </p>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-bold text-[#0c4a45]">{p.rango}</h1>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-[#d3e4e0] px-3 py-1 text-xs font-semibold text-[#0c4a45]">
               Factor realismo {p.factorUsado.toFixed(1)}
             </span>
@@ -125,6 +132,28 @@ export function DiaBoard(p: DiaBoardProps) {
               <span className="rounded-full bg-[#e8b94a] px-3 py-1 text-xs font-bold text-[#4a3a10]">
                 ⚡ {p.desbloqueador}
               </span>
+            )}
+            {esHoy && (
+              <>
+                <button
+                  disabled={pending}
+                  onClick={() => startTransition(() => void startDayAction())}
+                  className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+                >
+                  ▶ Arrancar día
+                </button>
+                <button
+                  disabled={pending}
+                  onClick={() => {
+                    if (window.confirm('¿Mover las tareas de hoy sin terminar al siguiente día hábil?')) {
+                      startTransition(() => void closeDayAction(p.today))
+                    }
+                  }}
+                  className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+                >
+                  🌙 Cerrar día
+                </button>
+              </>
             )}
           </div>
         </div>

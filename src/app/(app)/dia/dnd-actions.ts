@@ -91,3 +91,35 @@ export async function carryAllToTodayAction(blockIds: string[], todayStr: string
   )
   revalidatePath('/dia')
 }
+
+function nextBusinessDay(todayStr: string): string {
+  const d = new Date(todayStr)
+  d.setUTCDate(d.getUTCDate() + 1)
+  const dow = d.getUTCDay() // 0=domingo, 6=sábado
+  if (dow === 6) d.setUTCDate(d.getUTCDate() + 2)
+  else if (dow === 0) d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+// Cierre manual del día: mueve las tareas de HOY que quedaron sin terminar al
+// siguiente día hábil. Explícito por decisión de Mau — nada se mueve solo por
+// la hora (la jornada 09-18 es una referencia, no un límite duro para este
+// proyecto).
+export async function closeDayAction(todayStr: string) {
+  const userId = await uid()
+  const blocks = await prisma.block.findMany({
+    where: { week: { userId }, fecha: new Date(todayStr), tipo: 'tarea', task: { estatus: { in: ['planned', 'in_progress'] } } },
+  })
+  if (blocks.length === 0) return { moved: 0 }
+
+  const target = nextBusinessDay(todayStr)
+  const week = await weekForDate(userId, target)
+  let orden = await nextOrden(userId, target)
+  await prisma.$transaction(
+    blocks.map((b) =>
+      prisma.block.update({ where: { id: b.id }, data: { fecha: new Date(target), weekId: week.id, orden: orden++ } })
+    )
+  )
+  revalidatePath('/dia')
+  return { moved: blocks.length, target }
+}

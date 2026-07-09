@@ -18,6 +18,12 @@ export function weekRange(isoWeek: string): { inicio: Date; fin: Date } {
   return { inicio: monday, fin: friday }
 }
 
+const USER_TZ = 'America/Mexico_City'
+
+// "en-CA" formatea como AAAA-MM-DD. México va UTC-6, así que usar
+// toISOString() (siempre UTC) hacía que "hoy" saltara al día siguiente a
+// las 6pm hora local (18:00 CDMX = 00:00 UTC) — el día de trabajo se
+// cerraba solo, horas antes de que Mau terminara su jornada real.
 export function todayStr(d: Date = new Date()): string {
-  return d.toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat('en-CA', { timeZone: USER_TZ }).format(d)
 }

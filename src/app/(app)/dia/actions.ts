@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { startTimer, stopTimer, cancelTimer } from '@/app/api/v1/timer/service'
+import { syncCalendar } from '@/app/api/v1/calendar/service'
 import { prisma } from '@/lib/prisma'
 import { toggleDodItem, markTaskDone, undoTaskDone, markBlockDone, undoBlockDone } from './service'
 
@@ -53,4 +54,15 @@ export async function markBlockDoneAction(blockId: string) {
 export async function undoBlockDoneAction(blockId: string) {
   await undoBlockDone(blockId, await userId())
   revalidatePath('/dia')
+}
+
+// Arranque manual del día: refresca las juntas reales de Outlook antes de
+// empezar a trabajar (en vez de depender de un sync automático por hora).
+export async function startDayAction() {
+  const uid = await userId()
+  const user = await prisma.user.findUnique({ where: { id: uid }, select: { icsUrl: true } })
+  if (!user?.icsUrl) return { synced: 0 }
+  const result = await syncCalendar(uid)
+  revalidatePath('/dia')
+  return result
 }
