@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/auth'
 import { startTimer, stopTimer, cancelTimer } from '@/app/api/v1/timer/service'
 import { syncCalendar } from '@/app/api/v1/calendar/service'
 import { prisma } from '@/lib/prisma'
-import { toggleDodItem, markTaskDone, undoTaskDone, markBlockDone, undoBlockDone } from './service'
+import { toggleDodItem, discardDodItem, markTaskDone, undoTaskDone, markBlockDone, undoBlockDone } from './service'
 
 async function userId(): Promise<string> {
   const session = await verifySession()
@@ -33,6 +33,11 @@ export async function cancelTimerAction(taskId: string) {
 
 export async function toggleDodItemAction(dodItemId: string) {
   await toggleDodItem(dodItemId, await userId())
+  revalidatePath('/dia')
+}
+
+export async function discardDodItemAction(dodItemId: string) {
+  await discardDodItem(dodItemId, await userId())
   revalidatePath('/dia')
 }
 

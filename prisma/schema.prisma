@@ -223,6 +223,7 @@ model CalendarEvent {
   inicio     String
   fin        String
   titulo     String
+  cancelado  Boolean  @default(false)
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, externalId])

@@ -29,7 +29,7 @@ export async function capacityForWeek(userId: string, isoWeek: string): Promise<
     const horarioFin = override?.fin ?? user.horarioFin
     let libreMin = toMin(horarioFin) - toMin(horarioInicio) - (toMin(user.comidaFin) - toMin(user.comidaInicio))
 
-    const eventos = await prisma.calendarEvent.findMany({ where: { userId, fecha } })
+    const eventos = await prisma.calendarEvent.findMany({ where: { userId, fecha, cancelado: false } })
     for (const e of eventos) libreMin -= toMin(e.fin) - toMin(e.inicio)
 
     dias.push({ fecha: fechaStr, horasLibres: Math.max(0, libreMin) / 60 })

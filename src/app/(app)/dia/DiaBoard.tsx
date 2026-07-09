@@ -8,6 +8,7 @@ import {
   stopTimerAction,
   cancelTimerAction,
   toggleDodItemAction,
+  discardDodItemAction,
   markTaskDoneAction,
   undoTaskDoneAction,
   markBlockDoneAction,
@@ -22,6 +23,7 @@ import {
   carryAllToTodayAction,
   closeDayAction,
   reflowTodayAction,
+  cancelMeetingAction,
 } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -105,8 +107,12 @@ export function DiaBoard(p: DiaBoardProps) {
   }, [])
 
   const esHoy = p.selectedDay === p.today
-  const activos = p.blocks.filter((b) => !b.done)
-  const completados = p.blocks.filter((b) => b.done)
+  const nowStr = tick !== null ? nowHHMM(tick) : null
+  // Una junta cuenta como "terminada" también cuando ya pasó su hora de fin —
+  // no hace falta marcarla a mano, solo libera el campo visual sola.
+  const terminado = (b: DayBlockView) => b.done || (b.externa && esHoy && !!nowStr && b.fin <= nowStr)
+  const activos = p.blocks.filter((b) => !terminado(b))
+  const completados = [...p.blocks.filter(terminado)].sort((a, b) => a.fin.localeCompare(b.fin))
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
@@ -557,6 +563,14 @@ function RunningHero({
                 onChange={() => startTransition(() => void toggleDodItemAction(d.id))}
               />
               <span className={d.done ? 'text-white/50 line-through' : 'text-white/95'}>{d.texto}</span>
+              <button
+                disabled={pending}
+                onClick={() => startTransition(() => void discardDodItemAction(d.id))}
+                className="text-white/40 hover:text-white/80"
+                title="Descartar — ya no aplica"
+              >
+                ✕
+              </button>
             </li>
           ))}
         </ul>
@@ -623,15 +637,39 @@ function BlockCard({
 
   if (b.externa) {
     return (
-      <div className="rounded-lg border border-neutral-200 border-l-4 border-l-[#0d6d63] bg-[#eef4f3] p-3">
+      <div
+        className={`rounded-lg border border-l-4 p-3 ${
+          b.done ? 'border-neutral-200 border-l-neutral-300 bg-neutral-50' : 'border-neutral-200 border-l-[#0d6d63] bg-[#eef4f3]'
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-neutral-600">
               {b.inicio}–{b.fin}
             </p>
-            <p className="font-semibold text-neutral-900">📅 {b.titulo}</p>
+            <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
+              📅 {b.titulo}
+            </p>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
+          <div className="flex items-center gap-2">
+            {b.done ? (
+              <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700">
+                Cancelada
+              </span>
+            ) : (
+              enVivo && (
+                <button
+                  disabled={pending}
+                  onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
+                  className="text-xs font-semibold text-neutral-400 hover:text-red-600"
+                  title="La junta se canceló"
+                >
+                  ✕ Cancelar
+                </button>
+              )
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
+          </div>
         </div>
       </div>
     )
@@ -771,6 +809,14 @@ function BlockCard({
                 onChange={() => startTransition(() => void toggleDodItemAction(d.id))}
               />
               <span className={d.done ? 'text-neutral-400 line-through' : 'text-neutral-800'}>{d.texto}</span>
+              <button
+                disabled={pending}
+                onClick={() => startTransition(() => void discardDodItemAction(d.id))}
+                className="text-neutral-300 hover:text-red-500"
+                title="Descartar — ya no aplica"
+              >
+                ✕
+              </button>
             </li>
           ))}
         </ul>

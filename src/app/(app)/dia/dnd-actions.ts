@@ -156,7 +156,7 @@ export async function reflowTodayAction(todayStr: string) {
   }
 
   const [eventos, blocks, running] = await Promise.all([
-    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(todayStr) } }),
+    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(todayStr), cancelado: false } }),
     prisma.block.findMany({
       where: { week: { userId }, fecha: new Date(todayStr), tipo: 'tarea', inicio: { not: 'flex' } },
       include: { task: true },
@@ -211,4 +211,17 @@ export async function reflowTodayAction(todayStr: string) {
   )
   revalidatePath('/dia')
   return { reflowed: updates.length, fueraDeJornada }
+}
+
+// Marca una junta como cancelada — deja de contar en capacidad y en el reflow,
+// y se muestra tachada en Terminadas/Canceladas. Dura hasta el siguiente
+// "Actualizar juntas": si de verdad se canceló en Outlook, el sync ya no la
+// trae de vuelta; si sigue viva en el feed real, el próximo sync la reescribe.
+export async function cancelMeetingAction(blockId: string) {
+  const userId = await uid()
+  const eventId = blockId.replace(/^cal-/, '')
+  const event = await prisma.calendarEvent.findUnique({ where: { id: eventId } })
+  if (!event || event.userId !== userId) throw new Error('junta no encontrada')
+  await prisma.calendarEvent.update({ where: { id: eventId }, data: { cancelado: true } })
+  revalidatePath('/dia')
 }

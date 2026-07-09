@@ -46,7 +46,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       orderBy: { orden: 'asc' },
     }),
     runningEntry(userId),
-    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(dateStr) } }),
+    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(dateStr) } }), // incluye canceladas: se muestran tachadas
     prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { horarioFin: true } }),
   ])
   const jornadaFin = toMin(user.horarioFin)
@@ -89,7 +89,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     titulo: e.titulo,
     planMin: Math.max(0, toMin(e.fin) - toMin(e.inicio)),
     taskId: null,
-    done: false,
+    done: e.cancelado,
     dodItems: [],
     accumulatedSeconds: 0,
     runningSince: null,
@@ -201,6 +201,14 @@ export async function toggleDodItem(dodItemId: string, userId: string) {
   const item = await prisma.dodItem.findUnique({ where: { id: dodItemId }, include: { task: true } })
   if (!item || item.task.userId !== userId) throw new Error('dodItem no encontrado')
   return prisma.dodItem.update({ where: { id: dodItemId }, data: { done: !item.done } })
+}
+
+// Descarta un punto del DoD que ya no aplica (ej. una de varias invitaciones
+// que se canceló) sin afectar los demás puntos ni el estatus de la tarea.
+export async function discardDodItem(dodItemId: string, userId: string) {
+  const item = await prisma.dodItem.findUnique({ where: { id: dodItemId }, include: { task: true } })
+  if (!item || item.task.userId !== userId) throw new Error('dodItem no encontrado')
+  await prisma.dodItem.delete({ where: { id: dodItemId } })
 }
 
 export async function markTaskDone(taskId: string, userId: string) {
