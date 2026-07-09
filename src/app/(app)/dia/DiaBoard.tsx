@@ -162,7 +162,7 @@ export function DiaBoard(p: DiaBoardProps) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">🏆 Wins de la semana</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">🎯 Wins de la semana</h2>
           <ol className="space-y-2">
             {p.wins.map((w) => (
               <li key={w.posicion} className="flex gap-2 text-sm">
@@ -297,7 +297,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 href="/api/v1/calendar/export"
                 className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
               >
-                🚚 ICS
+                📅 ICS
               </a>
             </div>
           </div>

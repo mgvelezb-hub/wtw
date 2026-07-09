@@ -22,7 +22,13 @@ export async function syncCalendar(userId: string): Promise<{ synced: number }> 
   const events = parseIcs(await res.text(), { start: cutoff, end: horizon }).filter(
     (e) =>
       !e.allDay && // los de día completo (OOO, cumpleaños) no ocupan un horario
-      !e.summary.startsWith('Cancelado:') // eventos cancelados no consumen tiempo
+      !e.summary.startsWith('Cancelado:') && // eventos cancelados no consumen tiempo
+      // Si Mau importó a su Outlook el .ics que esta misma app exporta (para ver
+      // su plan del día ahí), esos eventos vuelven en su feed real con el UID
+      // que les pusimos nosotros (wtw-<blockId>@wtw-app). Sin este filtro, el
+      // siguiente sync/reflow los leería como "juntas reales" — un bloque
+      // empujándose a sí mismo, o contando doble contra su propio horario.
+      !e.uid.endsWith('@wtw-app')
   )
 
   // Espejo de solo-lectura: reemplazar la ventana completa en 2 queries en vez
