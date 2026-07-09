@@ -24,6 +24,9 @@ import {
   closeDayAction,
   reflowTodayAction,
   cancelMeetingAction,
+  setBlockTimeAction,
+  setBlockDurationAction,
+  unscheduleBlockAction,
 } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -119,6 +122,8 @@ function ProyectoBadge({ proyecto }: { proyecto: NonNullable<DayBlockView['proye
 export function DiaBoard(p: DiaBoardProps) {
   const [tick, setTick] = useState<number | null>(null)
   const [pending, startTransition] = useTransition()
+  const [verTerminadas, setVerTerminadas] = useState(false)
+  const [verCanceladas, setVerCanceladas] = useState(false)
 
   useEffect(() => {
     setTick(Date.now())
@@ -130,10 +135,14 @@ export function DiaBoard(p: DiaBoardProps) {
   const moveOptions = moveTargets(p.today)
   const nowStr = tick !== null ? nowHHMM(tick) : null
   // Una junta cuenta como "terminada" también cuando ya pasó su hora de fin —
-  // no hace falta marcarla a mano, solo libera el campo visual sola.
-  const terminado = (b: DayBlockView) => b.done || (b.externa && esHoy && !!nowStr && b.fin <= nowStr)
-  const activos = p.blocks.filter((b) => !terminado(b))
-  const completados = [...p.blocks.filter(terminado)].sort((a, b) => a.fin.localeCompare(b.fin))
+  // no hace falta marcarla a mano, solo libera el campo visual sola. Una junta
+  // cancelada es su propio grupo, separado de lo que de verdad se completó.
+  const pasoHora = (b: DayBlockView) => b.externa && esHoy && !!nowStr && b.fin <= nowStr
+  const canceladas = p.blocks.filter((b) => b.externa && b.done)
+  const terminadas = [...p.blocks.filter((b) => (!b.externa && b.done) || (b.externa && !b.done && pasoHora(b)))].sort(
+    (a, b) => a.fin.localeCompare(b.fin)
+  )
+  const activos = p.blocks.filter((b) => !canceladas.includes(b) && !terminadas.includes(b))
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
@@ -342,23 +351,51 @@ export function DiaBoard(p: DiaBoardProps) {
             />
           ))}
 
-          {completados.length > 0 && (
+          {terminadas.length > 0 && (
             <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase text-neutral-500">
-                ✓ Terminadas ({completados.length})
-              </h3>
-              {completados.map((b) => (
-                <BlockCard
-                  key={b.id}
-                  block={b}
-                  tick={tick}
-                  pending={pending}
-                  startTransition={startTransition}
-                  enVivo={esHoy}
-                  tabs={moveOptions}
-                  selectedDay={p.selectedDay}
-                />
-              ))}
+              <button
+                onClick={() => setVerTerminadas((v) => !v)}
+                className="flex items-center gap-1 text-xs font-bold uppercase text-neutral-500 hover:text-neutral-700"
+              >
+                <span>{verTerminadas ? '▾' : '▸'}</span>✓ Terminadas ({terminadas.length})
+              </button>
+              {verTerminadas &&
+                terminadas.map((b) => (
+                  <BlockCard
+                    key={b.id}
+                    block={b}
+                    tick={tick}
+                    pending={pending}
+                    startTransition={startTransition}
+                    enVivo={esHoy}
+                    tabs={moveOptions}
+                    selectedDay={p.selectedDay}
+                  />
+                ))}
+            </div>
+          )}
+
+          {canceladas.length > 0 && (
+            <div className="space-y-2">
+              <button
+                onClick={() => setVerCanceladas((v) => !v)}
+                className="flex items-center gap-1 text-xs font-bold uppercase text-neutral-500 hover:text-neutral-700"
+              >
+                <span>{verCanceladas ? '▾' : '▸'}</span>✕ Canceladas ({canceladas.length})
+              </button>
+              {verCanceladas &&
+                canceladas.map((b) => (
+                  <BlockCard
+                    key={b.id}
+                    block={b}
+                    tick={tick}
+                    pending={pending}
+                    startTransition={startTransition}
+                    enVivo={esHoy}
+                    tabs={moveOptions}
+                    selectedDay={p.selectedDay}
+                  />
+                ))}
             </div>
           )}
 
@@ -385,10 +422,21 @@ export function DiaBoard(p: DiaBoardProps) {
             </div>
           )}
 
-          <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const data = e.dataTransfer.getData('text/plain')
+              if (data.startsWith('block:')) {
+                e.preventDefault()
+                startTransition(() => void unscheduleBlockAction(data.slice(6)))
+              }
+            }}
+          >
             <h3 className="mb-2 text-sm font-bold text-[#0c4a45]">
               📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
             </h3>
+            <p className="mb-2 text-[10px] text-neutral-400">Arrastra un bloque agendado aquí para regresarlo a pendientes.</p>
             <div className="max-h-[32rem] space-y-2 overflow-y-auto">
               {p.pendientes.map((pe) => (
                 <div
@@ -566,7 +614,7 @@ function RunningHero({
           <p className={`font-mono text-3xl font-bold tabular-nums ${over ? 'text-[#e8b94a]' : 'text-white'}`}>
             {fmt(seconds)}
           </p>
-          <p className="text-xs font-medium text-[#c7e4de]">de {current.planMin}m planeado</p>
+          <p className="text-xs font-medium text-[#c7e4de]">de {horas(current.planMin)} planeado</p>
         </div>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
@@ -700,8 +748,19 @@ function BlockCard({
 
   return (
     <div
-      draggable
+      draggable={!b.runningSince}
       onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
+      onDragOver={(e) => {
+        if (isTarea && b.inicio !== 'flex' && !b.done) e.preventDefault()
+      }}
+      onDrop={(e) => {
+        const data = e.dataTransfer.getData('text/plain')
+        if (data.startsWith('block:') && isTarea && b.inicio !== 'flex' && !b.done) {
+          e.preventDefault()
+          const draggedId = data.slice(6)
+          if (draggedId !== b.id) startTransition(() => void setBlockTimeAction(draggedId, b.inicio))
+        }
+      }}
       className={`cursor-grab rounded-lg border p-3 shadow-sm active:cursor-grabbing ${
         b.fueraDeJornada && !b.done
           ? 'border-[#e8b94a] border-2 bg-[#fdf6e3]'
@@ -714,6 +773,19 @@ function BlockCard({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-neutral-500">
             {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
+            {isTarea && !b.done && !b.runningSince && enVivo && (
+              <button
+                disabled={pending}
+                onClick={() => {
+                  const hora = window.prompt('Nueva hora de inicio (HH:MM, bloques de 30 min):', b.inicio === 'flex' ? '09:00' : b.inicio)
+                  if (hora && /^\d{1,2}:\d{2}$/.test(hora)) startTransition(() => void setBlockTimeAction(b.id, hora))
+                }}
+                className="ml-2 text-neutral-400 hover:text-[#0c4a45]"
+                title="Cambiar hora de inicio"
+              >
+                🕐
+              </button>
+            )}
             {b.fueraDeJornada && !b.done && (
               <span className="ml-2 rounded bg-[#e8b94a] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
                 Fuera de jornada
@@ -728,7 +800,21 @@ function BlockCard({
           {isTarea && !b.runningSince && (
             <span className={`font-mono text-sm font-semibold ${over ? 'text-red-600' : 'text-[#15803d]'}`}>
               {fmt(seconds)}
-              <span className="text-xs font-medium text-neutral-400"> / {b.planMin}m</span>
+              <span className="text-xs font-medium text-neutral-400"> / {horas(b.planMin)}</span>
+              {!b.done && enVivo && (
+                <button
+                  disabled={pending}
+                  onClick={() => {
+                    const min = window.prompt('Nueva duración planeada (minutos):', String(b.planMin))
+                    const n = min ? Number(min) : NaN
+                    if (!Number.isNaN(n) && n > 0) startTransition(() => void setBlockDurationAction(b.id, n))
+                  }}
+                  className="ml-1 text-neutral-400 hover:text-[#0c4a45]"
+                  title="Ajustar duración planeada"
+                >
+                  ✎
+                </button>
+              )}
             </span>
           )}
           {isTarea && !b.done && !b.runningSince && enVivo && (

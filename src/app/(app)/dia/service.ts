@@ -47,9 +47,10 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     }),
     runningEntry(userId),
     prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(dateStr) } }), // incluye canceladas: se muestran tachadas
-    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { horarioFin: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { horarioFin: true, horarioInicio: true } }),
   ])
   const jornadaFin = toMin(user.horarioFin)
+  const jornadaInicio = toMin(user.horarioInicio)
 
   const taskBlocks: DayBlockView[] = blocks.map((b) => {
     const task = b.task
@@ -76,7 +77,10 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       winPosicion: task?.win ? task.win.posicion : null,
       aliado: task?.alcance === 'aliado',
       gerente: (task?.competencias?.length ?? 0) > 0,
-      fueraDeJornada: b.tipo === 'tarea' && b.inicio !== 'flex' && toMin(b.fin) > jornadaFin,
+      fueraDeJornada:
+        b.tipo === 'tarea' &&
+        b.inicio !== 'flex' &&
+        (toMin(b.fin) > jornadaFin || toMin(b.inicio) < jornadaInicio),
     }
   })
 

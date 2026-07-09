@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
+import type { Alcance } from '@prisma/client'
 import { createInboxTask, discardTask } from './service'
 
 async function userId(): Promise<string> {
@@ -10,10 +11,18 @@ async function userId(): Promise<string> {
   return session.userId
 }
 
-export async function captureAction(titulo: string) {
-  if (!titulo.trim()) return
-  await createInboxTask(await userId(), titulo.trim())
+export async function captureAction(data: {
+  titulo: string
+  herramienta?: string
+  projectId?: string
+  estimadoMin?: number
+  alcance?: Alcance
+  dolorCliente?: string
+}) {
+  if (!data.titulo.trim()) return
+  await createInboxTask(await userId(), { ...data, titulo: data.titulo.trim() })
   revalidatePath('/inbox')
+  revalidatePath('/dia')
 }
 
 export async function discardAction(taskId: string) {

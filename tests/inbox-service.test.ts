@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
-import { listInbox, triageTask, createInboxTask, discardTask } from '@/app/(app)/inbox/service'
+import { listInbox, triageTask, createInboxTask, discardTask, getHerramientaFactors } from '@/app/(app)/inbox/service'
 
 const TEST_EMAIL = 'test-inbox@vp.mx'
 beforeEach(() => deleteTestUser(TEST_EMAIL))
@@ -20,7 +20,7 @@ describe('listInbox', () => {
 describe('createInboxTask', () => {
   it('crea una task en backlog con alcance sow por default', async () => {
     const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
-    const task = await createInboxTask(user.id, 'Nueva idea')
+    const task = await createInboxTask(user.id, { titulo: 'Nueva idea' })
     expect(task.estatus).toBe('backlog')
     expect(task.alcance).toBe('sow')
   })
@@ -43,6 +43,34 @@ describe('triageTask', () => {
     const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
     const task = await prisma.task.create({ data: { userId: user.id, titulo: 'Idea', estatus: 'backlog' } })
     await expect(triageTask(task.id, 'otro-id', {})).rejects.toThrow()
+  })
+})
+
+describe('getHerramientaFactors', () => {
+  it('calcula el factor real/estimado con al menos 2 muestras', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    for (const estimado of [60, 100]) {
+      const task = await prisma.task.create({
+        data: { userId: user.id, titulo: 'Excel task', estatus: 'done', herramienta: 'Excel', estimadoMin: estimado },
+      })
+      await prisma.timeEntry.create({
+        data: { userId: user.id, taskId: task.id, startedAt: new Date(), stoppedAt: new Date(), seconds: estimado * 1.5 * 60 },
+      })
+    }
+    const factores = await getHerramientaFactors(user.id)
+    expect(factores['Excel']).toBeCloseTo(1.5, 1)
+  })
+
+  it('omite herramientas con menos de 2 muestras', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    const task = await prisma.task.create({
+      data: { userId: user.id, titulo: 'Python task', estatus: 'done', herramienta: 'Python', estimadoMin: 60 },
+    })
+    await prisma.timeEntry.create({
+      data: { userId: user.id, taskId: task.id, startedAt: new Date(), stoppedAt: new Date(), seconds: 3600 },
+    })
+    const factores = await getHerramientaFactors(user.id)
+    expect(factores['Python']).toBeUndefined()
   })
 })
 

@@ -165,7 +165,8 @@ model Task {
   estatus       TaskStatus   @default(backlog)
   alcance       Alcance      @default(sow)
   dolorCliente  String? // qué dolor del cliente atiende (requerido en UI/skill si alcance=aliado)
-  urgente       Boolean  @default(false) // pendiente urgente no agendado (panel derecho, ★)
+  urgente       Boolean      @default(false) // pendiente urgente no agendado (panel derecho, ★)
+  herramienta   String? // Excel, PowerPoint, Python, Power BI, AnyLogic... determina complejidad/estimación
   dodItems      DodItem[]
   blocks        Block[]
   timeEntries   TimeEntry[]

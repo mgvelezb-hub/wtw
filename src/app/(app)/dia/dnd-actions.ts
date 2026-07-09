@@ -213,6 +213,103 @@ export async function reflowTodayAction(todayStr: string) {
   return { reflowed: updates.length, fueraDeJornada }
 }
 
+function snap30(min: number): number {
+  return Math.round(min / 30) * 30
+}
+
+// Reposiciona un bloque de tarea a una hora exacta (drag o input de hora) —
+// empuja SOLO los bloques de tarea que choquen (nunca las juntas: las
+// actividades sí pueden traslaparse con una sesión si así se decide a mano).
+export async function setBlockTimeAction(blockId: string, newInicioHHMM: string) {
+  const userId = await uid()
+  const moved = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true, task: true } })
+  if (!moved || moved.week.userId !== userId) throw new Error('block no encontrado')
+  if (moved.tipo !== 'tarea') throw new Error('solo se reposicionan bloques de tarea')
+
+  const fecha = moved.fecha
+  const others = await prisma.block.findMany({
+    where: {
+      week: { userId },
+      fecha,
+      tipo: 'tarea',
+      inicio: { not: 'flex' },
+      id: { not: blockId },
+    },
+  })
+
+  const newStart = Math.max(0, snap30(toMin(newInicioHHMM)))
+  type Entry = { id: string; start: number; dur: number }
+  const entries: Entry[] = [
+    ...others.map((b) => ({ id: b.id, start: toMin(b.inicio), dur: b.planMin })),
+    { id: blockId, start: newStart, dur: moved.planMin },
+  ].sort((a, b) => a.start - b.start || (a.id === blockId ? -1 : 1))
+
+  let cursor = entries[0].start
+  const updates: { id: string; inicio: string; fin: string }[] = []
+  for (const e of entries) {
+    const start = Math.max(e.start, cursor)
+    const end = start + e.dur
+    updates.push({ id: e.id, inicio: fromMin(start), fin: fromMin(end) })
+    cursor = end
+  }
+
+  await prisma.$transaction(
+    updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } }))
+  )
+  revalidatePath('/dia')
+}
+
+// Ajuste manual de duración (fine-tuning) — empuja lo que venga después si ya
+// no cabe. Nunca jala hacia atrás lo que viene después (no cierra huecos solo).
+export async function setBlockDurationAction(blockId: string, newPlanMin: number) {
+  const userId = await uid()
+  const block = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true } })
+  if (!block || block.week.userId !== userId) throw new Error('block no encontrado')
+  if (block.inicio === 'flex') {
+    await prisma.block.update({ where: { id: blockId }, data: { planMin: newPlanMin } })
+    revalidatePath('/dia')
+    return
+  }
+
+  const others = await prisma.block.findMany({
+    where: { week: { userId }, fecha: block.fecha, tipo: 'tarea', inicio: { not: 'flex' }, id: { not: blockId } },
+  })
+  const newEnd = toMin(block.inicio) + newPlanMin
+
+  const after = others.filter((b) => toMin(b.inicio) >= toMin(block.inicio)).sort((a, b) => toMin(a.inicio) - toMin(b.inicio))
+  let cursor = newEnd
+  const updates: { id: string; inicio: string; fin: string }[] = [
+    { id: blockId, inicio: block.inicio, fin: fromMin(newEnd) },
+  ]
+  for (const b of after) {
+    const start = Math.max(toMin(b.inicio), cursor)
+    const end = start + b.planMin
+    updates.push({ id: b.id, inicio: fromMin(start), fin: fromMin(end) })
+    cursor = end
+  }
+
+  await prisma.$transaction([
+    prisma.block.update({ where: { id: blockId }, data: { planMin: newPlanMin } }),
+    ...updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } })),
+  ])
+  revalidatePath('/dia')
+}
+
+// Arrastrar un bloque agendado de vuelta al listado de pendientes — se borra
+// el bloque del día y la tarea regresa a backlog (sin perder DoD/estimado).
+export async function unscheduleBlockAction(blockId: string) {
+  const userId = await uid()
+  const block = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true } })
+  if (!block || block.week.userId !== userId) throw new Error('block no encontrado')
+  if (!block.taskId) throw new Error('solo tareas se pueden regresar a pendientes')
+
+  await prisma.$transaction([
+    prisma.block.delete({ where: { id: blockId } }),
+    prisma.task.update({ where: { id: block.taskId }, data: { estatus: 'backlog', weekId: null } }),
+  ])
+  revalidatePath('/dia')
+}
+
 // Marca una junta como cancelada — deja de contar en capacidad y en el reflow,
 // y se muestra tachada en Terminadas/Canceladas. Dura hasta el siguiente
 // "Actualizar juntas": si de verdad se canceló en Outlook, el sync ya no la
