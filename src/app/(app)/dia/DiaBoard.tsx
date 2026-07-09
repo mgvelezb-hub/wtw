@@ -79,6 +79,26 @@ function nowHHMM(tickMs: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+const DIA_ABR = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const MES_ABR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+
+// Opciones válidas para "Mover a…" / "Agendar a…": nunca un día que ya pasó
+// (imposible), máximo 7 días hacia adelante desde hoy.
+function moveTargets(todayStr: string): DiaTab[] {
+  const base = new Date(todayStr)
+  const out: DiaTab[] = []
+  for (let i = 0; i <= 7; i++) {
+    const d = new Date(base)
+    d.setUTCDate(d.getUTCDate() + i)
+    out.push({
+      fecha: d.toISOString().slice(0, 10),
+      abr: DIA_ABR[d.getUTCDay()],
+      num: `${d.getUTCDate()} ${MES_ABR[d.getUTCMonth()]}`,
+    })
+  }
+  return out
+}
+
 // Pastel de fondo + el color del proyecto como texto — mismo patrón de contraste
 // que el tablero original (fill suave + texto saturado, no outline sobre blanco).
 function pillStyle(color: string): React.CSSProperties {
@@ -107,6 +127,7 @@ export function DiaBoard(p: DiaBoardProps) {
   }, [])
 
   const esHoy = p.selectedDay === p.today
+  const moveOptions = moveTargets(p.today)
   const nowStr = tick !== null ? nowHHMM(tick) : null
   // Una junta cuenta como "terminada" también cuando ya pasó su hora de fin —
   // no hace falta marcarla a mano, solo libera el campo visual sola.
@@ -316,7 +337,7 @@ export function DiaBoard(p: DiaBoardProps) {
               pending={pending}
               startTransition={startTransition}
               enVivo={esHoy}
-              tabs={p.tabs}
+              tabs={moveOptions}
               selectedDay={p.selectedDay}
             />
           ))}
@@ -334,7 +355,7 @@ export function DiaBoard(p: DiaBoardProps) {
                   pending={pending}
                   startTransition={startTransition}
                   enVivo={esHoy}
-                  tabs={p.tabs}
+                  tabs={moveOptions}
                   selectedDay={p.selectedDay}
                 />
               ))}
@@ -405,11 +426,13 @@ export function DiaBoard(p: DiaBoardProps) {
                         <option value="" disabled>
                           Agendar a…
                         </option>
-                        {p.tabs.map((t) => (
-                          <option key={t.fecha} value={t.fecha}>
-                            {t.abr} {t.num}
-                          </option>
-                        ))}
+                        {moveOptions
+                          .filter((t) => t.fecha !== p.today)
+                          .map((t) => (
+                            <option key={t.fecha} value={t.fecha}>
+                              {t.abr} {t.num}
+                            </option>
+                          ))}
                       </select>
                       <button
                         disabled={pending}
