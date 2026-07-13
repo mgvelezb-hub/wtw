@@ -26,6 +26,7 @@ export type DayBlockView = {
   aliado: boolean // agrega valor al cliente fuera de SOW
   gerente: boolean // aporta a competencias del escalafón
   fueraDeJornada: boolean // el reflow de juntas lo empujó después de horarioFin
+  bloqueante: boolean // false: junta informativa (ej. compartida solo para visibilidad) — no resta capacidad
 }
 
 export async function getDayBlocks(userId: string, dateStr: string): Promise<DayBlockView[]> {
@@ -81,6 +82,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
         b.tipo === 'tarea' &&
         b.inicio !== 'flex' &&
         (toMin(b.fin) > jornadaFin || toMin(b.inicio) < jornadaInicio),
+      bloqueante: true,
     }
   })
 
@@ -103,6 +105,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     aliado: false,
     gerente: false,
     fueraDeJornada: false,
+    bloqueante: e.bloqueante,
   }))
 
   return [...taskBlocks, ...eventBlocks].sort((a, b) => a.inicio.localeCompare(b.inicio))

@@ -225,6 +225,7 @@ model CalendarEvent {
   fin        String
   titulo     String
   cancelado  Boolean  @default(false)
+  bloqueante Boolean  @default(true) // false: visible pero informativo (ej. compartido solo para dar visibilidad) — no resta capacidad ni es obstáculo del reflow
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, externalId])

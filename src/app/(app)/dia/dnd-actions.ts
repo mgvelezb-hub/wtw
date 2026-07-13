@@ -156,7 +156,7 @@ export async function reflowTodayAction(todayStr: string) {
   }
 
   const [eventos, blocks, running] = await Promise.all([
-    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(todayStr), cancelado: false } }),
+    prisma.calendarEvent.findMany({ where: { userId, fecha: new Date(todayStr), cancelado: false, bloqueante: true } }),
     prisma.block.findMany({
       where: { week: { userId }, fecha: new Date(todayStr), tipo: 'tarea', inicio: { not: 'flex' } },
       include: { task: true },
@@ -372,5 +372,19 @@ export async function cancelMeetingAction(blockId: string) {
   const event = await prisma.calendarEvent.findUnique({ where: { id: eventId } })
   if (!event || event.userId !== userId) throw new Error('junta no encontrada')
   await prisma.calendarEvent.update({ where: { id: eventId }, data: { cancelado: true } })
+  revalidatePath('/dia')
+}
+
+// Distinto de cancelar: la junta SÍ va a pasar, solo que Mau no la necesita
+// tomar (ej. se comparte solo para dar visibilidad de disponibilidad de un
+// tercero). No resta capacidad ni cuenta como obstáculo del reflow, pero
+// sigue visible en el timeline. Dura hasta el siguiente sync, igual que
+// cancelar — si el evento cambia de fuente, se vuelve a evaluar.
+export async function toggleBloqueanteAction(blockId: string) {
+  const userId = await uid()
+  const eventId = blockId.replace(/^cal-/, '')
+  const event = await prisma.calendarEvent.findUnique({ where: { id: eventId } })
+  if (!event || event.userId !== userId) throw new Error('junta no encontrada')
+  await prisma.calendarEvent.update({ where: { id: eventId }, data: { bloqueante: !event.bloqueante } })
   revalidatePath('/dia')
 }

@@ -24,6 +24,7 @@ import {
   closeDayAction,
   reflowTodayAction,
   cancelMeetingAction,
+  toggleBloqueanteAction,
   setBlockTimeAction,
   setBlockDurationAction,
   unscheduleBlockAction,
@@ -722,6 +723,11 @@ function BlockCard({
           <div>
             <p className="text-xs font-medium text-neutral-600">
               {b.inicio}–{b.fin}
+              {!b.bloqueante && !b.done && (
+                <span className="ml-2 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+                  Informativo
+                </span>
+              )}
             </p>
             <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
               📅 {b.titulo}
@@ -734,14 +740,24 @@ function BlockCard({
               </span>
             ) : (
               enVivo && (
-                <button
-                  disabled={pending}
-                  onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
-                  className="text-xs font-semibold text-neutral-400 hover:text-red-600"
-                  title="La junta se canceló"
-                >
-                  ✕ Cancelar
-                </button>
+                <>
+                  <button
+                    disabled={pending}
+                    onClick={() => startTransition(() => void toggleBloqueanteAction(b.id))}
+                    className="text-xs font-semibold text-neutral-400 hover:text-[#0c4a45]"
+                    title="Marca si esta junta realmente ocupa tu tiempo (ej. compartida solo para visibilidad)"
+                  >
+                    {b.bloqueante ? '👁 No me bloquea' : '↺ Sí me bloquea'}
+                  </button>
+                  <button
+                    disabled={pending}
+                    onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
+                    className="text-xs font-semibold text-neutral-400 hover:text-red-600"
+                    title="La junta se canceló"
+                  >
+                    ✕ Cancelar
+                  </button>
+                </>
               )
             )}
             <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
