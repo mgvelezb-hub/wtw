@@ -31,21 +31,33 @@ export async function syncCalendar(userId: string): Promise<{ synced: number }> 
       !e.uid.endsWith('@wtw-app')
   )
 
-  // Espejo de solo-lectura: reemplazar la ventana completa en 2 queries en vez
-  // de N upserts secuenciales (cada roundtrip a Neon ~1-2s → minutos con 400).
+  const withId = events.map((e) => ({
+    externalId: `${e.start.toISOString().slice(0, 10)}|${hhmm(e.start)}|${e.summary}`,
+    fecha: new Date(e.start.toISOString().slice(0, 10)),
+    inicio: hhmm(e.start),
+    fin: hhmm(e.end),
+    titulo: e.summary,
+  }))
+
+  // Diff en vez de borrar-y-recrear: el externalId ya es determinista
+  // (fecha|hora|título), así que un evento que sigue vivo en el feed
+  // conserva su mismo id entre syncs. Borrar-y-recrear a ciegas perdía las
+  // marcas manuales de Mau (cancelado/bloqueante) en cada "Actualizar
+  // juntas" — un evento que él marcó "no me bloquea" volvía a bloquear.
+  const existentes = await prisma.calendarEvent.findMany({
+    where: { userId, fecha: { gte: cutoff, lte: horizon } },
+    select: { id: true, externalId: true },
+  })
+  const idsFeedActual = new Set(withId.map((e) => e.externalId))
+  const idsExistentes = new Set(existentes.map((e) => e.externalId))
+
+  const aBorrar = existentes.filter((e) => !idsFeedActual.has(e.externalId)).map((e) => e.id)
+  const aInsertar = withId.filter((e) => !idsExistentes.has(e.externalId))
+
   await prisma.$transaction([
-    prisma.calendarEvent.deleteMany({ where: { userId } }),
+    prisma.calendarEvent.deleteMany({ where: { id: { in: aBorrar } } }),
     prisma.calendarEvent.createMany({
-      data: events.map((e) => ({
-        userId,
-        // externalId compuesto: instancias de una misma serie comparten UID base;
-        // fecha+hora+título garantiza unicidad e idempotencia entre syncs.
-        externalId: `${e.start.toISOString().slice(0, 10)}|${hhmm(e.start)}|${e.summary}`,
-        fecha: new Date(e.start.toISOString().slice(0, 10)),
-        inicio: hhmm(e.start),
-        fin: hhmm(e.end),
-        titulo: e.summary,
-      })),
+      data: aInsertar.map((e) => ({ userId, ...e })),
       skipDuplicates: true, // UIDs repetidos de recurrentes (RECURRENCE-ID)
     }),
   ])
