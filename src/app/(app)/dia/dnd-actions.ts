@@ -18,12 +18,13 @@ function fromMin(min: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-// Tope de las cascadas: un bloque cuyo inicio quedó más allá de medianoche no
-// se agenda a una hora imposible ("26:27" rompía la UI y hacía que Outlook
+// Tope de las cascadas: un bloque cuyo inicio O fin cruza medianoche no se
+// agenda a una hora imposible ("26:27" rompía la UI y hacía que Outlook
 // rechazara el .ics exportado completo) — regresa a 'flex' (sin hora) para
-// reacomodarlo a mano.
+// reacomodarlo a mano. Chequea ambos extremos: un bloque puede empezar antes
+// de medianoche y terminar después.
 function timesOrFlex(start: number, dur: number): { inicio: string; fin: string } {
-  if (start >= 1440) return { inicio: 'flex', fin: 'flex' }
+  if (start >= 1440 || start + dur > 1440) return { inicio: 'flex', fin: 'flex' }
   return { inicio: fromMin(start), fin: fromMin(start + dur) }
 }
 
@@ -192,7 +193,7 @@ export async function reflowTodayAction(todayStr: string) {
   fijos.sort((a, b) => a.inicio - b.inicio)
 
   const jornadaFin = toMin(user.horarioFin)
-  let cursor = Math.max(nowMinutesMx(), toMin(movibles[0].inicio))
+  let cursor = Math.max(nowAnchor30(), toMin(movibles[0].inicio))
   let fueraDeJornada = 0
   const updates: { id: string; inicio: string; fin: string }[] = []
 
@@ -224,6 +225,14 @@ export async function reflowTodayAction(todayStr: string) {
 
 function snap30(min: number): number {
   return Math.round(min / 30) * 30
+}
+
+// Ancla de "ahora" para cascadas: redondea HACIA ARRIBA al siguiente bloque de
+// 30 min — nunca hacia abajo (agendaría en el pasado). Sin esto el ancla caía
+// en el minuto exacto ("10:57") y esa hora se arrastraba en cascada a toda
+// tarea siguiente del día, rompiendo la regla de bloques de 30 min.
+function nowAnchor30(): number {
+  return Math.ceil(nowMinutesMx() / 30) * 30
 }
 
 // Reposiciona un bloque de tarea a una hora exacta (drag o input de hora) —
@@ -303,7 +312,7 @@ export async function reorderDayAction(dateStr: string, draggedBlockId: string, 
 
   const isHoy = dateStr === new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Mexico_City' }).format(new Date())
   const jornadaInicio = toMin(user.horarioInicio)
-  let cursor = isHoy ? Math.max(jornadaInicio, nowMinutesMx()) : jornadaInicio
+  let cursor = isHoy ? Math.max(jornadaInicio, nowAnchor30()) : jornadaInicio
 
   const updates = rest.map((b, i) => {
     const start = cursor
