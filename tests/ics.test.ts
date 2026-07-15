@@ -58,7 +58,9 @@ describe('parseIcs — expansión de recurrencia', () => {
     const evs = parseIcs(WEEKLY, win('2026-07-06T00:00:00Z', '2026-07-20T00:00:00Z'))
     expect(dias(evs)).toEqual(['2026-07-06', '2026-07-13'])
     expect(evs[0].summary).toBe('SCRUM semanal')
-    expect(evs[0].start.getUTCHours()).toBe(14)
+    // 14:00Z = 08:00 CDMX — la expectativa anterior (14) codificaba el bug de
+    // leer la hora UTC como si fuera hora de pared local
+    expect(evs[0].start.getUTCHours()).toBe(8)
   })
 
   it('respeta INTERVAL cada 2 semanas', () => {
@@ -92,5 +94,77 @@ END:VCALENDAR`
   it('genera UID único por instancia', () => {
     const evs = parseIcs(WEEKLY, win('2026-07-06T00:00:00Z', '2026-07-20T00:00:00Z'))
     expect(new Set(evs.map((e) => e.uid)).size).toBe(evs.length)
+  })
+})
+
+describe('parseIcs — zonas horarias', () => {
+  function hhmm(d: Date) {
+    return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`
+  }
+
+  it('convierte zona Cancún (UTC-5) a hora CDMX', () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz1@test
+DTSTART;TZID=Eastern Standard Time (Mexico):20260715T130000
+DTEND;TZID=Eastern Standard Time (Mexico):20260715T140000
+SUMMARY:Sesión desde Cancún
+END:VEVENT
+END:VCALENDAR`
+    const [e] = parseIcs(ics)
+    expect(hhmm(e.start)).toBe('12:00') // 13:00 Cancún = 12:00 CDMX
+    expect(hhmm(e.end)).toBe('13:00')
+  })
+
+  it('convierte US Central con horario de verano (CDT, UTC-5) a hora CDMX', () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz2@test
+DTSTART;TZID=Central Standard Time:20260714T183000
+DTEND;TZID=Central Standard Time:20260714T193000
+SUMMARY:Revisión desde Chicago
+END:VEVENT
+END:VCALENDAR`
+    const [e] = parseIcs(ics)
+    expect(hhmm(e.start)).toBe('17:30') // 18:30 CDT (jul) = 17:30 CDMX
+  })
+
+  it('convierte UTC crudo (sufijo Z) a hora CDMX', () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz3@test
+DTSTART:20260714T150000Z
+DTEND:20260714T160000Z
+SUMMARY:Evento en UTC
+END:VEVENT
+END:VCALENDAR`
+    const [e] = parseIcs(ics)
+    expect(hhmm(e.start)).toBe('09:00') // 15:00Z = 09:00 CDMX (UTC-6)
+  })
+
+  it('zona CDMX explícita queda idéntica (identidad)', () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz4@test
+DTSTART;TZID=Central Standard Time (Mexico):20260715T090000
+DTEND;TZID=Central Standard Time (Mexico):20260715T100000
+SUMMARY:Junta local
+END:VEVENT
+END:VCALENDAR`
+    const [e] = parseIcs(ics)
+    expect(hhmm(e.start)).toBe('09:00')
+  })
+
+  it('sin TZID ni Z (hora flotante) se asume CDMX, sin cambio', () => {
+    const ics = `BEGIN:VCALENDAR
+BEGIN:VEVENT
+UID:tz5@test
+DTSTART:20260715T110000
+DTEND:20260715T120000
+SUMMARY:Flotante
+END:VEVENT
+END:VCALENDAR`
+    const [e] = parseIcs(ics)
+    expect(hhmm(e.start)).toBe('11:00')
   })
 })

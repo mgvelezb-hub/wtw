@@ -21,7 +21,52 @@ function unfold(raw: string): string {
   return raw.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '')
 }
 
-function parseIcsDate(value: string): { date: Date; dateOnly: boolean } {
+const USER_TZ = 'America/Mexico_City'
+
+// El feed de Outlook usa nombres de zona de Windows, no IANA. Se mapean las
+// zonas plausibles en el calendario de Mau; una desconocida cae al
+// comportamiento previo (hora de pared tal cual = asumir CDMX).
+const WINDOWS_TZ: Record<string, string> = {
+  'Central Standard Time (Mexico)': 'America/Mexico_City',
+  'Mountain Standard Time (Mexico)': 'America/Mazatlan',
+  'Pacific Standard Time (Mexico)': 'America/Tijuana',
+  'Eastern Standard Time (Mexico)': 'America/Cancun',
+  'Central America Standard Time': 'America/Guatemala',
+  'Central Standard Time': 'America/Chicago',
+  'Eastern Standard Time': 'America/New_York',
+  'Mountain Standard Time': 'America/Denver',
+  'Pacific Standard Time': 'America/Los_Angeles',
+  UTC: 'UTC',
+}
+
+// Hora de pared de `instant` vista desde `tz`, expresada en ejes UTC.
+function wallMillis(instant: Date, tz: string): number {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(instant)
+  const get = (t: string) => Number(parts.find((p) => p.type === t)!.value)
+  return Date.UTC(get('year'), get('month') - 1, get('day'), get('hour') % 24, get('minute'), get('second'))
+}
+
+// Instante UTC real de una hora de pared expresada en `tz`.
+function zonedWallToInstant(wallUtcMs: number, tz: string): Date {
+  const guess = new Date(wallUtcMs)
+  const offset = wallMillis(guess, tz) - wallUtcMs
+  return new Date(wallUtcMs - offset)
+}
+
+// Toda fecha-hora del feed se normaliza a hora de pared de CDMX (convención
+// del resto de la app: los Date guardan hora local MX en ejes UTC). Sin esto,
+// un evento agendado desde otra zona (Cancún, US Central) o emitido en UTC
+// crudo (sufijo Z) quedaba corrido 1-6 horas en el tablero.
+function parseIcsDate(value: string, tzid?: string): { date: Date; dateOnly: boolean } {
   const dateOnly = value.length <= 8
   const y = +value.slice(0, 4)
   const m = +value.slice(4, 6)
@@ -30,7 +75,22 @@ function parseIcsDate(value: string): { date: Date; dateOnly: boolean } {
   const hh = +value.slice(9, 11)
   const mm = +value.slice(11, 13)
   const ss = +value.slice(13, 15) || 0
-  return { date: new Date(Date.UTC(y, m - 1, d, hh, mm, ss)), dateOnly: false }
+  const wall = Date.UTC(y, m - 1, d, hh, mm, ss)
+
+  let instant: Date | null = null
+  if (value.endsWith('Z')) {
+    instant = new Date(wall)
+  } else if (tzid) {
+    const iana = WINDOWS_TZ[tzid] ?? (tzid.includes('/') ? tzid : undefined)
+    if (iana) instant = zonedWallToInstant(wall, iana)
+  }
+  if (!instant) return { date: new Date(wall), dateOnly: false } // zona no resoluble: asumir CDMX
+  return { date: new Date(wallMillis(instant, USER_TZ)), dateOnly: false }
+}
+
+function tzidOf(rawKey: string): string | undefined {
+  const m = rawKey.match(/;TZID=([^;]+)/)
+  return m ? m[1] : undefined
 }
 
 const DAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] // índice = getUTCDay()
@@ -62,11 +122,11 @@ function parseRawEvents(raw: string): RawEvent[] {
     if (key === 'UID') cur.uid = value
     else if (key === 'SUMMARY') cur.summary = value
     else if (key === 'DTSTART') {
-      const p = parseIcsDate(value)
+      const p = parseIcsDate(value, tzidOf(rawKey))
       cur.start = p.date
       cur.allDay = isDateOnly || p.dateOnly
     } else if (key === 'DTEND') {
-      cur.end = parseIcsDate(value).date
+      cur.end = parseIcsDate(value, tzidOf(rawKey)).date
     } else if (key === 'RRULE') {
       cur.rrule = value
     } else if (key === 'RECURRENCE-ID') {
