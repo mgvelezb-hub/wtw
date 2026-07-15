@@ -18,6 +18,15 @@ function fromMin(min: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+// Tope de las cascadas: un bloque cuyo inicio quedó más allá de medianoche no
+// se agenda a una hora imposible ("26:27" rompía la UI y hacía que Outlook
+// rechazara el .ics exportado completo) — regresa a 'flex' (sin hora) para
+// reacomodarlo a mano.
+function timesOrFlex(start: number, dur: number): { inicio: string; fin: string } {
+  if (start >= 1440) return { inicio: 'flex', fin: 'flex' }
+  return { inicio: fromMin(start), fin: fromMin(start + dur) }
+}
+
 async function uid(): Promise<string> {
   const s = await verifySession()
   if (!s) throw new Error('no autenticado')
@@ -202,7 +211,7 @@ export async function reflowTodayAction(todayStr: string) {
     }
     const end = start + dur
     if (end > jornadaFin) fueraDeJornada++
-    updates.push({ id: b.id, inicio: fromMin(start), fin: fromMin(end) })
+    updates.push({ id: b.id, ...timesOrFlex(start, dur) })
     cursor = end
   }
 
@@ -249,7 +258,7 @@ export async function setBlockTimeAction(blockId: string, newInicioHHMM: string)
   for (const e of entries) {
     const start = Math.max(e.start, cursor)
     const end = start + e.dur
-    updates.push({ id: e.id, inicio: fromMin(start), fin: fromMin(end) })
+    updates.push({ id: e.id, ...timesOrFlex(start, e.dur) })
     cursor = end
   }
 
@@ -298,9 +307,8 @@ export async function reorderDayAction(dateStr: string, draggedBlockId: string, 
 
   const updates = rest.map((b, i) => {
     const start = cursor
-    const end = start + b.planMin
-    cursor = end
-    return { id: b.id, inicio: fromMin(start), fin: fromMin(end), orden: i }
+    cursor = start + b.planMin
+    return { id: b.id, ...timesOrFlex(start, b.planMin), orden: i }
   })
 
   await prisma.$transaction(
@@ -335,9 +343,8 @@ export async function setBlockDurationAction(blockId: string, newPlanMin: number
   ]
   for (const b of after) {
     const start = Math.max(toMin(b.inicio), cursor)
-    const end = start + b.planMin
-    updates.push({ id: b.id, inicio: fromMin(start), fin: fromMin(end) })
-    cursor = end
+    updates.push({ id: b.id, ...timesOrFlex(start, b.planMin) })
+    cursor = start + b.planMin
   }
 
   await prisma.$transaction([
