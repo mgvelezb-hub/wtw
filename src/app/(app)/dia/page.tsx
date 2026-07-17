@@ -68,6 +68,7 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
       capacidadHoy={view.capacidadHoy}
       pendientes={view.pendientes}
       stranded={view.stranded}
+      proyectosActivos={view.proyectosActivos}
     />
   )
 }

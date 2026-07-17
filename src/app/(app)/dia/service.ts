@@ -27,6 +27,9 @@ export type DayBlockView = {
   gerente: boolean // aporta a competencias del escalafón
   fueraDeJornada: boolean // el reflow de juntas lo empujó después de horarioFin
   bloqueante: boolean // false: junta informativa (ej. compartida solo para visibilidad) — no resta capacidad
+  calendarEventId: string | null // id crudo (sin prefijo) del CalendarEvent — para crear/buscar su Minuta
+  proyectoId: string | null // proyecto resuelto vía task.project — null si hay que preguntarlo en el drawer
+  minutaId: string | null // Minuta ya capturada para esta junta, si existe
 }
 
 export async function getDayBlocks(userId: string, dateStr: string): Promise<DayBlockView[]> {
@@ -52,6 +55,26 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
   ])
   const jornadaFin = toMin(user.horarioFin)
   const jornadaInicio = toMin(user.horarioInicio)
+
+  // Minutas ya capturadas hoy para juntas candidatas — bloques tipo junta y
+  // CalendarEvents bloqueantes. Una sola consulta para todo el día en vez de
+  // una por bloque (§6 Tarea 6 del plan de fase 7).
+  const juntaBlockIds = blocks.filter((b) => b.tipo === 'junta').map((b) => b.id)
+  const juntaEventIds = eventos.filter((e) => e.bloqueante).map((e) => e.id)
+  const minutasHoy =
+    juntaBlockIds.length || juntaEventIds.length
+      ? await prisma.minuta.findMany({
+          where: {
+            OR: [
+              ...(juntaBlockIds.length ? [{ blockId: { in: juntaBlockIds } }] : []),
+              ...(juntaEventIds.length ? [{ calendarEventId: { in: juntaEventIds } }] : []),
+            ],
+          },
+          select: { id: true, blockId: true, calendarEventId: true },
+        })
+      : []
+  const minutaPorBlock = new Map(minutasHoy.filter((m) => m.blockId).map((m) => [m.blockId as string, m.id]))
+  const minutaPorEvento = new Map(minutasHoy.filter((m) => m.calendarEventId).map((m) => [m.calendarEventId as string, m.id]))
 
   const taskBlocks: DayBlockView[] = blocks.map((b) => {
     const task = b.task
@@ -83,6 +106,9 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
         b.inicio !== 'flex' &&
         (toMin(b.fin) > jornadaFin || toMin(b.inicio) < jornadaInicio),
       bloqueante: true,
+      calendarEventId: null,
+      proyectoId: task?.project?.id ?? null,
+      minutaId: b.tipo === 'junta' ? (minutaPorBlock.get(b.id) ?? null) : null,
     }
   })
 
@@ -106,6 +132,9 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     gerente: false,
     fueraDeJornada: false,
     bloqueante: e.bloqueante,
+    calendarEventId: e.id,
+    proyectoId: null,
+    minutaId: e.bloqueante ? (minutaPorEvento.get(e.id) ?? null) : null,
   }))
 
   return [...taskBlocks, ...eventBlocks].sort((a, b) => a.inicio.localeCompare(b.inicio))
@@ -145,8 +174,20 @@ export async function getStrandedBlocks(userId: string, todayStr: string): Promi
   }))
 }
 
+export type ProyectoActivoView = { id: string; nombre: string; color: string }
+
+// Proyectos activos del usuario, planos — para el select del drawer de minuta
+// cuando la junta no trae un proyecto resoluble (junta suelta o CalendarEvent).
+export async function getProyectosActivos(userId: string): Promise<ProyectoActivoView[]> {
+  return prisma.project.findMany({
+    where: { userId, estatus: 'activo' },
+    orderBy: { nombre: 'asc' },
+    select: { id: true, nombre: true, color: true },
+  })
+}
+
 export async function getDiaView(userId: string, isoWeek: string, dateStr: string, todayStr: string) {
-  const [week, capacidad, blocks, pendientesRaw, stranded] = await Promise.all([
+  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos] = await Promise.all([
     getWeek(userId, isoWeek),
     capacityForWeek(userId, isoWeek),
     getDayBlocks(userId, dateStr),
@@ -156,6 +197,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
       orderBy: [{ urgente: 'desc' }, { createdAt: 'desc' }],
     }),
     dateStr === todayStr ? getStrandedBlocks(userId, todayStr) : Promise.resolve([]),
+    getProyectosActivos(userId),
   ])
 
   const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
@@ -188,6 +230,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     capacidadHoy,
     pendientes,
     stranded,
+    proyectosActivos,
   }
 }
 

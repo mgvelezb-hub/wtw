@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
-import type { DayBlockView, PendienteView, StrandedBlockView } from './service'
+import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
+import { MinutaDrawer } from './MinutaDrawer'
 import {
   startTimerAction,
   stopTimerAction,
@@ -57,6 +58,13 @@ export type DiaBoardProps = {
   capacidadHoy: number
   pendientes: PendienteView[]
   stranded: StrandedBlockView[]
+  proyectosActivos: ProyectoActivoView[]
+}
+
+// Bloques donde tiene sentido capturar una minuta: juntas internas del
+// tablero, y CalendarEvents bloqueantes (las informativas no lo necesitan).
+function esCandidataMinuta(b: DayBlockView): boolean {
+  return b.tipo === 'junta' || (b.externa && b.bloqueante)
 }
 
 function fmt(totalSeconds: number): string {
@@ -127,6 +135,7 @@ export function DiaBoard(p: DiaBoardProps) {
   const [pending, startTransition] = useTransition()
   const [verTerminadas, setVerTerminadas] = useState(false)
   const [verCanceladas, setVerCanceladas] = useState(false)
+  const [minutaBlock, setMinutaBlock] = useState<DayBlockView | null>(null)
 
   useEffect(() => {
     setTick(Date.now())
@@ -354,6 +363,8 @@ export function DiaBoard(p: DiaBoardProps) {
               enVivo={esHoy}
               tabs={moveOptions}
               selectedDay={p.selectedDay}
+              terminada={false}
+              onAbrirMinuta={setMinutaBlock}
             />
           ))}
 
@@ -376,6 +387,8 @@ export function DiaBoard(p: DiaBoardProps) {
                     enVivo={esHoy}
                     tabs={moveOptions}
                     selectedDay={p.selectedDay}
+                    terminada={true}
+                    onAbrirMinuta={setMinutaBlock}
                   />
                 ))}
             </div>
@@ -400,6 +413,8 @@ export function DiaBoard(p: DiaBoardProps) {
                     enVivo={esHoy}
                     tabs={moveOptions}
                     selectedDay={p.selectedDay}
+                    terminada={false}
+                    onAbrirMinuta={setMinutaBlock}
                   />
                 ))}
             </div>
@@ -504,6 +519,15 @@ export function DiaBoard(p: DiaBoardProps) {
           </div>
         </div>
       </div>
+
+      {minutaBlock && (
+        <MinutaDrawer
+          block={minutaBlock}
+          fecha={p.selectedDay}
+          proyectosActivos={p.proyectosActivos}
+          onClose={() => setMinutaBlock(null)}
+        />
+      )}
     </div>
   )
 }
@@ -691,6 +715,29 @@ function RunningHero({
   )
 }
 
+function MinutaBoton({ block, onAbrirMinuta }: { block: DayBlockView; onAbrirMinuta: (b: DayBlockView) => void }) {
+  return (
+    <button
+      onClick={() => onAbrirMinuta(block)}
+      className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-semibold text-neutral-500 hover:border-[#0d6d63] hover:text-[#0d6d63]"
+      title="Capturar o revisar la minuta de esta junta"
+    >
+      {block.minutaId ? '📝 Ver minuta' : '📝 Minuta'}
+    </button>
+  )
+}
+
+function NudgeMinuta() {
+  return (
+    <span
+      className="rounded-full bg-[#fdf6e3] px-2 py-0.5 text-[10px] font-bold uppercase text-[#7a5a00]"
+      title="Esta junta terminó y no tiene minuta capturada"
+    >
+      ¿Minuta?
+    </span>
+  )
+}
+
 function BlockCard({
   block: b,
   tick,
@@ -699,6 +746,8 @@ function BlockCard({
   enVivo,
   tabs,
   selectedDay,
+  terminada,
+  onAbrirMinuta,
 }: {
   block: DayBlockView
   tick: number | null
@@ -707,7 +756,11 @@ function BlockCard({
   enVivo: boolean
   tabs: DiaTab[]
   selectedDay: string
+  terminada: boolean
+  onAbrirMinuta: (b: DayBlockView) => void
 }) {
+  const candidataMinuta = esCandidataMinuta(b)
+  const nudgeMinuta = candidataMinuta && terminada && !b.minutaId
   const isTarea = b.tipo === 'tarea'
   const seconds = isTarea ? liveSeconds(b, tick) : 0
   const over = isTarea && seconds > b.planMin * 60
@@ -732,6 +785,11 @@ function BlockCard({
             <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
               📅 {b.titulo}
             </p>
+            {nudgeMinuta && (
+              <div className="mt-1">
+                <NudgeMinuta />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {b.done ? (
@@ -739,26 +797,29 @@ function BlockCard({
                 Cancelada
               </span>
             ) : (
-              enVivo && (
-                <>
-                  <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => void toggleBloqueanteAction(b.id))}
-                    className="text-xs font-semibold text-neutral-400 hover:text-[#0c4a45]"
-                    title="Marca si esta junta realmente ocupa tu tiempo (ej. compartida solo para visibilidad)"
-                  >
-                    {b.bloqueante ? '👁 No me bloquea' : '↺ Sí me bloquea'}
-                  </button>
-                  <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
-                    className="text-xs font-semibold text-neutral-400 hover:text-red-600"
-                    title="La junta se canceló"
-                  >
-                    ✕ Cancelar
-                  </button>
-                </>
-              )
+              <>
+                {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
+                {enVivo && (
+                  <>
+                    <button
+                      disabled={pending}
+                      onClick={() => startTransition(() => void toggleBloqueanteAction(b.id))}
+                      className="text-xs font-semibold text-neutral-400 hover:text-[#0c4a45]"
+                      title="Marca si esta junta realmente ocupa tu tiempo (ej. compartida solo para visibilidad)"
+                    >
+                      {b.bloqueante ? '👁 No me bloquea' : '↺ Sí me bloquea'}
+                    </button>
+                    <button
+                      disabled={pending}
+                      onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
+                      className="text-xs font-semibold text-neutral-400 hover:text-red-600"
+                      title="La junta se canceló"
+                    >
+                      ✕ Cancelar
+                    </button>
+                  </>
+                )}
+              </>
             )}
             <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
           </div>
@@ -817,8 +878,14 @@ function BlockCard({
           <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
             {b.titulo}
           </p>
+          {nudgeMinuta && (
+            <div className="mt-1">
+              <NudgeMinuta />
+            </div>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
           {isTarea && !b.runningSince && (
             <span className={`font-mono text-sm font-semibold ${over ? 'text-red-600' : 'text-[#15803d]'}`}>
               {fmt(seconds)}
