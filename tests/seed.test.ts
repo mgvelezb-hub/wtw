@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 beforeAll(() => {
   execSync('npx tsx prisma/seed.ts', { stdio: 'inherit', cwd: process.cwd() })
-}, 60_000) // cada upsert es un roundtrip a Neon — el seed completo tarda >10s
+}, 180_000) // ~50 upserts, cada uno un roundtrip a Neon — con latencia mala supera los 60s
 
 describe('seed', () => {
   it('crea los 4 niveles del escalafón VP', async () => {
@@ -51,6 +51,6 @@ describe('seed', () => {
       expect(count).toBeGreaterThanOrEqual(20)
       expect(count).toBeLessThan(40) // no se duplicó
     },
-    60_000
+    180_000
   )
 })

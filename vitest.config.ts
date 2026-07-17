@@ -12,8 +12,12 @@ export default defineConfig({
     setupFiles: [],
     globalSetup: ['./tests/global-teardown.ts'], // solo exporta teardown() — corre al final de toda la suite
     fileParallelism: false, // tests comparten la DB dev — sin paralelismo entre archivos
-    testTimeout: 20_000, // cada roundtrip a Neon tarda ~1-2s; tests con varias escrituras superan el default de 5s
-    hookTimeout: 20_000,
+    // La latencia de Neon es variable (0.2s-2s por roundtrip según hora): con 20s la
+    // suite completa tiraba decenas de "Hook timed out" en horas malas sin ningún test
+    // realmente roto. 60s absorbe la varianza; los tests siguen fallando rápido cuando
+    // la aserción es la que falla.
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
   },
   resolve: {
     alias: {
