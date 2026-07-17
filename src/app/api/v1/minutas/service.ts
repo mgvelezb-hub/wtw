@@ -144,28 +144,34 @@ export async function promoteItem(userId: string, itemId: string) {
   const { projectId, userId: minutaUserId } = item.minuta
 
   if (item.tipo === 'pendiente_nuestro' || item.tipo === 'actividad_nueva') {
-    const task = await prisma.task.create({
-      data: {
-        userId: minutaUserId,
-        projectId,
-        titulo: item.texto,
-        estatus: 'backlog',
-        alcance: 'sow',
-      },
+    return prisma.$transaction(async (tx) => {
+      const task = await tx.task.create({
+        data: {
+          userId: minutaUserId,
+          projectId,
+          titulo: item.texto,
+          estatus: 'backlog',
+          alcance: 'sow',
+        },
+      })
+      return tx.minutaItem.update({ where: { id: itemId }, data: { estado: 'convertido', taskId: task.id } })
     })
-    return prisma.minutaItem.update({ where: { id: itemId }, data: { estado: 'convertido', taskId: task.id } })
   }
 
   const { issueTipo, tema } = issueTipoParaItem(item.tipo)
-  const issue = await prisma.issue.create({
-    data: {
-      projectId,
-      tipo: issueTipo,
-      tema,
-      descripcion: item.texto,
-      responsable: item.responsable ?? undefined,
-      fechaCompromiso: item.fechaCompromiso ?? undefined,
-    },
+  return prisma.$transaction(async (tx) => {
+    const issue = await tx.issue.create({
+      data: {
+        projectId,
+        tipo: issueTipo,
+        tema,
+        descripcion: item.texto,
+        responsable: item.responsable ?? undefined,
+        // el dueño interno que persigue el issue: quien capturó la minuta
+        ownerId: minutaUserId,
+        fechaCompromiso: item.fechaCompromiso ?? undefined,
+      },
+    })
+    return tx.minutaItem.update({ where: { id: itemId }, data: { estado: 'convertido', issueId: issue.id } })
   })
-  return prisma.minutaItem.update({ where: { id: itemId }, data: { estado: 'convertido', issueId: issue.id } })
 }
