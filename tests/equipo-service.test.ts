@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
 import { inviteColleague, listReports } from '@/app/(app)/equipo/service'
+import { isoWeekOf } from '@/lib/dates'
 
 const MANAGER_EMAIL = 'test-manager@vp.mx'
 const REPORT_EMAIL = 'test-report@vp.mx'
@@ -36,7 +37,9 @@ describe('listReports', () => {
     })
     const proj = await prisma.project.create({ data: { userId: report.id, nombre: 'X', estatus: 'activo' } })
     const week = await prisma.week.create({
-      data: { userId: report.id, isoWeek: '2026-W28', rangoInicio: new Date(), rangoFin: new Date(), factorUsado: 1.4, estatus: 'active' },
+      // isoWeek de HOY — listReports busca la semana con isoWeekOf(new Date());
+      // hardcodear la semana en que se escribió el test lo rompe al cruzar de semana.
+      data: { userId: report.id, isoWeek: isoWeekOf(new Date()), rangoInicio: new Date(), rangoFin: new Date(), factorUsado: 1.4, estatus: 'active' },
     })
     await prisma.win.create({ data: { weekId: week.id, posicion: 1, titulo: 'Win reporte', estatus: 'pendiente' } })
     const task = await prisma.task.create({ data: { userId: report.id, projectId: proj.id, titulo: 'y' } })
