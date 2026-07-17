@@ -78,6 +78,36 @@ enum Alcance {
   aliado // valor adicional intencional — inversión en la alianza (diferencial VP)
 }
 
+enum MinutaItemTipo {
+  acuerdo
+  decision
+  pendiente_nuestro // accionable interno → promovible a Task
+  pendiente_cliente // espera de tercero → promovible a Issue
+  solicitud_data // caso especial de espera; ciclo de vida completo en Fase C
+  actividad_nueva // trabajo no previsto → promovible a Task (evaluar alcance sow/aliado)
+  riesgo // → promovible a Issue tipo riesgo
+  nota
+}
+
+enum MinutaItemEstado {
+  abierto
+  cerrado
+  convertido // ya vive como Task o Issue; la minuta conserva el registro histórico
+}
+
+enum ArtifactTipo {
+  status_equipo // Fase A
+  brief_junta // Fase C
+  status_cliente_texto // Fase C — narrativa para el portal, complementa el scorecard
+}
+
+enum ArtifactEstado {
+  borrador // generado, sin tocar
+  editado // el usuario guardó una versión final
+  enviado // el usuario lo copió/mandó (señal de aceptación)
+  descartado
+}
+
 // ── Capa 1: Ejecución personal ─────────────────────────
 model User {
   id              String          @id @default(cuid())
@@ -108,6 +138,8 @@ model User {
   evidences       Evidence[]
   dayOverrides    DayOverride[]
   allocations     Allocation[]
+  minutas         Minuta[]
+  artifacts       Artifact[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -172,6 +204,7 @@ model Task {
   timeEntries   TimeEntry[]
   evidences     Evidence[]
   competencias  Competency[] @relation("TaskCompetencias") // etiquetado al planear
+  minutaItems   MinutaItem[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -199,6 +232,7 @@ model Block {
   planMin Int
   done    Boolean   @default(false) // para junta/hito/descanso
   orden   Int       @default(0)
+  minutas Minuta[]
 }
 
 model TimeEntry {
@@ -227,6 +261,7 @@ model CalendarEvent {
   cancelado  Boolean  @default(false)
   bloqueante Boolean  @default(true) // false: visible pero informativo (ej. compartido solo para dar visibilidad) — no resta capacidad ni es obstáculo del reflow
   updatedAt  DateTime @updatedAt
+  minutas    Minuta[]
 
   @@unique([userId, externalId])
 }
@@ -277,6 +312,8 @@ model Project {
   deliverables           Deliverable[]
   issues                 Issue[]
   tasks                  Task[]
+  minutas                Minuta[]
+  artifacts              Artifact[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
@@ -305,17 +342,21 @@ model Deliverable {
 }
 
 model Issue {
-  id              String      @id @default(cuid())
-  projectId       String
-  project         Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  tipo            IssueTipo   @default(pendiente) // RAID completo en una tabla
-  tema            String?
-  descripcion     String
-  responsable     String? // interno o del cliente ("Apoyo Requerido" del status)
-  fechaCompromiso DateTime?   @db.Date
-  estatus         IssueStatus @default(abierto)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id                String       @id @default(cuid())
+  projectId         String
+  project           Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tipo              IssueTipo    @default(pendiente) // RAID completo en una tabla
+  tema              String?
+  descripcion       String
+  responsable       String? // interno o del cliente ("Apoyo Requerido" del status)
+  fechaCompromiso   DateTime?    @db.Date
+  estatus           IssueStatus  @default(abierto)
+  ownerId           String? // usuario interno que persigue el issue (multiplayer-ready)
+  ultimoSeguimiento DateTime? // último chase — habilita "van 3 semanas sin respuesta"
+  numSeguimientos   Int          @default(0)
+  minutaItems       MinutaItem[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 // ── Capa 4: Desarrollo profesional ─────────────────────
@@ -352,4 +393,98 @@ model Evidence {
   deliverable   Deliverable? @relation(fields: [deliverableId], references: [id])
   nota          String
   createdAt     DateTime     @default(now())
+}
+
+// ── Captura: minutas por junta ────────────────────────
+
+model Minuta {
+  id              String         @id @default(cuid())
+  userId          String // quien captura
+  user            User           @relation(fields: [userId], references: [id])
+  projectId       String
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  blockId         String? // junta del tablero (Block tipo junta)
+  block           Block?         @relation(fields: [blockId], references: [id])
+  calendarEventId String? // o junta del calendario Outlook sincronizado
+  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id])
+  fecha           DateTime       @db.Date
+  titulo          String // denormalizado de la junta; editable
+  asistentes      String[] // nombres libres — insumo del mapa de stakeholders (Fase C)
+  notas           String? // texto libre pre-clasificación (dictado/pegado, V2)
+  items           MinutaItem[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([projectId, fecha])
+}
+
+model MinutaItem {
+  id                String           @id @default(cuid())
+  minutaId          String
+  minuta            Minuta           @relation(fields: [minutaId], references: [id], onDelete: Cascade)
+  tipo              MinutaItemTipo
+  texto             String
+  responsable       String? // nombre libre (tercero del cliente o interno)
+  responsableUserId String? // si el responsable es usuario de la app (multiplayer-ready)
+  fechaCompromiso   DateTime?        @db.Date
+  estado            MinutaItemEstado @default(abierto)
+  orden             Int              @default(0)
+  taskId            String? // destino si se promovió a Task
+  task              Task?            @relation(fields: [taskId], references: [id])
+  issueId           String? // destino si se promovió a Issue
+  issue             Issue?           @relation(fields: [issueId], references: [id])
+  createdAt         DateTime         @default(now())
+}
+
+// ── Artefactos generados: el flywheel de aprendizaje ──
+
+model Artifact {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  projectId     String?
+  project       Project?       @relation(fields: [projectId], references: [id])
+  tipo          ArtifactTipo
+  audiencia     String? // "equipo" | "cliente" | nombre de junta (brief)
+  rangoDesde    DateTime? // ventana de insumos cubierta
+  rangoHasta    DateTime?
+  insumos       Json // snapshot de IDs y hechos usados — trazabilidad y evals
+  borrador      String // salida cruda del modelo — NUNCA se sobrescribe
+  final         String? // texto tras edición humana — el otro lado del diff
+  estado        ArtifactEstado @default(borrador)
+  modelo        String // id exacto del modelo usado
+  promptVersion String // versión de la plantilla — para atribuir regresiones
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([userId, projectId, tipo, createdAt])
+}
+
+// ── Perfiles IA (fundación; destilación automática en Fase C) ──
+
+model AiProfile {
+  id        String   @id @default(cuid())
+  userId    String? // perfiles de usuario (voz, rutina)
+  projectId String? // perfiles de proyecto (project brief)
+  tipo      String // "voice_status_equipo" | "routine" | "project_brief" | ...
+  contenido Json // el perfil es VISIBLE Y EDITABLE por el usuario — nunca caja negra
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, projectId, tipo])
+}
+
+// ── Observabilidad de costos IA ───────────────────────
+
+model AiCall {
+  id           String   @id @default(cuid())
+  userId       String
+  feature      String // "status_equipo" | "clasificar_minuta" | ...
+  modelo       String
+  inputTokens  Int
+  outputTokens Int
+  ms           Int
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
