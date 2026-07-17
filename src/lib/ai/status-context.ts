@@ -138,7 +138,8 @@ export async function buildStatusContext(userId: string, projectId: string): Pro
   if (semanaActiva) {
     const tareasEnCurso = await prisma.task.findMany({
       where: { projectId, weekId: semanaActiva.id, estatus: { in: ['in_progress', 'planned'] } },
-      include: { blocks: { orderBy: [{ fecha: 'asc' }, { orden: 'asc' }] } },
+      // solo bloques de la semana activa — una task re-agendada arrastra bloques históricos
+      include: { blocks: { where: { weekId: semanaActiva.id }, orderBy: [{ fecha: 'asc' }, { orden: 'asc' }] } },
       orderBy: { updatedAt: 'desc' },
     })
 
