@@ -17,6 +17,9 @@ export async function deleteTestUser(email: string): Promise<void> {
   await prisma.timeEntry.deleteMany({ where: { userId: user.id } })
   await prisma.dodItem.deleteMany({ where: { taskId: { in: taskIds } } })
   await prisma.block.deleteMany({ where: { weekId: { in: weekIds } } })
+  // MinutaItem apunta opcionalmente a Task/Issue sin cascada — hay que borrar
+  // las minutas (cascada a sus items) antes de borrar tasks/issues, o la FK truena.
+  await prisma.minuta.deleteMany({ where: { userId: user.id } })
   await prisma.task.deleteMany({ where: { userId: user.id } })
   await prisma.win.deleteMany({ where: { weekId: { in: weekIds } } })
   await prisma.week.deleteMany({ where: { userId: user.id } })
@@ -25,6 +28,9 @@ export async function deleteTestUser(email: string): Promise<void> {
   await prisma.allocation.deleteMany({ where: { userId: user.id } })
   await prisma.calendarEvent.deleteMany({ where: { userId: user.id } })
   await prisma.dayOverride.deleteMany({ where: { userId: user.id } })
+  await prisma.artifact.deleteMany({ where: { userId: user.id } })
+  await prisma.aiProfile.deleteMany({ where: { userId: user.id } })
+  await prisma.aiCall.deleteMany({ where: { userId: user.id } })
   await prisma.project.deleteMany({ where: { userId: user.id } })
   await prisma.user.delete({ where: { id: user.id } })
 }

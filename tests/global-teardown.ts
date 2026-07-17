@@ -19,6 +19,8 @@ export async function teardown() {
       await prisma.timeEntry.deleteMany({ where: { userId: u.id } })
       await prisma.dodItem.deleteMany({ where: { taskId: { in: taskIds } } })
       await prisma.block.deleteMany({ where: { weekId: { in: weekIds } } })
+      // Minutas antes que tasks/issues: MinutaItem apunta a ambos sin cascada
+      await prisma.minuta.deleteMany({ where: { userId: u.id } })
       await prisma.task.deleteMany({ where: { userId: u.id } })
       await prisma.win.deleteMany({ where: { weekId: { in: weekIds } } })
       await prisma.week.deleteMany({ where: { userId: u.id } })
@@ -27,6 +29,9 @@ export async function teardown() {
       await prisma.allocation.deleteMany({ where: { userId: u.id } })
       await prisma.calendarEvent.deleteMany({ where: { userId: u.id } })
       await prisma.dayOverride.deleteMany({ where: { userId: u.id } })
+      await prisma.artifact.deleteMany({ where: { userId: u.id } })
+      await prisma.aiProfile.deleteMany({ where: { userId: u.id } })
+      await prisma.aiCall.deleteMany({ where: { userId: u.id } })
       await prisma.project.deleteMany({ where: { userId: u.id } })
     }
     await prisma.user.deleteMany({ where: { email: { endsWith: '@vp.mx' } } })
