@@ -95,14 +95,29 @@ const EXCEPCIONES_PALABRAS_COMUNES = new Set([
   'Octubre', 'Noviembre', 'Diciembre',
   'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
   'KPIs', 'KPI', 'TDs', 'TD', 'CRs', 'CR', 'PPT', 'VM', 'SOW', 'W29',
+  // Stopwords españolas que arrancan cláusula tras dos puntos/guión — el
+  // separador de oraciones no cubre todos los casos y ninguna de estas puede
+  // ser un nombre propio alucinado.
+  'Ya', 'En', 'De', 'El', 'La', 'Los', 'Las', 'Un', 'Una', 'Con', 'Sin', 'Para',
+  'Por', 'Como', 'Cuando', 'Donde', 'Este', 'Esta', 'Esto', 'Ese', 'Esa', 'Eso',
+  'Hoy', 'Ayer', 'Aún', 'Así', 'Sigo', 'Sigue', 'Seguimos', 'Va', 'Van',
+  'Quedó', 'Quedaron', 'Nos', 'Les', 'Nada', 'Todo', 'Todos', 'Pendiente', 'Listo',
 ])
 
-function buildAllowedWordSet(whitelist: string[]): Set<string> {
+// La regla de cero alucinación es "todo hecho debe rastrear a los insumos", no
+// "toda palabra capitalizada debe estar en la whitelist de personas": los textos
+// de tareas/minutas traen sustantivos capitalizados legítimos ("Forecast",
+// "TruckFill Big Ticket", "Spot") que el borrador repite con derecho. Por eso lo
+// permitido = whitelist ∪ toda palabra capitalizada presente en los insumos.
+function buildAllowedWordSet(whitelist: string[], insumos: unknown): Set<string> {
   const allowed = new Set<string>(EXCEPCIONES_PALABRAS_COMUNES)
   for (const entrada of whitelist) {
     for (const palabra of entrada.split(/\s+/)) {
       if (palabra) allowed.add(palabra)
     }
+  }
+  for (const palabra of JSON.stringify(insumos).split(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]+/)) {
+    if (palabra && PATRON_CANDIDATO_NOMBRE.test(palabra)) allowed.add(palabra)
   }
   return allowed
 }
@@ -113,12 +128,13 @@ function limpiarBordes(palabra: string): string {
 
 const PATRON_CANDIDATO_NOMBRE = /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+$/
 
-function detectarNombresNoWhitelist(texto: string, whitelist: string[]): string[] {
-  const allowed = buildAllowedWordSet(whitelist)
+function detectarNombresNoWhitelist(texto: string, whitelist: string[], insumos: unknown): string[] {
+  const allowed = buildAllowedWordSet(whitelist, insumos)
   const sospechosos = new Set<string>()
 
   for (const linea of texto.split(/\n+/)) {
-    const oraciones = linea.split(/(?<=[.!?])\s+/)
+    // : y — también abren cláusula con mayúscula legítima ("*Anticipo:* Seguimos…")
+    const oraciones = linea.split(/(?<=[.!?:—])\s+/)
     for (const oracion of oraciones) {
       const palabras = oracion.trim().split(/\s+/).filter(Boolean)
       for (let i = 1; i < palabras.length; i++) {
@@ -175,6 +191,7 @@ describeEval('eval: generación real del status de equipo (golden set W29 Liverp
       model: GENERATE,
       system,
       messages,
+      maxTokens: 8000, // mismo presupuesto que producción — el razonamiento consume max_tokens
     })
 
     fs.writeFileSync(OUTPUT_PATH, text, 'utf-8')
@@ -188,7 +205,7 @@ describeEval('eval: generación real del status de equipo (golden set W29 Liverp
 
     // b. Cero alucinación de nombres: todo nombre-candidato detectado debe
     // estar en la whitelist (o en las excepciones documentadas arriba).
-    const sospechosos = detectarNombresNoWhitelist(text, contextoW29Liverpool.whitelist)
+    const sospechosos = detectarNombresNoWhitelist(text, contextoW29Liverpool.whitelist, contextoW29Liverpool)
     expect(sospechosos, `nombres fuera de whitelist detectados: ${sospechosos.join(', ')}`).toEqual([])
 
     // c. Estructura: sección de avances siempre; sección de acuerdos porque

@@ -58,6 +58,9 @@ export async function generateStatusEquipo(userId: string, projectId: string): P
     model: GENERATE,
     system,
     messages,
+    // el razonamiento del modelo consume del mismo max_tokens que el texto —
+    // con el default (2000) el status salía truncado a media palabra
+    maxTokens: 8000,
   })
 
   return prisma.artifact.create({
