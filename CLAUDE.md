@@ -68,7 +68,17 @@ npx tsx scripts/generate-token.ts <email>   # generar un PAT nuevo
 
 ## Estado del roadmap
 
-Las 6 fases del diseño están completas (Fundación, Mi Día+PWA, Semana+Skills+Calendario,
+**Fase 7 (PMO con IA) — Fase A implementada 2026-07-16** (diseño:
+`docs/plans/2026-07-16-fase7-pmo-ia-design.md`): minutas por junta con promoción a
+Task/Issue (drawer en /dia), generador de status de equipo en la voz de Mau
+(/proyectos/[id]), capa IA (`src/lib/ai/` — `callModel` es el ÚNICO punto que toca el SDK
+de Anthropic y registra AiCall), ensamblador determinista de insumos, Artifact con par
+borrador/final (flywheel de aprendizaje), evals gated (`EVAL=1` + `ANTHROPIC_API_KEY`,
+`tests/ai/status-eval.test.ts`). Requiere `ANTHROPIC_API_KEY` en `.env`/Vercel para
+generar en vivo (sin ella la UI muestra banner ámbar, no crashea). Fases B–D pendientes
+(§8 del doc de diseño).
+
+Las 6 fases del diseño original están completas (Fundación, Mi Día+PWA, Semana+Skills+Calendario,
 Proyectos+Desarrollo, Cliente+Economía, Equipo). Detalle de cada una en la memoria de Claude
 (`project_wtw_app.md`) y en los commits de este repo. Diferido conscientemente (documentado
 en cada plan de fase, no olvidado): invitación por email, cambio de contraseña propio, roles
