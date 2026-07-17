@@ -1,5 +1,8 @@
 import { verifySession } from '@/lib/auth'
 import { getProyectoDetalle } from './service'
+import { listMinutasAction, listStatusArtifactsAction } from './status-actions'
+import { MinutasSection } from './MinutasSection'
+import { StatusEquipoSection } from './StatusEquipoSection'
 
 export default async function ProyectoDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await verifySession()
@@ -15,6 +18,11 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
       </main>
     )
   }
+
+  const [minutas, artifacts] = await Promise.all([
+    listMinutasAction(id),
+    listStatusArtifactsAction(id),
+  ])
 
   return (
     <main className="min-h-dvh bg-neutral-50">
@@ -57,6 +65,10 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
             {detalle.issuesAbiertos.length === 0 && <p className="text-sm text-neutral-400">Sin pendientes abiertos.</p>}
           </div>
         </section>
+
+        <MinutasSection minutas={minutas} />
+
+        <StatusEquipoSection projectId={id} artifactsIniciales={artifacts} />
       </div>
     </main>
   )
