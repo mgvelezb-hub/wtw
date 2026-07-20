@@ -55,7 +55,7 @@ export function InboxBoard({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4">
-      <h1 className="text-lg font-bold text-[#0c4a45]">📥 Inbox</h1>
+      <h1 className="text-lg font-bold text-[#0c4a45]">📥 Actividades</h1>
 
       <form
         onSubmit={(e) => {
@@ -160,7 +160,7 @@ export function InboxBoard({
             </div>
           </li>
         ))}
-        {tasks.length === 0 && <p className="text-sm text-neutral-400">Inbox vacío — todo triageado.</p>}
+        {tasks.length === 0 && <p className="text-sm text-neutral-400">Sin actividades pendientes — todo triageado.</p>}
       </ul>
     </div>
   )

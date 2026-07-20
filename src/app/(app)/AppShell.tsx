@@ -10,7 +10,7 @@ const NAV = [
     items: [
       { href: '/dia', label: 'Mi Día', icon: '☀️' },
       { href: '/semana', label: 'Mi Semana', icon: '🗓️' },
-      { href: '/inbox', label: 'Inbox', icon: '📥' },
+      { href: '/inbox', label: 'Actividades', icon: '📥' },
     ],
   },
   {
