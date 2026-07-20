@@ -130,7 +130,7 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
     await createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, 0)
 
     return week
-  })
+  }, { timeout: 20000 })
 }
 
 export async function appendBlocks(
@@ -145,8 +145,9 @@ export async function appendBlocks(
   const wins = await prisma.win.findMany({ where: { weekId: week.id } })
   for (const w of wins) winByPosicion.set(w.posicion, w.id)
 
-  await prisma.$transaction((tx) =>
-    createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, week.blocks.length)
+  await prisma.$transaction(
+    (tx) => createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, week.blocks.length),
+    { timeout: 20000 }
   )
 
   // createTasksAndBlocks no devuelve nada — sin este refetch, la respuesta
