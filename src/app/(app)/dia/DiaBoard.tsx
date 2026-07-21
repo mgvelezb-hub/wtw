@@ -690,7 +690,7 @@ function RunningHero({
               href="/focus"
               className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
             >
-              🎯 Modo Focus
+              ⏱️ Modo Focus
             </Link>
             <button
               disabled={pending}
