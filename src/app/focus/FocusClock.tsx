@@ -15,10 +15,10 @@ export function FocusClock({ tickMs }: { tickMs: number | null }) {
 
   return (
     <div className="text-right">
-      <p className="font-serif text-6xl font-thin tabular-nums tracking-wide text-[#ededed]">
+      <p className="font-serif text-7xl font-thin tabular-nums tracking-wide text-[#ededed]">
         {hh}:{mm}
       </p>
-      <p className="mt-1 text-sm capitalize tracking-wide text-[#8a8578]">{fecha}</p>
+      <p className="mt-1 text-base capitalize tracking-wide text-[#8a8578]">{fecha}</p>
     </div>
   )
 }

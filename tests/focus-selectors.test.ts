@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { getActiveBlock, getNextTaskBlock, getUpcomingMeeting, type FocusBlock } from '@/lib/focus-selectors'
+import {
+  getActiveBlock,
+  getNextTaskBlock,
+  getUpcomingMeeting,
+  getBreakSuggestion,
+  pickRememberedActivity,
+  type FocusBlock,
+} from '@/lib/focus-selectors'
 
 function block(overrides: Partial<FocusBlock>): FocusBlock {
   return {
@@ -76,5 +83,45 @@ describe('getUpcomingMeeting', () => {
 
   it('devuelve null si no hay juntas próximas', () => {
     expect(getUpcomingMeeting([block({ id: 'a', inicio: '09:00' })], '10:00', 5)).toBeNull()
+  })
+})
+
+describe('getBreakSuggestion', () => {
+  it('sugiere descanso corto y umbral bajo para tareas de 60min o menos', () => {
+    expect(getBreakSuggestion(60)).toEqual({
+      umbralMin: 30,
+      breakMin: 5,
+      actividad: 'Ponte de pie, estira, o mira por la ventana.',
+    })
+  })
+
+  it('sugiere descanso largo y umbral alto para tareas de más de 60min', () => {
+    expect(getBreakSuggestion(90)).toEqual({
+      umbralMin: 50,
+      breakMin: 10,
+      actividad: 'Camina, estira, o toca guitarra unos minutos.',
+    })
+  })
+})
+
+describe('pickRememberedActivity', () => {
+  it('sin focusTaskId ni actividad corriendo, no confunde una junta (taskId null) con la actividad', () => {
+    const blocks = [block({ id: 'j', tipo: 'junta', externa: true, taskId: null })]
+    expect(pickRememberedActivity(blocks, null, null)).toBeNull()
+  })
+
+  it('sin focusTaskId pero con algo corriendo, usa lo que corre', () => {
+    const blocks = [block({ id: 'a', runningSince: '2026-07-30T15:00:00.000Z' })]
+    expect(pickRememberedActivity(blocks, null, blocks[0])?.id).toBe('a')
+  })
+
+  it('con focusTaskId de una tarea no terminada, la muestra aunque nada esté corriendo (pausada)', () => {
+    const blocks = [block({ id: 'a', taskId: 'task-1', done: false })]
+    expect(pickRememberedActivity(blocks, 'task-1', null)?.id).toBe('a')
+  })
+
+  it('con focusTaskId de una tarea ya terminada, cae a lo que esté corriendo (o null)', () => {
+    const blocks = [block({ id: 'a', taskId: 'task-1', done: true })]
+    expect(pickRememberedActivity(blocks, 'task-1', null)).toBeNull()
   })
 })

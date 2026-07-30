@@ -51,3 +51,29 @@ export function getUpcomingMeeting<T extends FocusBlock>(
   const minutesUntil = toMin(next.inicio) - toMin(nowHHMM)
   return { block: next, minutesUntil, highlight: minutesUntil <= thresholdMin }
 }
+
+export type BreakSuggestion = { umbralMin: number; breakMin: number; actividad: string }
+
+// Basado en investigación de microbreaks (Albulescu et al. 2022): tareas de
+// alta complejidad no se benefician de interrupciones frecuentes (el costo de
+// retomar el foco es alto), pero sí de un descanso más largo cuando ocurre.
+export function getBreakSuggestion(planMin: number): BreakSuggestion {
+  if (planMin > 60) {
+    return { umbralMin: 50, breakMin: 10, actividad: 'Camina, estira, o toca guitarra unos minutos.' }
+  }
+  return { umbralMin: 30, breakMin: 5, actividad: 'Ponte de pie, estira, o mira por la ventana.' }
+}
+
+// Al pausar, runningSince vuelve a null y getActiveBlock ya no encuentra la
+// tarea — por eso FocusView recuerda su taskId aparte. Ese recuerdo empieza
+// en null, y comparar `b.taskId === null` haría match con CUALQUIER bloque
+// sin tarea (juntas externas) en vez de significar "nada seleccionado" — de
+// ahí el guard explícito.
+export function pickRememberedActivity<T extends FocusBlock>(
+  blocks: T[],
+  focusTaskId: string | null,
+  runningNow: T | null
+): T | null {
+  const remembered = focusTaskId ? blocks.find((b) => b.taskId === focusTaskId) ?? null : null
+  return remembered && !remembered.done ? remembered : runningNow
+}

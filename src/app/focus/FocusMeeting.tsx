@@ -12,9 +12,9 @@ export function FocusMeeting({ meeting }: { meeting: UpcomingMeeting<FocusBlock>
         highlight ? 'border-[#c9a24b] bg-[#c9a24b]/10 animate-pulse' : 'border-white/10'
       }`}
     >
-      <p className="text-[11px] uppercase tracking-wide text-[#8a8578]">Próxima junta</p>
-      <p className="text-sm font-medium text-[#ededed]">{block.titulo}</p>
-      <p className={`text-xs ${highlight ? 'text-[#c9a24b]' : 'text-[#8a8578]'}`}>
+      <p className="text-xs uppercase tracking-wide text-[#8a8578]">Próxima junta</p>
+      <p className="text-base font-medium text-[#ededed]">{block.titulo}</p>
+      <p className={`text-sm ${highlight ? 'text-[#c9a24b]' : 'text-[#8a8578]'}`}>
         {block.inicio} · en {minutesUntil} min
       </p>
     </div>

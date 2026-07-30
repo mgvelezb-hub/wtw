@@ -2,7 +2,7 @@
 
 import { useTransition } from 'react'
 import type { DayBlockView } from '@/app/(app)/dia/service'
-import { stopTimerAction, toggleDodItemAction } from '@/app/(app)/dia/actions'
+import { startTimerAction, stopTimerAction, toggleDodItemAction } from '@/app/(app)/dia/actions'
 
 function fmt(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
@@ -16,41 +16,56 @@ function fmt(totalSeconds: number): string {
 export function FocusActivity({
   activity,
   tickMs,
+  isPaused,
   onTerminar,
 }: {
   activity: DayBlockView
   tickMs: number | null
+  isPaused: boolean
   onTerminar: (taskId: string, blockFin: string) => void
 }) {
   const [pending, startTransition] = useTransition()
 
-  const seconds =
+  const elapsed =
     tickMs === null || !activity.runningSince
       ? activity.accumulatedSeconds
       : activity.accumulatedSeconds + (tickMs - new Date(activity.runningSince).getTime()) / 1000
-  const over = seconds > activity.planMin * 60
+  const totalPlan = activity.planMin * 60
+  const over = elapsed >= totalPlan
+  const display = over ? elapsed - totalPlan : totalPlan - elapsed
+  const progressPct = Math.min(100, (elapsed / totalPlan) * 100)
 
   return (
     <div className="mx-auto max-w-2xl text-center">
       {activity.proyecto && (
         <span
-          className="rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide text-white/90"
+          className="rounded-full px-3 py-1 text-sm font-bold uppercase tracking-wide text-white/90"
           style={{ backgroundColor: activity.proyecto.color }}
         >
           {activity.proyecto.nombre}
         </span>
       )}
-      <h1 className="mt-3 font-serif text-4xl font-light text-[#ededed]">{activity.titulo}</h1>
+      <h1 className="mt-3 font-serif text-5xl font-light text-[#ededed]">{activity.titulo}</h1>
 
-      <p className={`mt-6 font-mono text-7xl font-bold tabular-nums ${over ? 'text-[#c9a24b]' : 'text-white'}`}>
-        {fmt(seconds)}
+      <p className={`mt-6 font-mono text-8xl font-bold tabular-nums ${over ? 'text-[#c9a24b]' : 'text-white'}`}>
+        {over ? '+' : ''}
+        {fmt(display)}
       </p>
-      <p className="mt-1 text-sm text-[#8a8578]">de {activity.planMin}min planeados</p>
+      <p className="mt-1 text-base text-[#8a8578]">
+        {over ? `tiempo extra sobre ${activity.planMin}min planeados` : `restante de ${activity.planMin}min planeados`}
+      </p>
+
+      <div className="mx-auto mt-4 h-1 max-w-md overflow-hidden rounded-full bg-white/10">
+        <div
+          className={`h-full transition-all ${over ? 'bg-[#c9a24b]' : 'bg-white/40'}`}
+          style={{ width: `${progressPct}%` }}
+        />
+      </div>
 
       {activity.dodItems.length > 0 && (
         <ul className="mx-auto mt-6 max-w-sm space-y-2 text-left">
           {activity.dodItems.map((d) => (
-            <li key={d.id} className="flex items-center gap-2 text-sm">
+            <li key={d.id} className="flex items-center gap-2 text-base">
               <input
                 type="checkbox"
                 checked={d.done}
@@ -64,17 +79,27 @@ export function FocusActivity({
       )}
 
       <div className="mt-8 flex justify-center gap-3">
-        <button
-          disabled={pending}
-          onClick={() => startTransition(() => void stopTimerAction())}
-          className="rounded-md bg-white/10 px-5 py-2 text-sm font-bold text-white hover:bg-white/20"
-        >
-          ❚❚ Pausar
-        </button>
+        {isPaused ? (
+          <button
+            disabled={pending || !activity.taskId}
+            onClick={() => activity.taskId && startTransition(() => void startTimerAction(activity.taskId!))}
+            className="rounded-md bg-[#c9a24b] px-5 py-2 text-base font-bold text-[#1a1a1a] hover:bg-[#b8923f]"
+          >
+            ▶ Reanudar
+          </button>
+        ) : (
+          <button
+            disabled={pending}
+            onClick={() => startTransition(() => void stopTimerAction())}
+            className="rounded-md bg-white/10 px-5 py-2 text-base font-bold text-white hover:bg-white/20"
+          >
+            ❚❚ Pausar
+          </button>
+        )}
         <button
           disabled={pending || !activity.taskId}
           onClick={() => activity.taskId && onTerminar(activity.taskId, activity.fin)}
-          className="rounded-md bg-[#15803d] px-5 py-2 text-sm font-bold text-white hover:bg-[#12692f]"
+          className="rounded-md bg-[#15803d] px-5 py-2 text-base font-bold text-white hover:bg-[#12692f]"
         >
           ✓ Terminar
         </button>
