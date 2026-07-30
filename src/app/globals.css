@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* La app es solo modo claro por diseño. Sin esto, Safari/Chrome en un
+     dispositivo con modo oscuro del sistema (iPad/celular) le aplican su
+     tema oscuro nativo a inputs/textareas sin color explícito — texto casi
+     invisible aunque el CSS de la app nunca lo pida. */
+  color-scheme: light;
 }
 
 @theme inline {
