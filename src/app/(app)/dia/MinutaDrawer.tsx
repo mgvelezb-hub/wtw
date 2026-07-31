@@ -199,7 +199,7 @@ export function MinutaDrawer({
                   value={proyectoId ?? ''}
                   disabled={!!minutaId}
                   onChange={(e) => setProyectoId(e.target.value || null)}
-                  className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100 disabled:text-neutral-500"
+                  className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100 disabled:text-neutral-700"
                 >
                   <option value="" disabled>
                     Selecciona un proyecto…

@@ -22,3 +22,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Los controles de formulario no heredan color de forma confiable en todos los
+   navegadores — explícito para que ningún input dependa de la herencia. Las
+   clases de Tailwind (ej. disabled:text-neutral-700) siguen ganando por
+   especificidad. */
+input,
+textarea,
+select {
+  color: var(--foreground);
+}
+
+/* Tailwind v4 renderiza el placeholder como currentColor al 50% de alpha
+   (≈ #8b8b8b sobre blanco) — ilegible en pantalla brillante. En esta app el
+   placeholder ES la instrucción del campo ("¿Qué se dijo?"), no decoración:
+   color sólido y opacidad plena (Firefox la baja por default). */
+::placeholder {
+  color: #525252;
+  opacity: 1;
+}
