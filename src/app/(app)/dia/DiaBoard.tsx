@@ -30,6 +30,8 @@ import {
   setBlockDurationAction,
   unscheduleBlockAction,
   reorderDayAction,
+  descartarTareaAction,
+  descartarPendienteAction,
 } from './dnd-actions'
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -510,6 +512,17 @@ export function DiaBoard(p: DiaBoardProps) {
                       >
                         + Hoy
                       </button>
+                      <button
+                        disabled={pending}
+                        onClick={() => {
+                          if (!window.confirm(`¿Quitar "${pe.titulo}"? Sale de pendientes, sin contar como hecha.`)) return
+                          startTransition(() => void descartarPendienteAction(pe.id))
+                        }}
+                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
+                        title="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -964,6 +977,19 @@ function BlockCard({
           >
             {b.done ? '↺' : '✓'}
           </button>
+          {isTarea && !b.done && (
+            <button
+              disabled={pending}
+              onClick={() => {
+                if (!window.confirm(`¿Quitar "${b.titulo}"? Sale del día y de pendientes, sin contar como hecha.`)) return
+                startTransition(() => void descartarTareaAction(b.id))
+              }}
+              className="rounded-md px-2 py-1.5 text-sm font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
+              title="Ya no aplica — quitar del día y de pendientes (no cuenta como terminada)"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 

@@ -378,6 +378,34 @@ export async function unscheduleBlockAction(blockId: string) {
   revalidatePath('/dia')
 }
 
+// Descarta una tarea que ya no hace sentido (cambio de prioridades): borra su
+// bloque del día y la manda a `deferred`, NO a `done`. Marcarla como terminada
+// —el atajo que se venía usando para limpiar el día— inflaba el avance y el
+// factor de realismo con trabajo que nunca se hizo. `deferred` también la saca
+// del parking lot, que solo lista `backlog`.
+export async function descartarTareaAction(blockId: string) {
+  const userId = await uid()
+  const block = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true } })
+  if (!block || block.week.userId !== userId) throw new Error('block no encontrado')
+  if (!block.taskId) throw new Error('solo tareas se pueden descartar')
+
+  await prisma.$transaction([
+    prisma.block.delete({ where: { id: blockId } }),
+    prisma.task.update({ where: { id: block.taskId }, data: { estatus: 'deferred', weekId: null } }),
+  ])
+  revalidatePath('/dia')
+}
+
+// Descarta una tarea del parking lot (sin bloque agendado) — mismo criterio que
+// descartarTareaAction pero sin bloque que borrar.
+export async function descartarPendienteAction(taskId: string) {
+  const userId = await uid()
+  const task = await prisma.task.findUnique({ where: { id: taskId } })
+  if (!task || task.userId !== userId) throw new Error('task no encontrada')
+  await prisma.task.update({ where: { id: taskId }, data: { estatus: 'deferred', weekId: null } })
+  revalidatePath('/dia')
+}
+
 // Marca una junta como cancelada — deja de contar en capacidad y en el reflow,
 // y se muestra tachada en Terminadas/Canceladas. Dura hasta el siguiente
 // "Actualizar juntas": si de verdad se canceló en Outlook, el sync ya no la
