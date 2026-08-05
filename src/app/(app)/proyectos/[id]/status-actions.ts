@@ -24,6 +24,7 @@ export type MinutaItemView = {
   id: string
   tipo: MinutaItemTipo
   texto: string
+  textoRich: string | null
   responsable: string | null
   estado: MinutaItemEstado
 }
@@ -48,6 +49,7 @@ export async function listMinutasAction(projectId: string): Promise<MinutaView[]
       id: i.id,
       tipo: i.tipo,
       texto: i.texto,
+      textoRich: i.textoRich,
       responsable: i.responsable,
       estado: i.estado,
     })),

@@ -16,6 +16,7 @@ export type MinutaItemView = {
   id: string
   tipo: MinutaItemTipo
   texto: string
+  textoRich: string | null
   responsable: string | null
   fechaCompromiso: string | null
   estado: MinutaItemEstado
@@ -23,6 +24,7 @@ export type MinutaItemView = {
 
 export type MinutaView = {
   id: string
+  projectId: string
   titulo: string
   asistentes: string[]
   items: MinutaItemView[]
@@ -30,12 +32,14 @@ export type MinutaView = {
 
 function toView(minuta: {
   id: string
+  projectId: string
   titulo: string
   asistentes: string[]
   items: {
     id: string
     tipo: MinutaItemTipo
     texto: string
+    textoRich: string | null
     responsable: string | null
     fechaCompromiso: Date | null
     estado: MinutaItemEstado
@@ -43,12 +47,14 @@ function toView(minuta: {
 }): MinutaView {
   return {
     id: minuta.id,
+    projectId: minuta.projectId,
     titulo: minuta.titulo,
     asistentes: minuta.asistentes,
     items: minuta.items.map((i) => ({
       id: i.id,
       tipo: i.tipo,
       texto: i.texto,
+      textoRich: i.textoRich,
       responsable: i.responsable,
       fechaCompromiso: i.fechaCompromiso ? i.fechaCompromiso.toISOString().slice(0, 10) : null,
       estado: i.estado,
@@ -99,6 +105,7 @@ export type GuardarItemInput = {
   item: {
     tipo: MinutaItemTipo
     texto: string
+    textoRich?: string
     responsable?: string
     fechaCompromiso?: string
   }
@@ -131,6 +138,7 @@ export async function guardarItemAction(input: GuardarItemInput): Promise<Minuta
       minutaId,
       tipo: input.item.tipo,
       texto: input.item.texto,
+      textoRich: input.item.textoRich || undefined,
       responsable: input.item.responsable || undefined,
       fechaCompromiso: input.item.fechaCompromiso ? new Date(input.item.fechaCompromiso) : undefined,
       orden,

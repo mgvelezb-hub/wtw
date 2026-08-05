@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import type { MinutaItemTipo } from '@prisma/client'
 import type { DayBlockView, ProyectoActivoView } from './service'
+import { MinutaEditor } from './MinutaEditor'
 import {
   getMinutaExistenteAction,
   getAsistentesSugeridosAction,
@@ -71,6 +72,7 @@ export function MinutaDrawer({
   const [sugerencias, setSugerencias] = useState<string[]>([])
   const [tipo, setTipo] = useState<MinutaItemTipo>('acuerdo')
   const [texto, setTexto] = useState('')
+  const [textoRich, setTextoRich] = useState('')
   const [responsable, setResponsable] = useState('')
   const [fechaCompromiso, setFechaCompromiso] = useState('')
   const [mostrarMasTipos, setMostrarMasTipos] = useState(false)
@@ -90,6 +92,10 @@ export function MinutaDrawer({
           setItems(data.items)
           setTitulo(data.titulo)
           setAsistentes(data.asistentes)
+          // Sin esto el select quedaba deshabilitado (por minutaId) Y vacío (porque
+          // block.proyectoId es null en juntas de Outlook): imposible agregar más
+          // items — pedía proyecto y no dejaba elegirlo.
+          setProyectoId(data.projectId)
         }
       }
       if (!cancelado) setCargando(false)
@@ -146,6 +152,7 @@ export function MinutaDrawer({
         item: {
           tipo,
           texto: textoActual,
+          textoRich: textoRich || undefined,
           responsable: responsableActual || undefined,
           fechaCompromiso: fechaCompromiso || undefined,
         },
@@ -153,6 +160,7 @@ export function MinutaDrawer({
       setMinutaId(data.id)
       setItems(data.items)
       setTexto('')
+      setTextoRich('')
       setResponsable('')
       setFechaCompromiso('')
     })
@@ -287,12 +295,13 @@ export function MinutaDrawer({
                 </div>
               )}
 
-              <textarea
-                value={texto}
-                onChange={(e) => setTexto(e.target.value)}
+              <MinutaEditor
+                html={textoRich}
                 placeholder="¿Qué se dijo?"
-                rows={2}
-                className="mt-2 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm"
+                onChange={({ html, texto }) => {
+                  setTextoRich(html)
+                  setTexto(texto)
+                }}
               />
               <div className="mt-1.5 flex gap-1.5">
                 <input
@@ -343,7 +352,14 @@ export function MinutaDrawer({
                         </button>
                       ) : null}
                     </div>
-                    <p className="mt-1 text-neutral-800">{it.texto}</p>
+                    {it.textoRich ? (
+                      <div
+                        className="minuta-rich mt-1 text-neutral-800"
+                        dangerouslySetInnerHTML={{ __html: it.textoRich }}
+                      />
+                    ) : (
+                      <p className="mt-1 text-neutral-800">{it.texto}</p>
+                    )}
                     {(it.responsable || it.fechaCompromiso) && (
                       <p className="mt-1 text-[11px] text-neutral-400">
                         {it.responsable}

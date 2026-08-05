@@ -423,7 +423,10 @@ model MinutaItem {
   minutaId          String
   minuta            Minuta           @relation(fields: [minutaId], references: [id], onDelete: Cascade)
   tipo              MinutaItemTipo
-  texto             String
+  texto             String // SIEMPRE texto plano: es lo que consumen la promoción a Task/Issue
+  // (titulo/descripcion) y el ensamblador de la IA. Nunca guardar markup aquí.
+  textoRich         String? // HTML del editor enriquecido, cuando el item se capturó con formato.
+  // La UI lo prefiere para mostrar; si es null cae a `texto`.
   responsable       String? // nombre libre (tercero del cliente o interno)
   responsableUserId String? // si el responsable es usuario de la app (multiplayer-ready)
   fechaCompromiso   DateTime?        @db.Date

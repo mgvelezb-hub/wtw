@@ -42,7 +42,11 @@ export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
                     {TIPO_LABEL[item.tipo]}
                   </span>
                   <span className="flex-1 text-neutral-800">
-                    {item.texto}
+                    {item.textoRich ? (
+                      <span className="minuta-rich" dangerouslySetInnerHTML={{ __html: item.textoRich }} />
+                    ) : (
+                      item.texto
+                    )}
                     {item.responsable && <span className="text-neutral-500"> — {item.responsable}</span>}
                   </span>
                   {item.estado === 'convertido' && (
