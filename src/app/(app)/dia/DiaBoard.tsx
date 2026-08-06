@@ -46,12 +46,16 @@ function ConfirmarQuitar({
   titulo,
   className,
   armedClassName,
+  icono = '✕',
+  textoArmado = '¿Quitar?',
 }: {
   onConfirm: () => void
   disabled: boolean
   titulo: string
   className: string
   armedClassName: string
+  icono?: string
+  textoArmado?: string
 }) {
   const [armed, setArmed] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -80,11 +84,129 @@ function ConfirmarQuitar({
       onBlur={() => armed && disarm()}
       className={armed ? armedClassName : className}
       title={armed ? 'Clic otra vez para confirmar' : titulo}
-      aria-label={armed ? 'Confirmar quitar' : titulo}
+      aria-label={armed ? `Confirmar: ${textoArmado}` : titulo}
     >
-      {armed ? '¿Quitar?' : '✕'}
+      {armed ? textoArmado : icono}
     </button>
   )
+}
+
+// Input en línea para sustituir `window.prompt`, que carga la misma trampa que
+// `confirm`: si el navegador silencia los diálogos de la página, `prompt()`
+// devuelve `null` sin abrir nada y el botón queda muerto hasta recargar.
+// Primer clic abre el input en el lugar del botón; Enter o ✓ guardan, Esc o ✕
+// cancelan. Sin blur-cancela: pelearse con el clic en ✓ es una fuente clásica de
+// "guardé y no pasó nada".
+function CampoEnLinea({
+  icono,
+  titulo,
+  valorInicial,
+  placeholder,
+  ancho,
+  parse,
+  onSubmit,
+  disabled,
+  className,
+}: {
+  icono: string
+  titulo: string
+  valorInicial?: string
+  placeholder?: string
+  ancho: string
+  parse: (raw: string) => string | number | null
+  onSubmit: (valor: string | number) => void
+  disabled: boolean
+  className: string
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [raw, setRaw] = useState('')
+  const parsed = parse(raw)
+  const valido = parsed !== null
+
+  function abrir() {
+    setRaw(valorInicial ?? '')
+    setAbierto(true)
+  }
+
+  function guardar() {
+    if (parsed === null) return
+    setAbierto(false)
+    onSubmit(parsed)
+  }
+
+  if (!abierto) {
+    return (
+      <button disabled={disabled} onClick={abrir} className={className} title={titulo} aria-label={titulo}>
+        {icono}
+      </button>
+    )
+  }
+
+  return (
+    <span
+      draggable={false}
+      onDragStart={(e) => e.stopPropagation()}
+      className="ml-1 inline-flex items-center gap-1 align-middle"
+    >
+      <input
+        autoFocus
+        value={raw}
+        placeholder={placeholder}
+        aria-label={titulo}
+        disabled={disabled}
+        onChange={(e) => setRaw(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            guardar()
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault()
+            setAbierto(false)
+          }
+        }}
+        className={`${ancho} rounded border px-1 py-0.5 text-xs text-neutral-900 ${
+          valido ? 'border-neutral-300' : 'border-[#b43232]'
+        }`}
+      />
+      <button
+        disabled={disabled || !valido}
+        onClick={guardar}
+        className="text-xs font-bold text-[#0c4a45] disabled:text-neutral-300"
+        title="Guardar"
+        aria-label="Guardar"
+      >
+        ✓
+      </button>
+      <button
+        disabled={disabled}
+        onClick={() => setAbierto(false)}
+        className="text-xs font-bold text-neutral-400 hover:text-[#b43232]"
+        title="Cancelar"
+        aria-label="Cancelar"
+      >
+        ✕
+      </button>
+    </span>
+  )
+}
+
+// Parsers compartidos por los CampoEnLinea. Devuelven null cuando el texto aún
+// no es válido — eso deshabilita ✓ y pinta el borde en rojo, en vez de tragarse
+// el valor en silencio como hacía el prompt.
+function parseHora(raw: string): string | null {
+  const t = raw.trim()
+  if (!/^\d{1,2}:\d{2}$/.test(t)) return null
+  const [h, m] = t.split(':').map(Number)
+  if (h > 23 || m > 59) return null
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function parseMinutos(raw: string): number | null {
+  const t = raw.trim()
+  if (!/^\d+$/.test(t)) return null
+  const n = Number(t)
+  return n > 0 && n <= 1440 ? n : null
 }
 
 type Win = { posicion: number; titulo: string; estatus: string }
@@ -246,17 +368,15 @@ export function DiaBoard(p: DiaBoardProps) {
                 >
                   ▶ Arrancar día
                 </button>
-                <button
+                <ConfirmarQuitar
                   disabled={pending}
-                  onClick={() => {
-                    if (window.confirm('¿Mover las tareas de hoy sin terminar al siguiente día hábil?')) {
-                      startTransition(() => void closeDayAction(p.today))
-                    }
-                  }}
+                  onConfirm={() => startTransition(() => void closeDayAction(p.today))}
+                  icono="🌙 Cerrar día"
+                  textoArmado="¿Mover pendientes a mañana?"
+                  titulo="Cerrar día — mueve las tareas sin terminar al siguiente día hábil"
                   className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
-                >
-                  🌙 Cerrar día
-                </button>
+                  armedClassName="rounded-full border border-[#b43232] bg-[#b43232] px-3 py-1 text-xs font-bold text-white"
+                />
               </>
             )}
           </div>
@@ -925,17 +1045,17 @@ function BlockCard({
           <p className="text-xs font-medium text-neutral-500">
             {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
             {isTarea && !b.done && !b.runningSince && enVivo && (
-              <button
+              <CampoEnLinea
+                icono="🕐"
+                titulo="Cambiar hora de inicio (HH:MM)"
+                valorInicial={b.inicio === 'flex' ? '09:00' : b.inicio}
+                placeholder="HH:MM"
+                ancho="w-16"
+                parse={parseHora}
                 disabled={pending}
-                onClick={() => {
-                  const hora = window.prompt('Nueva hora de inicio (HH:MM, bloques de 30 min):', b.inicio === 'flex' ? '09:00' : b.inicio)
-                  if (hora && /^\d{1,2}:\d{2}$/.test(hora)) startTransition(() => void setBlockTimeAction(b.id, hora))
-                }}
+                onSubmit={(hora) => startTransition(() => void setBlockTimeAction(b.id, String(hora)))}
                 className="ml-2 text-neutral-400 hover:text-[#0c4a45]"
-                title="Cambiar hora de inicio"
-              >
-                🕐
-              </button>
+              />
             )}
             {b.fueraDeJornada && !b.done && (
               <span className="ml-2 rounded bg-[#e8b94a] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
@@ -959,18 +1079,17 @@ function BlockCard({
               {fmt(seconds)}
               <span className="text-xs font-medium text-neutral-400"> / {horas(b.planMin)}</span>
               {!b.done && enVivo && (
-                <button
+                <CampoEnLinea
+                  icono="✎"
+                  titulo="Ajustar duración planeada (minutos)"
+                  valorInicial={String(b.planMin)}
+                  placeholder="min"
+                  ancho="w-14"
+                  parse={parseMinutos}
                   disabled={pending}
-                  onClick={() => {
-                    const min = window.prompt('Nueva duración planeada (minutos):', String(b.planMin))
-                    const n = min ? Number(min) : NaN
-                    if (!Number.isNaN(n) && n > 0) startTransition(() => void setBlockDurationAction(b.id, n))
-                  }}
+                  onSubmit={(min) => startTransition(() => void setBlockDurationAction(b.id, Number(min)))}
                   className="ml-1 text-neutral-400 hover:text-[#0c4a45]"
-                  title="Ajustar duración planeada"
-                >
-                  ✎
-                </button>
+                />
               )}
             </span>
           )}
@@ -1098,18 +1217,18 @@ function BlockCard({
       )}
 
       {isTarea && enVivo && !b.done && (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            const min = window.prompt('¿Cuántos minutos agregar manualmente?')
-            const n = min ? Number(min) : NaN
-            if (!Number.isNaN(n) && n > 0) startTransition(() => void createManualEntryAction(b.taskId!, n))
-          }}
-          className="mt-2 text-[10px] font-semibold text-neutral-500 hover:text-neutral-700"
-        >
-          ✎ agregar tiempo manual
-        </button>
+        <div className="mt-2">
+          <CampoEnLinea
+            icono="✎ agregar tiempo manual"
+            titulo="Agregar minutos trabajados a mano"
+            placeholder="min"
+            ancho="w-14"
+            parse={parseMinutos}
+            disabled={pending}
+            onSubmit={(min) => startTransition(() => void createManualEntryAction(b.taskId!, Number(min)))}
+            className="text-[10px] font-semibold text-neutral-500 hover:text-neutral-700"
+          />
+        </div>
       )}
     </div>
   )
