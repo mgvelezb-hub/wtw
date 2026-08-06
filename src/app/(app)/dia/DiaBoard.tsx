@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
 import { MinutaDrawer } from './MinutaDrawer'
@@ -33,6 +33,59 @@ import {
   descartarTareaAction,
   descartarPendienteAction,
 } from './dnd-actions'
+
+// Confirmación en dos clics, sin `window.confirm`. El diálogo nativo es una
+// trampa: si el navegador muestra "impedir que esta página cree diálogos
+// adicionales" y el usuario lo marca, `confirm()` empieza a devolver `false` de
+// inmediato y sin aviso — el botón queda muerto hasta recargar, sin señal de
+// que algo se rompió. Aquí el primer clic arma el botón ("¿Quitar?") y el
+// segundo ejecuta; se desarma solo a los 4 s o al salir el cursor.
+function ConfirmarQuitar({
+  onConfirm,
+  disabled,
+  titulo,
+  className,
+  armedClassName,
+}: {
+  onConfirm: () => void
+  disabled: boolean
+  titulo: string
+  className: string
+  armedClassName: string
+}) {
+  const [armed, setArmed] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function disarm() {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    setArmed(false)
+  }
+
+  useEffect(() => disarm, [])
+
+  return (
+    <button
+      disabled={disabled}
+      onClick={() => {
+        if (!armed) {
+          setArmed(true)
+          timer.current = setTimeout(() => setArmed(false), 4000)
+          return
+        }
+        disarm()
+        onConfirm()
+      }}
+      onMouseLeave={() => armed && disarm()}
+      onBlur={() => armed && disarm()}
+      className={armed ? armedClassName : className}
+      title={armed ? 'Clic otra vez para confirmar' : titulo}
+      aria-label={armed ? 'Confirmar quitar' : titulo}
+    >
+      {armed ? '¿Quitar?' : '✕'}
+    </button>
+  )
+}
 
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
@@ -512,17 +565,13 @@ export function DiaBoard(p: DiaBoardProps) {
                       >
                         + Hoy
                       </button>
-                      <button
+                      <ConfirmarQuitar
                         disabled={pending}
-                        onClick={() => {
-                          if (!window.confirm(`¿Quitar "${pe.titulo}"? Sale de pendientes, sin contar como hecha.`)) return
-                          startTransition(() => void descartarPendienteAction(pe.id))
-                        }}
+                        onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
+                        titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
                         className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
-                        title="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-                      >
-                        ✕
-                      </button>
+                        armedClassName="rounded bg-[#b43232] px-1.5 py-0.5 text-[10px] font-bold text-white"
+                      />
                     </div>
                   </div>
                 </div>
@@ -978,17 +1027,13 @@ function BlockCard({
             {b.done ? '↺' : '✓'}
           </button>
           {isTarea && !b.done && (
-            <button
+            <ConfirmarQuitar
               disabled={pending}
-              onClick={() => {
-                if (!window.confirm(`¿Quitar "${b.titulo}"? Sale del día y de pendientes, sin contar como hecha.`)) return
-                startTransition(() => void descartarTareaAction(b.id))
-              }}
+              onConfirm={() => startTransition(() => void descartarTareaAction(b.id))}
+              titulo="Ya no aplica — quitar del día y de pendientes (no cuenta como terminada)"
               className="rounded-md px-2 py-1.5 text-sm font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
-              title="Ya no aplica — quitar del día y de pendientes (no cuenta como terminada)"
-            >
-              ✕
-            </button>
+              armedClassName="rounded-md bg-[#b43232] px-2 py-1.5 text-xs font-bold text-white"
+            />
           )}
         </div>
       </div>
