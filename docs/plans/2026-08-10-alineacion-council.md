@@ -21,10 +21,11 @@ plan:
 1. **Agregar IA encima de ese hueco compone el error.** El planeador semanal recién construido
    estima duraciones a partir de tareas ya cronometradas — hay una. La función es correcta y la
    guarda de `medicionIncompleta` evita que mienta, pero su valor real está limitado por el dato.
-2. **Bajar la fricción del cronómetro no basta.** El comportamiento observado (marcar "hecho"
-   sin tocar la tarea, no cronometrar) no es indisciplina que se corrija con un tap menos: es
-   señal de que el instrumento pide algo que no embona con el día real. Prescribir más de la
-   misma disciplina mide obediencia a la herramienta, no la semana.
+2. **El hueco tiene dos causas y hay que separarlas.** Una es disciplina (no cronometrar), y esa
+   se construye, no se rodea. La otra es la naturaleza del trabajo: bomberazos y cambios de
+   prioridad del cliente que rompen el plan y hoy no se registran en ninguna parte. Tratarlas
+   como una sola —que es lo que hizo el council— lleva a la conclusión equivocada de reemplazar
+   el instrumento. Ver Fase 1.
 
 ## Pregunta abierta que ningún asesor pudo contestar
 
@@ -61,22 +62,43 @@ el council señaló que todos tratamos "matar" como la opción difícil cuando e
 
 Salida esperada: la tabla llena. Nada más. Sin esto, la Fase 1 es adivinanza.
 
-## Fase 1 — Medir sin pedir disciplina
+## Fase 1 — Las dos mecánicas, no una
 
-Sustituir la dependencia del cronómetro por-tarea por una **reconciliación de cierre de día de
-60 segundos**: una pantalla con los bloques que se planearon y las juntas del calendario ya
-precargados, donde solo se ajusta lo que pasó de verdad.
+**Corrección al veredicto del council (Mau, 2026-08-10).** El council concluyó que el
+cronómetro pelea contra el comportamiento y hay que reemplazarlo. Mau lo rechaza con un
+argumento mejor: *no cronometrar es una disciplina que necesita construir, no una restricción a
+la que haya que diseñarle un rodeo.* Diseñar el rodeo le resuelve el día de hoy y le quita el
+crecimiento — y la disciplina de cronometrar es ella misma parte de la rúbrica que tiene que
+demostrar ("Organiza sus prioridades para lograr el «cómo sí»", "Cumple lo que promete").
 
-Diferencias que importan respecto al cronómetro:
+Las dos mecánicas se construyen y **conviven**:
 
-- Una vez al día, no una vez por tarea.
-- Parte de lo que ya se sabe (plan + calendario) en vez de partir de cero.
-- No requiere acordarse en el momento — que es exactamente lo que falla.
+**(a) El cronómetro se queda como el instrumento primario.** Es el dato honesto y es la
+disciplina a desarrollar. No se le baja el rigor ni se le busca sustituto.
 
-**Compuerta:** dos semanas de uso. Si la cobertura de días reconciliados no llega a 70%, el
-ritual del factor de realismo **se declara muerto**, no diferido: el planeador cambia su
-matemática de coeficiente por una entrada directa de "horas que realmente tengo esta semana".
-No se intenta una tercera versión del mismo instrumento.
+**(b) Reconciliación de cierre de día, 60 segundos.** Una pantalla con los bloques planeados y
+las juntas del calendario ya precargados, donde se ajusta lo que pasó de verdad. Su propósito
+NO es reemplazar al cronómetro: es capturar **por qué** el plan se rompió, que en este trabajo
+es la mitad de la información y hoy se pierde completa.
+
+Lo que la reconciliación tiene que clasificar, no solo registrar:
+
+| Causa | Por qué importa |
+|---|---|
+| Bomberazo (urgencia no planeada) | Cuántas horas/semana se van a trabajo no comprometido, y de qué stakeholder vienen |
+| Cambio de prioridad del cliente | Insumo directo para renegociar alcance — evidencia, no percepción |
+| Junta que se alargó o apareció | Corrige la capacidad real, que hoy se calcula del calendario nominal |
+| Se trabajó sin cronómetro | Distingue "no lo hice" de "lo hice y no lo medí" — sin esto el factor no se puede corregir |
+
+La última fila es la que hace que las dos mecánicas se refuercen en vez de competir: la
+reconciliación no perdona el cronómetro, lo audita. Si la causa dominante durante semanas es
+"trabajé sin cronometrar", eso es un dato de disciplina y se ve. Si es "bomberazo", es un dato
+de negociación con el cliente y también se ve.
+
+**Compuerta (revisada):** dos semanas. Ya no se evalúa si el factor de realismo sobrevive —
+sobrevive, es el objetivo. Se evalúa qué causa domina, porque cada una lleva a un trabajo
+distinto: disciplina (Mau), renegociación de alcance (cliente), o corrección del cálculo de
+capacidad (código).
 
 ## Fase 2 — Recortar superficie
 
@@ -84,10 +106,48 @@ Con la tabla de la Fase 0 en mano:
 
 - **Matar** las fases B–D del PMO IA. No diferirlas: se podren y siguen apareciendo en cada
   planeación como deuda fantasma.
-- **Archivar `/desarrollo`** (competencias, niveles, evidencia) detrás de un flag. Tres asesores
-  lo llamaron disfraz por separado: no hay comité de promoción, nadie evalúa esos niveles.
-  Prueba aplicada: si desapareciera mañana, ninguna decisión cambia.
-- **Archivar `/roi` y `/equipo`** detrás de un flag hasta que exista una segunda persona real.
+- **`/desarrollo` NO se archiva. Se completa.** Ver Fase 2b. Tres asesores lo llamaron disfraz,
+  pero lo hicieron sobre una premisa falsa que yo introduje al enmarcar la pregunta del council
+  ("consultor solo, sin comité de promoción"). Falso: Mau es `Consultor Sr` con objetivo
+  `Gerente` dentro de VP, y la rúbrica de 48 reactivos en `prisma/seed-data/competencias-vp.ts`
+  es un instrumento real de la firma. La conclusión del council sobre esta capa queda anulada.
+- **Archivar `/roi`** detrás de un flag hasta que haya una decisión de precio que dependa de él.
+- **`/equipo` se conserva sin construirle nada más.** Es la superficie que hará falta cuando Mau
+  tenga reportes — y tener reportes es requisito de dos de las tres expectativas de Gerente.
+
+## Fase 2b — Cerrar el ciclo de desarrollo profesional
+
+El diseño de esta capa es correcto y está completo en el schema: `Level` (con expectativas),
+`Competency` (individual + 10 roles VP), `Evidence` (liga competencia ↔ Task o Deliverable real),
+y `Task.competencias` para etiquetar al planear. **Lo que falta es exactamente lo mismo que
+falla en el cronómetro: nada la alimenta.** `Evidence` solo se puede crear vía
+`POST /api/v1/evidence`; no hay captura en la UI. `getCoberturaCompetencias` son 15 líneas que
+cuentan evidencias sin contrastarlas contra nada.
+
+Cuatro piezas, en orden de valor:
+
+1. **Captura de evidencia en el momento del trabajo, no como ritual aparte.** Al cerrar un
+   `Deliverable` o una `Task` etiquetada con competencias, pedir una línea de evidencia. Un
+   campo, en el flujo que ya existe. Sin esto, todo lo demás de esta fase es decorado.
+2. **Cobertura contra el nivel OBJETIVO, no cobertura absoluta.** Hoy cuenta evidencias planas.
+   Lo que sirve es el hueco contra `Gerente`: qué reactivos llevan 0 evidencias y cuánto tiempo,
+   priorizados por lo que Gerente exige. Eso convierte un checklist en un plan de desarrollo.
+3. **Etiquetado de competencias en el planeador semanal.** El paso 2 (Wins) y el 3 (vaciado) son
+   el único momento del ciclo en que Mau ya está decidiendo en qué va a invertir la semana. Es
+   ahí donde se elige qué competencia se va a ejercitar — no al final, cuando ya no hay margen.
+4. **Mapa de stakeholders con cadencia de contacto.** Dos roles VP completos son sobre poder e
+   influencia ("La mano del Rey", "La estrategia que renovará al Estado") y la tercera
+   expectativa de Gerente es *proximidad con stakeholders*. Hoy los stakeholders de Liverpool
+   viven como texto libre dentro de títulos de tareas. Modelarlos —quién, poder/interés, último
+   contacto real, qué necesita— sirve al proyecto Y es la única forma de generar evidencia
+   verificable para esos dos roles.
+
+**El límite honesto de esta capa.** De las tres expectativas de Gerente, dos requieren personas
+que Mau hoy no tiene: *asignar y dar orientación a equipos*, y buena parte de "Quien cuida al
+equipo" y de las conductas sobre dar retroalimentación. Ninguna función genera esa evidencia.
+La app puede hacer el hueco explícito y con eso forzar la conversación correcta —¿hay juniors
+asignables en el engagement de Liverpool? ¿qué se puede delegar?— pero el trabajo es de Mau con
+VP, no de software. Documentarlo aquí evita construir un simulador de liderazgo de equipo.
 - **No tocar** la frontera de las dos capas de auth sobre un mismo service layer. El Ejecutor la
   llamó "el producto real" y es correcto: es lo que permite que Claude maneje la app.
 
