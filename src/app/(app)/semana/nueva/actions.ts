@@ -7,36 +7,76 @@ import { createWeekPayload } from '@/app/api/v1/weeks/service'
 import { isoWeekOf } from '@/lib/dates'
 
 export type NuevaSemanaWin = { titulo: string; dod?: string }
+
+// Una tarea del ritual puede venir del backlog (ya existe: `id`) o haberse
+// capturado en el paso 3 (nueva: sin `id`). Se resuelven por caminos distintos
+// —adoptar vs. crear— porque `tasks` en createWeekPayload siempre hace create y
+// duplicaría los pendientes del backlog.
 export type NuevaSemanaTask = {
+  id?: string
   ref: string
   titulo: string
   projectNombre?: string
   winPosicion?: number
-  estimadoHoras: number
+  estimadoMin: number
   dod: string[]
+  // Día al que se asignó en el paso 4. Sin día, la tarea entra a la semana pero
+  // sin bloque: queda en el parking lot de /dia.
+  fecha?: string
 }
 
-export async function crearSemanaAction(wins: NuevaSemanaWin[], tasks: NuevaSemanaTask[]) {
+export type CrearSemanaInput = {
+  reflexion?: string
+  desbloqueador?: string
+  wins: NuevaSemanaWin[]
+  tasks: NuevaSemanaTask[]
+}
+
+export async function crearSemanaAction(input: CrearSemanaInput) {
   const session = await verifySession()
   if (!session) throw new Error('no autenticado')
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } })
   const factorUsado = user.factorManual ? Number(user.factorManual) : 1.4
+  const ajustado = (min: number) => Math.round(min * factorUsado)
+
+  const nuevas = input.tasks.filter((t) => !t.id)
+  const delBacklog = input.tasks.filter((t) => t.id)
 
   await createWeekPayload(session.userId, {
     isoWeek: isoWeekOf(new Date()),
     factorUsado,
-    wins: wins.map((w, i) => ({ posicion: i + 1, titulo: w.titulo, dod: w.dod })),
-    tasks: tasks.map((t) => ({
+    reflexion: input.reflexion,
+    desbloqueador: input.desbloqueador,
+    wins: input.wins.map((w, i) => ({ posicion: i + 1, titulo: w.titulo, dod: w.dod })),
+    tasks: nuevas.map((t) => ({
       ref: t.ref,
       titulo: t.titulo,
       projectNombre: t.projectNombre,
       winPosicion: t.winPosicion,
-      estimadoMin: Math.round(t.estimadoHoras * 60),
-      ajustadoMin: Math.round(t.estimadoHoras * 60 * factorUsado),
+      estimadoMin: t.estimadoMin,
+      ajustadoMin: ajustado(t.estimadoMin),
       dod: t.dod,
     })),
-    blocks: [],
+    adoptar: delBacklog.map((t) => ({
+      id: t.id!,
+      winPosicion: t.winPosicion,
+      estimadoMin: t.estimadoMin,
+      ajustadoMin: ajustado(t.estimadoMin),
+    })),
+    // Bloques "flex": el ritual decide EN QUÉ DÍA va cada tarea, no a qué hora.
+    // La hora se acomoda en /dia con el reflow, que ya conoce juntas y jornada.
+    blocks: input.tasks
+      .filter((t) => t.fecha)
+      .map((t) => ({
+        fecha: t.fecha!,
+        inicio: 'flex',
+        fin: 'flex',
+        tipo: 'tarea' as const,
+        taskRef: t.id ?? t.ref,
+        titulo: t.titulo,
+        planMin: ajustado(t.estimadoMin),
+      })),
   })
 
   redirect('/semana')

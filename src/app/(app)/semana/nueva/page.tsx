@@ -1,13 +1,19 @@
+import { redirect } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
-import { NuevaSemanaForm } from './NuevaSemanaForm'
+import { contextoPlaneacion } from './service'
+import { PlaneadorSemanal } from './PlaneadorClient'
 
 export default async function NuevaSemanaPage() {
   const session = await verifySession()
-  if (!session) return null
+  if (!session) redirect('/login')
+
+  const ctx = await contextoPlaneacion(session.userId)
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
-      <NuevaSemanaForm />
+    <main className="min-h-dvh bg-neutral-50 p-4">
+      <div className="mx-auto max-w-3xl">
+        <PlaneadorSemanal ctx={ctx} />
+      </div>
     </main>
   )
 }

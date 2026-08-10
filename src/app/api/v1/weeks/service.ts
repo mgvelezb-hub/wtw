@@ -17,6 +17,13 @@ type TaskInput = {
   dod?: string[]
 }
 
+type AdoptarInput = {
+  id: string
+  winPosicion?: number
+  estimadoMin?: number
+  ajustadoMin?: number
+}
+
 type BlockInput = {
   fecha: string
   inicio: string
@@ -31,9 +38,16 @@ export type CreateWeekPayload = {
   isoWeek: string
   factorUsado: number
   reflexion?: string
+  // La actividad que destraba la semana (chip dorado). El campo ya existía en
+  // Week; lo escribe el paso 5 del planeador.
+  desbloqueador?: string
   horarioOverride?: string
   wins: WinInput[]
   tasks: TaskInput[]
+  // Tareas que YA existen en el backlog y se enganchan a esta semana. Sin esto,
+  // el planeador las duplicaría: `tasks` siempre hace task.create. El `ref` para
+  // los bloques es el propio id.
+  adoptar?: AdoptarInput[]
   blocks: BlockInput[]
 }
 
@@ -46,10 +60,13 @@ async function createTasksAndBlocks(
   tasks: TaskInput[],
   blocks: BlockInput[],
   winByPosicion: Map<number, string>,
-  ordenInicial: number
+  ordenInicial: number,
+  // Refs ya resueltas antes de entrar (tareas adoptadas del backlog). Los bloques
+  // las referencian igual que a las recién creadas.
+  refsPrevias?: Map<string, string>
 ) {
   const projectIdByNombre = new Map<string, string>()
-  const taskIdByRef = new Map<string, string>()
+  const taskIdByRef = new Map<string, string>(refsPrevias ?? [])
 
   for (const t of tasks) {
     let projectId: string | undefined
@@ -106,18 +123,37 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
   const { inicio, fin } = weekRange(payload.isoWeek)
 
   return prisma.$transaction(async (tx) => {
-    const week = await tx.week.create({
-      data: {
-        userId,
-        isoWeek: payload.isoWeek,
-        rangoInicio: inicio,
-        rangoFin: fin,
-        factorUsado: payload.factorUsado,
-        reflexion: payload.reflexion,
-        horarioOverride: payload.horarioOverride,
-        estatus: 'planning',
-      },
+    // Mi Día crea semanas vacías por su cuenta (weekForDate en dnd-actions) para
+    // colgar juntas sincronizadas o tareas arrastradas. Ese cascarón no es un
+    // plan: si existe, se reutiliza. Sin esto, planear el lunes después de abrir
+    // Mi Día tronaba por la restricción única (userId, isoWeek).
+    const previa = await tx.week.findUnique({
+      where: { userId_isoWeek: { userId, isoWeek: payload.isoWeek } },
+      include: { _count: { select: { wins: true, tasks: true } } },
     })
+
+    // Una semana CON plan nunca se fusiona en silencio: duplicaría wins y tareas.
+    if (previa && (previa._count.wins > 0 || previa._count.tasks > 0)) {
+      throw new Error(`la semana ${payload.isoWeek} ya tiene un plan (${previa._count.wins} wins, ${previa._count.tasks} tareas)`)
+    }
+
+    const datos = {
+      factorUsado: payload.factorUsado,
+      reflexion: payload.reflexion,
+      desbloqueador: payload.desbloqueador,
+      horarioOverride: payload.horarioOverride,
+      estatus: 'planning' as const,
+    }
+
+    const week = previa
+      ? await tx.week.update({ where: { id: previa.id }, data: datos })
+      : await tx.week.create({ data: { userId, isoWeek: payload.isoWeek, rangoInicio: inicio, rangoFin: fin, ...datos } })
+
+    // Los bloques que ya trae el cascarón (juntas de Outlook) conservan su orden:
+    // los nuevos se numeran después para no empatar.
+    const ordenInicial = previa
+      ? ((await tx.block.aggregate({ where: { weekId: week.id }, _max: { orden: true } }))._max.orden ?? -1) + 1
+      : 0
 
     const winByPosicion = new Map<number, string>()
     for (const w of payload.wins) {
@@ -127,7 +163,25 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
       winByPosicion.set(w.posicion, win.id)
     }
 
-    await createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, 0)
+    // Adoptar antes de crear: el update filtra por userId, así que un id ajeno
+    // no engancha nada en vez de robar la tarea de otro usuario.
+    const refsAdoptadas = new Map<string, string>()
+    for (const a of payload.adoptar ?? []) {
+      const { count } = await tx.task.updateMany({
+        where: { id: a.id, userId },
+        data: {
+          weekId: week.id,
+          winId: a.winPosicion ? winByPosicion.get(a.winPosicion) : undefined,
+          estimadoMin: a.estimadoMin,
+          ajustadoMin: a.ajustadoMin,
+          estatus: 'planned',
+        },
+      })
+      if (count === 0) throw new Error(`tarea ${a.id} no encontrada`)
+      refsAdoptadas.set(a.id, a.id)
+    }
+
+    await createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, ordenInicial, refsAdoptadas)
 
     return week
   }, { timeout: 20000 })
