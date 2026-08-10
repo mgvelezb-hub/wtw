@@ -48,6 +48,12 @@ export type CreateWeekPayload = {
   // el planeador las duplicaría: `tasks` siempre hace task.create. El `ref` para
   // los bloques es el propio id.
   adoptar?: AdoptarInput[]
+  // Opt-in del planeador: reutiliza un registro de semana VACÍO si ya existe.
+  // Mi Día crea esos cascarones (weekForDate en dnd-actions) para colgar juntas
+  // sincronizadas. Es opt-in y no el default a propósito: POST /weeks y la skill
+  // /wtw-semana deben seguir rechazando duplicados en vez de sobrescribir en
+  // silencio lo que ya está planeado.
+  reutilizarVacia?: boolean
   blocks: BlockInput[]
 }
 
@@ -132,9 +138,16 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
       include: { _count: { select: { wins: true, tasks: true } } },
     })
 
-    // Una semana CON plan nunca se fusiona en silencio: duplicaría wins y tareas.
-    if (previa && (previa._count.wins > 0 || previa._count.tasks > 0)) {
-      throw new Error(`la semana ${payload.isoWeek} ya tiene un plan (${previa._count.wins} wins, ${previa._count.tasks} tareas)`)
+    if (previa) {
+      // Una semana CON plan nunca se fusiona: duplicaría wins y tareas.
+      if (previa._count.wins > 0 || previa._count.tasks > 0) {
+        throw new Error(`la semana ${payload.isoWeek} ya tiene un plan (${previa._count.wins} wins, ${previa._count.tasks} tareas)`)
+      }
+      // Vacía, pero el llamador no pidió reutilizar: se rechaza igual. Mantiene
+      // el contrato de POST /weeks — duplicado es error, no sobrescritura.
+      if (!payload.reutilizarVacia) {
+        throw new Error(`la semana ${payload.isoWeek} ya existe`)
+      }
     }
 
     const datos = {

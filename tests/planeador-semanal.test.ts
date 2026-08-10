@@ -299,6 +299,7 @@ describe('cascarón de semana creado por Mi Día', () => {
       isoWeek: '2026-W33',
       factorUsado: 1.4,
       reflexion: 'reflexion',
+      reutilizarVacia: true,
       wins: [{ posicion: 1, titulo: 'Win' }],
       tasks: [{ ref: 't1', titulo: 'nueva', winPosicion: 1, estimadoMin: 60, ajustadoMin: 84 }],
       blocks: [{ fecha: '2026-08-10', inicio: 'flex', fin: 'flex', tipo: 'tarea', taskRef: 't1', titulo: 'nueva', planMin: 84 }],
@@ -333,5 +334,18 @@ describe('cascarón de semana creado por Mi Día', () => {
 
     const wins = await prisma.win.findMany({ where: { week: { userId: user.id } } })
     expect(wins).toHaveLength(1)
+  })
+
+  it('sin el opt-in, una semana vacía existente sigue siendo error — protege POST /weeks y la skill', async () => {
+    const user = await usuario()
+    await prisma.week.create({
+      data: { userId: user.id, isoWeek: '2026-W33', rangoInicio: new Date('2026-08-10'), rangoFin: new Date('2026-08-16'), factorUsado: 1.4, estatus: 'active' },
+    })
+
+    // Mismo payload que manda /wtw-semana: sin reutilizarVacia. Debe rechazar en
+    // vez de sobrescribir en silencio.
+    await expect(
+      createWeekPayload(user.id, { isoWeek: '2026-W33', factorUsado: 1.4, wins: [], tasks: [], blocks: [] })
+    ).rejects.toThrow(/ya existe/)
   })
 })
