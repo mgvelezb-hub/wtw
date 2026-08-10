@@ -14,6 +14,12 @@ async function seedLevels() {
         'Liderar tramos táctico-operativos, asignar y dar orientación a equipos, y establecer proximidad con stakeholders.',
     },
     { nombre: 'Gerente Sr', orden: 4, expectativas: null },
+    // Director y Socio faltaban: el escalafón se cortaba en Gerente Sr, así que
+    // /desarrollo no podía representar el camino completo. Las expectativas de
+    // cada uno las tiene que dictar VP — se dejan null en vez de inventarlas,
+    // igual que Analista, Consultor Sr y Gerente Sr.
+    { nombre: 'Director', orden: 5, expectativas: null },
+    { nombre: 'Socio', orden: 6, expectativas: null },
   ]
   const byNombre = new Map<string, string>()
   for (const l of levels) {

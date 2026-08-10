@@ -17,6 +17,7 @@ import {
   startDayAction,
 } from './actions'
 import { createManualEntryAction } from './timeentry-actions'
+import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import {
   scheduleTaskAction,
   moveBlockAction,
@@ -1145,6 +1146,23 @@ function BlockCard({
           >
             {b.done ? '↺' : '✓'}
           </button>
+          {isTarea && (
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => void marcarDelegableAction(b.taskId!, !b.delegable))}
+              className={`rounded-md px-2 py-1.5 text-sm font-bold ${
+                b.delegable ? 'bg-[#5b4b8a] text-white' : 'text-neutral-300 hover:bg-neutral-100 hover:text-[#5b4b8a]'
+              }`}
+              title={
+                b.delegable
+                  ? 'Marcada como delegable — cuenta en la bitácora de Desarrollo'
+                  : 'Esto lo debió hacer un perfil más junior — marcar como delegable'
+              }
+              aria-label={b.delegable ? 'Quitar marca de delegable' : 'Marcar como delegable'}
+            >
+              ↧
+            </button>
+          )}
           {isTarea && !b.done && (
             <ConfirmarQuitar
               disabled={pending}

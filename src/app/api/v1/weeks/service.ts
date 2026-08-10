@@ -48,6 +48,10 @@ export type CreateWeekPayload = {
   // el planeador las duplicaría: `tasks` siempre hace task.create. El `ref` para
   // los bloques es el propio id.
   adoptar?: AdoptarInput[]
+  // Riesgos del pre-mortem (paso 5 del planeador). Antes se generaban y se tiraban:
+  // solo el desbloqueador se guardaba. Cerrarlos al cerrar la semana es evidencia
+  // fechada de capacidad predictiva.
+  riesgos?: Array<{ riesgo: string; defensa: string }>
   // Opt-in del planeador: reutiliza un registro de semana VACÍO si ya existe.
   // Mi Día crea esos cascarones (weekForDate en dnd-actions) para colgar juntas
   // sincronizadas. Es opt-in y no el default a propósito: POST /weeks y la skill
@@ -192,6 +196,10 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
       })
       if (count === 0) throw new Error(`tarea ${a.id} no encontrada`)
       refsAdoptadas.set(a.id, a.id)
+    }
+
+    for (const [i, r] of (payload.riesgos ?? []).entries()) {
+      await tx.weekRisk.create({ data: { weekId: week.id, riesgo: r.riesgo, defensa: r.defensa, orden: i } })
     }
 
     await createTasksAndBlocks(tx, userId, week.id, payload.tasks, payload.blocks, winByPosicion, ordenInicial, refsAdoptadas)

@@ -25,6 +25,7 @@ export type DayBlockView = {
   winPosicion: number | null
   aliado: boolean // agrega valor al cliente fuera de SOW
   gerente: boolean // aporta a competencias del escalafón
+  delegable: boolean // la hizo Mau pero debió hacerla un perfil más junior — bitácora de delegación
   fueraDeJornada: boolean // el reflow de juntas lo empujó después de horarioFin
   bloqueante: boolean // false: junta informativa (ej. compartida solo para visibilidad) — no resta capacidad
   calendarEventId: string | null // id crudo (sin prefijo) del CalendarEvent — para crear/buscar su Minuta
@@ -101,6 +102,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       winPosicion: task?.win ? task.win.posicion : null,
       aliado: task?.alcance === 'aliado',
       gerente: (task?.competencias?.length ?? 0) > 0,
+      delegable: task?.delegable ?? false,
       fueraDeJornada:
         b.tipo === 'tarea' &&
         b.inicio !== 'flex' &&
@@ -130,6 +132,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     winPosicion: null,
     aliado: false,
     gerente: false,
+    delegable: false,
     fueraDeJornada: false,
     bloqueante: e.bloqueante,
     calendarEventId: e.id,

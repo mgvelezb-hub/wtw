@@ -336,6 +336,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   await crearSemanaAction({
                     reflexion: draft.reflexion || undefined,
                     desbloqueador: draft.desbloqueador || undefined,
+                    riesgos: draft.riesgos.length > 0 ? draft.riesgos : undefined,
                     wins: winsLlenos.map((w) => ({ titulo: w.titulo, dod: w.dod || undefined })),
                     tasks,
                   })

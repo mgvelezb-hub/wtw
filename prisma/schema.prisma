@@ -140,6 +140,7 @@ model User {
   allocations     Allocation[]
   minutas         Minuta[]
   artifacts       Artifact[]
+  stakeholders    Stakeholder[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -159,6 +160,7 @@ model Week {
   wins            Win[]
   tasks           Task[]
   blocks          Block[]
+  riesgos         WeekRisk[]
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -198,6 +200,12 @@ model Task {
   alcance       Alcance      @default(sow)
   dolorCliente  String? // qué dolor del cliente atiende (requerido en UI/skill si alcance=aliado)
   urgente       Boolean      @default(false) // pendiente urgente no agendado (panel derecho, ★)
+  // Bitacora de delegacion: esta tarea la hizo Mau pero deberia haberla hecho
+  // alguien mas junior. Sin reportes no hay a quien asignarla — el registro es el
+  // caso de negocio con VP para pedir uno, que es el desbloqueo real de dos de las
+  // tres expectativas de Gerente.
+  delegable     Boolean      @default(false)
+  delegableNota String? // a que perfil, y por que no se delego
   herramienta   String? // Excel, PowerPoint, Python, Power BI, AnyLogic... determina complejidad/estimación
   dodItems      DodItem[]
   blocks        Block[]
@@ -314,6 +322,7 @@ model Project {
   tasks                  Task[]
   minutas                Minuta[]
   artifacts              Artifact[]
+  stakeholders           Stakeholder[]
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
 
@@ -335,6 +344,10 @@ model Deliverable {
   estatus           DeliverableStatus @default(borrador)
   alcance           Alcance           @default(sow)
   cartaUrl          String?
+  // Un entregable PRESENTADO en persona es evidencia de "Quien presenta" y de "La
+  // mano del Rey"; uno enviado por correo no es evidencia de ninguno de los dos.
+  presentado        Boolean           @default(false)
+  presentadoA       String? // quien estuvo en la sala
   tasks             Task[]
   evidences         Evidence[]
   createdAt         DateTime          @default(now())
@@ -367,6 +380,82 @@ model Level {
   expectativas  String?
   usersActual   User[]  @relation("actual")
   usersObjetivo User[]  @relation("objetivo")
+}
+
+// Mapa de stakeholders. Dos roles VP completos ("La mano del Rey", "La estrategia
+// que renovará al Estado") y la tercera expectativa de Gerente —proximidad con
+// stakeholders— dependen de esto. Hoy los stakeholders de Liverpool viven como
+// texto libre dentro de títulos de tareas y en Minuta.asistentes.
+model Stakeholder {
+  id             String                    @id @default(cuid())
+  userId         String
+  user           User                      @relation(fields: [userId], references: [id])
+  projectId      String?
+  project        Project?                  @relation(fields: [projectId], references: [id])
+  nombre         String
+  puesto         String?
+  // Poder e interés en escala 1-3. Sirven para la matriz clásica de influencia:
+  // poder alto + interés alto = gestión cercana; poder alto + interés bajo = el
+  // que te hunde el proyecto sin avisar.
+  poder          Int                       @default(2)
+  interes        Int                       @default(2)
+  postura        StakeholderPostura        @default(neutral)
+  queNecesita    String? // qué necesita ESTA persona para considerar el proyecto un éxito
+  // Cada cuántos días debería haber contacto. Null = sin cadencia comprometida.
+  cadenciaDias   Int?
+  notas          String?
+  interacciones  StakeholderInteraccion[]
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@unique([userId, nombre])
+  @@index([userId, projectId])
+}
+
+model StakeholderInteraccion {
+  id            String                @id @default(cuid())
+  stakeholderId String
+  stakeholder   Stakeholder           @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  fecha         DateTime              @db.Date
+  tipo          InteraccionTipo
+  nota          String?
+  // Si la interacción salió de una junta ya registrada, se liga en vez de duplicar.
+  minutaId      String?
+  createdAt     DateTime              @default(now())
+
+  @@index([stakeholderId, fecha])
+}
+
+enum StakeholderPostura {
+  aliado
+  neutral
+  opositor
+  desconocida
+}
+
+enum InteraccionTipo {
+  junta
+  llamada
+  correo
+  informal
+  presentacion
+}
+
+// Riesgos del pre-mortem (paso 5 del planeador). Antes se generaban y se tiraban:
+// solo el desbloqueador se guardaba. Cerrar el ciclo —marcar qué riesgo ocurrió y
+// si la defensa sirvió— es evidencia fechada de capacidad predictiva, que es
+// literalmente lo que pide "Quien tiene expertise técnico".
+model WeekRisk {
+  id              String   @id @default(cuid())
+  weekId          String
+  week            Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  riesgo          String
+  defensa         String
+  // null = la semana aún no se cierra. No es lo mismo que "no ocurrió".
+  ocurrio         Boolean?
+  defensaFunciono Boolean?
+  nota            String?
+  orden           Int      @default(0)
 }
 
 model Competency {

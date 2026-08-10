@@ -28,6 +28,7 @@ export type NuevaSemanaTask = {
 export type CrearSemanaInput = {
   reflexion?: string
   desbloqueador?: string
+  riesgos?: Array<{ riesgo: string; defensa: string }>
   wins: NuevaSemanaWin[]
   tasks: NuevaSemanaTask[]
 }
@@ -48,6 +49,7 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
     factorUsado,
     reflexion: input.reflexion,
     desbloqueador: input.desbloqueador,
+    riesgos: input.riesgos,
     // El planeador sí reutiliza el cascarón que Mi Día haya creado — de otro modo
     // planear el lunes después de abrir Mi Día es imposible. La guarda de "ya
     // tiene plan" sigue protegiendo contra duplicar una semana real.

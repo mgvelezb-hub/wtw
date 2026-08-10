@@ -1,0 +1,262 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import type { DesarrolloView, CompetenciaOpcion, HistorialRiesgos } from './service'
+import { registrarEvidenciaAction } from './actions'
+
+type BitacoraSerializada = {
+  tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
+  minutosTotales: number
+  desde: string | null
+}
+
+function horas(min: number): string {
+  if (min <= 0) return '0h'
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h === 0) return `${m}m`
+  return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+export function DesarrolloBoard({
+  view,
+  opciones,
+  bitacora,
+  riesgos,
+}: {
+  view: DesarrolloView
+  opciones: CompetenciaOpcion[]
+  bitacora: BitacoraSerializada
+  riesgos: HistorialRiesgos
+}): React.ReactElement {
+  const [abierto, setAbierto] = useState(false)
+  const [competencyId, setCompetencyId] = useState('')
+  const [nota, setNota] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [ok, setOk] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  const pct = view.totalReactivos > 0 ? Math.round((view.totalConEvidencia / view.totalReactivos) * 100) : 0
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-lg font-bold text-neutral-900">Desarrollo</h1>
+        <p className="text-sm text-neutral-500">
+          {view.nivelActual ?? '—'} → <strong className="text-[#0c4a45]">{view.nivelObjetivo ?? '—'}</strong> ·{' '}
+          {view.totalConEvidencia} de {view.totalReactivos} reactivos con evidencia ({pct}%)
+        </p>
+        {view.escalafon.length > 0 && (
+          <ol className="mt-2 flex flex-wrap items-center gap-1">
+            {view.escalafon.map((e, i) => (
+              <li key={e.nombre} className="flex items-center gap-1">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                    e.esActual
+                      ? 'bg-[#0c4a45] text-white'
+                      : e.esObjetivo
+                        ? 'bg-[#e8b94a] text-[#4a3a10]'
+                        : 'bg-neutral-100 text-neutral-500'
+                  }`}
+                >
+                  {e.nombre}
+                </span>
+                {i < view.escalafon.length - 1 && <span className="text-neutral-300">→</span>}
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {view.expectativasObjetivo && (
+          <p className="mt-2 rounded-lg bg-[#d3e4e0] px-3 py-2 text-xs text-[#0c4a45]">
+            <strong>Lo que exige {view.nivelObjetivo}:</strong> {view.expectativasObjetivo}
+          </p>
+        )}
+      </header>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Registrar evidencia</h2>
+          <button
+            onClick={() => {
+              setAbierto(!abierto)
+              setOk(false)
+              setError(null)
+            }}
+            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+          >
+            {abierto ? 'Cerrar' : '+ Nueva'}
+          </button>
+        </div>
+
+        {ok && <p className="mt-2 rounded bg-[#d3e4e0] px-3 py-2 text-sm text-[#0c4a45]">Evidencia registrada.</p>}
+        {error && (
+          <p role="alert" className="mt-2 rounded border border-[#b43232] bg-red-50 px-3 py-2 text-sm text-[#b43232]">
+            {error}
+          </p>
+        )}
+
+        {abierto && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-neutral-500">
+              Los reactivos sin evidencia aparecen primero: llenar un hueco vale más que engordar uno que ya tiene cinco.
+            </p>
+            <select
+              value={competencyId}
+              onChange={(e) => setCompetencyId(e.target.value)}
+              aria-label="Competencia"
+              className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
+            >
+              <option value="">Elige la competencia…</option>
+              {opciones.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.vacia ? '◻ ' : '◼ '}
+                  {o.etiqueta}
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={nota}
+              onChange={(e) => setNota(e.target.value)}
+              rows={3}
+              aria-label="Nota de evidencia"
+              placeholder="Qué hiciste, cuándo, y por qué demuestra esa competencia…"
+              className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+            />
+            <button
+              disabled={pending || competencyId === '' || nota.trim() === ''}
+              onClick={() => {
+                setError(null)
+                startTransition(async () => {
+                  try {
+                    await registrarEvidenciaAction({ competencyId, nota })
+                    setNota('')
+                    setCompetencyId('')
+                    setAbierto(false)
+                    setOk(true)
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'No se pudo registrar.')
+                  }
+                })
+              }}
+              className="rounded-full bg-[#0c4a45] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {pending ? 'Guardando…' : 'Guardar evidencia'}
+            </button>
+          </div>
+        )}
+      </section>
+
+      {view.huecos.length > 0 && (
+        <section className="rounded-xl border border-[#e8b94a] bg-[#fdf6e3] p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#4a3a10]">
+            Huecos — {view.huecos.length} reactivos sin evidencia
+          </h2>
+          <p className="mt-1 text-xs text-[#4a3a10]">Esta es la lista de trabajo real, no la de competencias que ya dominas.</p>
+          <ul className="mt-2 space-y-1">
+            {view.huecos.map((c) => (
+              <li key={c.id} className="text-sm text-[#4a3a10]">
+                <span className="font-semibold">{c.grupo ?? 'Individual'}</span> · {c.texto}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Cobertura por grupo</h2>
+        <ul className="space-y-2">
+          {view.grupos.map((g) => {
+            const gpct = g.total > 0 ? Math.round((g.conEvidencia / g.total) * 100) : 0
+            return (
+              <li key={g.grupo}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-sm font-medium text-neutral-800">{g.grupo}</span>
+                  <span className="font-mono text-xs text-neutral-500">
+                    {g.conEvidencia}/{g.total}
+                  </span>
+                </div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
+                  <div
+                    className={`h-full ${gpct === 0 ? 'bg-[#b43232]' : gpct < 50 ? 'bg-[#e8b94a]' : 'bg-[#0d6d63]'}`}
+                    style={{ width: `${gpct}%` }}
+                  />
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Pre-mortem — capacidad predictiva</h2>
+        {riesgos.total === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            Sin riesgos registrados todavía. El paso 5 del planeador semanal los genera; se cierran al cerrar la semana.
+          </p>
+        ) : (
+          <>
+            <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded bg-neutral-50 px-2 py-1">
+                <dt className="text-[10px] font-bold uppercase text-neutral-500">Predichos</dt>
+                <dd className="font-mono text-sm font-semibold text-neutral-900">{riesgos.total}</dd>
+              </div>
+              <div className="rounded bg-neutral-50 px-2 py-1">
+                <dt className="text-[10px] font-bold uppercase text-neutral-500">Ocurrieron</dt>
+                <dd className="font-mono text-sm font-semibold text-neutral-900">
+                  {riesgos.acertados}/{riesgos.cerrados}
+                </dd>
+              </div>
+              <div className="rounded bg-neutral-50 px-2 py-1">
+                <dt className="text-[10px] font-bold uppercase text-neutral-500">Defensa sirvió</dt>
+                <dd className="font-mono text-sm font-semibold text-neutral-900">{riesgos.defensasEfectivas}</dd>
+              </div>
+            </dl>
+            {riesgos.abiertos.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {riesgos.abiertos.map((r) => (
+                  <li key={r.id} className="text-sm text-neutral-700">
+                    <span className="font-mono text-xs text-neutral-400">{r.isoWeek}</span> ⚠ {r.riesgo}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </section>
+
+      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Bitácora de delegación</h2>
+        {bitacora.tareas.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-500">
+            Nada marcado como delegable. En Mi Día, marca las tareas que hiciste tú pero debió hacer un perfil más junior.
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-sm text-neutral-700">
+              <strong className="font-mono">{horas(bitacora.minutosTotales)}</strong> de trabajo delegable
+              {bitacora.desde && <span className="text-neutral-500"> desde {bitacora.desde}</span>} ·{' '}
+              {bitacora.tareas.length} tareas
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">
+              Esto es el caso de negocio para pedir un reporte — que es el desbloqueo de dos de las tres expectativas de{' '}
+              {view.nivelObjetivo ?? 'Gerente'}.
+            </p>
+            <ul className="mt-2 space-y-1">
+              {bitacora.tareas.map((t) => (
+                <li key={t.id} className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="min-w-0 text-neutral-800">
+                    {t.titulo}
+                    {t.proyecto && <span className="ml-1 text-xs text-neutral-400">· {t.proyecto}</span>}
+                    {t.nota && <span className="ml-1 text-xs text-neutral-500">— {t.nota}</span>}
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-neutral-500">{horas(t.minutosReales)}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    </div>
+  )
+}
