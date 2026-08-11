@@ -8,7 +8,7 @@ import { crearSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
 
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
-const DRAFT_KEY = 'wtw_planeador_draft_v1'
+const DRAFT_KEY = 'wtw_planeador_draft_v2'
 
 type Item = {
   ref: string
@@ -21,6 +21,7 @@ type Item = {
   winPosicion?: number
   fecha?: string
   incluida: boolean
+  arrastrada: boolean
 }
 
 type WinDraft = { titulo: string; dod: string }
@@ -77,7 +78,10 @@ function draftInicial(ctx: ContextoPlaneacion): Draft {
       herramienta: t.herramienta,
       deadline: t.deadline,
       estimadoMin: t.estimadoMin ?? 0,
-      incluida: t.urgente,
+      // Las arrastradas entran preseleccionadas: es trabajo que ya empezaste y
+      // sigue vivo. Los urgentes del backlog también.
+      incluida: t.urgente || t.origen === 'arrastrada',
+      arrastrada: t.origen === 'arrastrada',
       fecha: undefined,
     })),
     riesgos: [],
@@ -223,7 +227,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                 ...d,
                 items: [
                   ...d.items,
-                  { ref: `n${d.items.length + 1}-${titulo.slice(0, 8)}`, titulo, proyecto, estimadoMin: 0, incluida: true },
+                  { ref: `n${d.items.length + 1}-${titulo.slice(0, 8)}`, titulo, proyecto, estimadoMin: 0, incluida: true, arrastrada: false },
                 ],
               }))
             }
@@ -572,6 +576,9 @@ function PasoVaciar({
             />
             <span className={`min-w-0 flex-1 text-sm ${it.incluida ? 'text-neutral-900' : 'text-neutral-400'}`}>
               {it.titulo}
+              {it.arrastrada && (
+                <span className="ml-1 rounded bg-[#5b4b8a] px-1 text-[10px] font-bold uppercase text-white">viene de antes</span>
+              )}
               {it.proyecto && <span className="ml-1 text-xs text-neutral-400">· {it.proyecto}</span>}
               {it.deadline && <span className="ml-1 rounded bg-[#f5deae] px-1 text-[10px] font-bold text-[#4a3a10]">{it.deadline}</span>}
             </span>

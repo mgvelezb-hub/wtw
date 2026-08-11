@@ -195,6 +195,13 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
         },
       })
       if (count === 0) throw new Error(`tarea ${a.id} no encontrada`)
+
+      // Una tarea arrastrada puede traer ya un bloque en esta semana, creado por
+      // el carry de Mi Día. Si el planeador le asigna día, tendríamos dos bloques
+      // para la misma tarea. Gana la decisión del planeador: se limpian los
+      // previos de ESTA semana (los de semanas pasadas son historia y no se tocan).
+      await tx.block.deleteMany({ where: { weekId: week.id, taskId: a.id } })
+
       refsAdoptadas.set(a.id, a.id)
     }
 

@@ -349,3 +349,113 @@ describe('cascarón de semana creado por Mi Día', () => {
     ).rejects.toThrow(/ya existe/)
   })
 })
+
+describe('vaciado con trabajo arrastrado', () => {
+  // El caso real de Mau: sus pendientes de Cuervo viven como `planned` colgados
+  // de la semana anterior y se arrastran día a día en Mi Día. Antes el vaciado
+  // solo ofrecía `backlog`, así que salía vacío y el ritual lo habría hecho
+  // teclear todo de nuevo.
+  it('ofrece las tareas sin terminar de semanas anteriores, marcadas como arrastradas', async () => {
+    const user = await usuario()
+    const anterior = await createWeekPayload(user.id, {
+      isoWeek: '2026-W31',
+      factorUsado: 1.4,
+      wins: [],
+      tasks: [
+        { ref: 'a', titulo: 'sigue viva', estimadoMin: 60 },
+        { ref: 'b', titulo: 'ya terminada', estimadoMin: 60 },
+      ],
+      blocks: [],
+    })
+    const terminada = await prisma.task.findFirstOrThrow({ where: { weekId: anterior.id, titulo: 'ya terminada' } })
+    await prisma.task.update({ where: { id: terminada.id }, data: { estatus: 'done' } })
+    await prisma.task.create({ data: { userId: user.id, titulo: 'del backlog', estatus: 'backlog' } })
+
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+
+    const titulos = ctx.backlog.map((t) => t.titulo)
+    expect(titulos).toContain('sigue viva')
+    expect(titulos).toContain('del backlog')
+    // Lo terminado no se re-ofrece.
+    expect(titulos).not.toContain('ya terminada')
+
+    expect(ctx.backlog.find((t) => t.titulo === 'sigue viva')?.origen).toBe('arrastrada')
+    expect(ctx.backlog.find((t) => t.titulo === 'del backlog')?.origen).toBe('backlog')
+  })
+
+  it('no ofrece lo que ya está planeado en la semana en curso', async () => {
+    const user = await usuario()
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W32',
+      factorUsado: 1.4,
+      wins: [],
+      tasks: [{ ref: 'a', titulo: 'ya en esta semana', estimadoMin: 60 }],
+      blocks: [],
+    })
+
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+
+    expect(ctx.backlog.map((t) => t.titulo)).not.toContain('ya en esta semana')
+  })
+
+  it('adoptar una arrastrada la mueve de semana en vez de duplicarla', async () => {
+    const user = await usuario()
+    const anterior = await createWeekPayload(user.id, {
+      isoWeek: '2026-W31',
+      factorUsado: 1.4,
+      wins: [],
+      tasks: [{ ref: 'a', titulo: 'arrastrada', estimadoMin: 60 }],
+      blocks: [],
+    })
+    const tarea = await prisma.task.findFirstOrThrow({ where: { weekId: anterior.id } })
+
+    const nueva = await createWeekPayload(user.id, {
+      isoWeek: '2026-W32',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Win' }],
+      tasks: [],
+      adoptar: [{ id: tarea.id, winPosicion: 1, estimadoMin: 60, ajustadoMin: 84 }],
+      blocks: [],
+    })
+
+    expect(await prisma.task.count({ where: { userId: user.id } })).toBe(1)
+    const movida = await prisma.task.findUniqueOrThrow({ where: { id: tarea.id } })
+    expect(movida.weekId).toBe(nueva.id)
+  })
+})
+
+describe('bloques duplicados al adoptar una arrastrada', () => {
+  it('el bloque que dejó el carry se reemplaza por el que decide el planeador', async () => {
+    const user = await usuario()
+    const anterior = await createWeekPayload(user.id, {
+      isoWeek: '2026-W31',
+      factorUsado: 1.4,
+      wins: [],
+      tasks: [{ ref: 'a', titulo: 'arrastrada', estimadoMin: 60 }],
+      blocks: [],
+    })
+    const tarea = await prisma.task.findFirstOrThrow({ where: { weekId: anterior.id } })
+
+    // Cascarón de la semana nueva con el bloque que dejó el carry de Mi Día.
+    const shell = await prisma.week.create({
+      data: { userId: user.id, isoWeek: '2026-W32', rangoInicio: new Date('2026-08-03'), rangoFin: new Date('2026-08-09'), factorUsado: 1.4, estatus: 'active' },
+    })
+    await prisma.block.create({
+      data: { weekId: shell.id, taskId: tarea.id, fecha: new Date('2026-08-03'), inicio: 'flex', fin: 'flex', tipo: 'tarea', titulo: 'arrastrada', planMin: 84, orden: 0 },
+    })
+
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W32',
+      factorUsado: 1.4,
+      reutilizarVacia: true,
+      wins: [{ posicion: 1, titulo: 'Win' }],
+      tasks: [],
+      adoptar: [{ id: tarea.id, winPosicion: 1, estimadoMin: 60, ajustadoMin: 84 }],
+      blocks: [{ fecha: '2026-08-05', inicio: 'flex', fin: 'flex', tipo: 'tarea', taskRef: tarea.id, titulo: 'arrastrada', planMin: 84 }],
+    })
+
+    const bloques = await prisma.block.findMany({ where: { weekId: shell.id, taskId: tarea.id } })
+    expect(bloques).toHaveLength(1)
+    expect(bloques[0].fecha.toISOString().slice(0, 10)).toBe('2026-08-05')
+  })
+})

@@ -39,6 +39,10 @@ export type PendienteBacklog = {
   herramienta: string | null
   deadline: string | null
   urgente: boolean
+  // 'arrastrada' = venía planeada en una semana anterior y no se terminó. Sin
+  // esto el vaciado salía vacío para quien trae trabajo sin cerrar: esas tareas
+  // son `planned`, no `backlog`, y el ritual las habría hecho teclear de nuevo.
+  origen: 'backlog' | 'arrastrada'
 }
 
 export type ContextoPlaneacion = {
@@ -125,8 +129,17 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
     }),
     recapDe(userId, isoWeekAnterior(isoWeek)),
     prisma.task.findMany({
-      where: { userId, estatus: 'backlog' },
-      include: { project: { select: { nombre: true } } },
+      where: {
+        userId,
+        OR: [
+          { estatus: 'backlog' },
+          // Trabajo sin cerrar de semanas anteriores: entra al vaciado igual que
+          // el backlog. Se excluye la semana en curso para no ofrecer lo que ya
+          // está planeado en ella.
+          { estatus: { in: ['planned', 'in_progress'] }, week: { isoWeek: { not: isoWeek } } },
+        ],
+      },
+      include: { project: { select: { nombre: true } }, week: { select: { isoWeek: true } } },
       orderBy: [{ urgente: 'desc' }, { deadline: 'asc' }, { createdAt: 'asc' }],
     }),
     prisma.project.findMany({ where: { userId, estatus: 'activo' }, select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
@@ -146,6 +159,7 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
       herramienta: t.herramienta,
       deadline: t.deadline ? t.deadline.toISOString().slice(0, 10) : null,
       urgente: t.urgente,
+      origen: t.estatus === 'backlog' ? ('backlog' as const) : ('arrastrada' as const),
     })),
     proyectos,
     capacidad,

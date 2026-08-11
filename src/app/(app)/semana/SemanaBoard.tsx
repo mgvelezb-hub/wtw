@@ -1,6 +1,7 @@
 'use client'
 
 import { useTransition } from 'react'
+import Link from 'next/link'
 import { toggleWinAction } from './actions'
 
 type Win = { id: string; posicion: number; titulo: string; dod: string | null; estatus: string }
@@ -32,7 +33,35 @@ export function SemanaBoard({
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4">
       <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Wins de la semana</h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase text-neutral-500">Wins de la semana</h2>
+          {/* Siempre visible: antes el acceso al planeador solo existía en el
+              estado vacío de /semana, y Mi Día crea la semana como cascarón en
+              cuanto arrastras una tarea o sincronizas juntas. Resultado: la
+              semana existía, el botón desaparecía, y no había forma de definir
+              los Wins ni de llegar al ritual. */}
+          <Link
+            href="/semana/nueva"
+            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+          >
+            {wins.length === 0 ? 'Planear la semana' : 'Abrir el planeador'}
+          </Link>
+        </div>
+        {wins.length === 0 && (
+          <div className="mb-2 rounded-lg border border-[#e8b94a] bg-[#fdf6e3] p-3">
+            <p className="text-sm font-semibold text-[#4a3a10]">Esta semana no tiene Wins definidos</p>
+            <p className="mt-1 text-xs text-[#4a3a10]">
+              Sin Wins, las actividades no se pueden priorizar contra un resultado. El planeador te lleva por los 5 pasos del
+              ritual: reflejar, definir Wins, vaciar y dimensionar, bloquear y pre-emptar.
+            </p>
+            <Link
+              href="/semana/nueva"
+              className="mt-2 inline-block rounded-full bg-[#0c4a45] px-4 py-2 text-sm font-bold text-white"
+            >
+              Planear la semana →
+            </Link>
+          </div>
+        )}
         <div className="space-y-2">
           {wins.map((w) => (
             <div key={w.id} className="flex items-start justify-between rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
