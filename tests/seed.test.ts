@@ -7,10 +7,36 @@ beforeAll(() => {
 }, 180_000) // ~50 upserts, cada uno un roundtrip a Neon — con latencia mala supera los 60s
 
 describe('seed', () => {
-  it('crea los 4 niveles del escalafón VP', async () => {
+  it('crea los 8 niveles del escalafón VP, de Trainee a Socio', async () => {
     const levels = await prisma.level.findMany({ orderBy: { orden: 'asc' } })
-    expect(levels).toHaveLength(4)
-    expect(levels.map((l) => l.nombre)).toEqual(['Analista', 'Consultor Sr', 'Gerente', 'Gerente Sr'])
+    // Antes eran 4: arrancaba en Analista y se cortaba en Gerente Sr. El
+    // instrumento real (Expectations Vp.pdf) trae Trainee y Consultor al inicio,
+    // y Director antes de Socio.
+    expect(levels).toHaveLength(8)
+    expect(levels.map((l) => l.nombre)).toEqual([
+      'Trainee',
+      'Analista',
+      'Consultor',
+      'Consultor Sr',
+      'Gerente',
+      'Gerente Sr',
+      'Director',
+      'Socio',
+    ])
+  })
+
+  it('carga los reactivos por nivel del instrumento de VP', async () => {
+    const gerente = await prisma.competency.findMany({
+      where: { tipo: 'nivel', grupo: 'Gerente' },
+      orderBy: { orden: 'asc' },
+    })
+    // Los números son los del documento (arrancan en 9 porque la sección 1 ocupa
+    // del 1 al 8) y se conservan para poder decir "el reactivo 10 de Gerente".
+    expect(gerente.map((c) => c.orden)).toEqual([9, 10, 11, 12])
+    expect(gerente[3].texto).toBe('Establece relaciones de proximidad con stakeholders claves del cliente')
+
+    // Socio no viene en el documento: se deja vacío en vez de inventarlo.
+    expect(await prisma.competency.count({ where: { tipo: 'nivel', grupo: 'Socio' } })).toBe(0)
   })
 
   it('carga al menos 20 conductas individuales', async () => {

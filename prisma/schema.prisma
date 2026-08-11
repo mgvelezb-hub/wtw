@@ -71,6 +71,10 @@ enum IssueTipo {
 enum CompetencyType {
   individual
   rol
+  // Reactivos de la sección 2 del instrumento de VP: comportamientos esperados
+  // POR NIVEL. `grupo` guarda el nombre del nivel y `orden` el número del
+  // reactivo en el documento, para poder decir "el reactivo 10 de Gerente".
+  nivel
 }
 
 enum Alcance {
@@ -141,6 +145,7 @@ model User {
   minutas         Minuta[]
   artifacts       Artifact[]
   stakeholders    Stakeholder[]
+  aprendizaje     LearningProgress[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -382,6 +387,63 @@ model Level {
   usersObjetivo User[]  @relation("objetivo")
 }
 
+enum RecursoTipo {
+  libro
+  curso
+  platica
+  articulo
+  ejercicio // el único tipo que se practica en vez de consumirse
+}
+
+enum RecursoEstado {
+  pendiente
+  en_curso
+  hecho
+  descartado // se evaluó y no aplica — distinto de nunca haberlo tocado
+}
+
+// Catálogo de material de desarrollo. Cada recurso cuelga de las competencias que
+// sirve, para que aparezca DONDE está el hueco en vez de vivir en una lista
+// aparte que se lee una vez y muere. Ver docs/plans/2026-08-10-alineacion-council.md
+// §Fase 2b — y recordar que esto es el 10% del 70-20-10: su única función es que
+// la práctica sea deliberada en lugar de repetitiva.
+model LearningResource {
+  id           String             @id @default(cuid())
+  tipo         RecursoTipo
+  titulo       String
+  fuente       String? // autor, institución o programa
+  url          String?
+  porQue       String // una frase: por qué este recurso mueve esta competencia
+  // Solo para ejercicios: cuánto toma y con qué cadencia se repite.
+  duracionMin  Int?
+  cadencia     String? // "semanal" | "por entregable" | "por junta" | "una vez"
+  orden        Int                @default(0)
+  competencias Competency[]       @relation("RecursoCompetencias")
+  progresos    LearningProgress[]
+
+  @@unique([tipo, titulo])
+}
+
+// Progreso por usuario. Sin esto el catálogo no puede distinguir "no lo he hecho"
+// de "lo hice", que es justo la diferencia que vuelve accionable a una lista.
+model LearningProgress {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  resourceId String
+  resource   LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  estado     RecursoEstado    @default(pendiente)
+  nota       String?
+  iniciado   DateTime?
+  terminado  DateTime?
+  // Para ejercicios recurrentes: cuántas veces se ha practicado.
+  veces      Int              @default(0)
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([userId, resourceId])
+  @@index([userId, estado])
+}
+
 // Mapa de stakeholders. Dos roles VP completos ("La mano del Rey", "La estrategia
 // que renovará al Estado") y la tercera expectativa de Gerente —proximidad con
 // stakeholders— dependen de esto. Hoy los stakeholders de Liverpool viven como
@@ -464,8 +526,9 @@ model Competency {
   grupo     String? // nombre del rol VP ("La mano del Rey"...) — null para individuales
   texto     String // el reactivo
   orden     Int
-  tasks     Task[]         @relation("TaskCompetencias")
+  tasks     Task[]             @relation("TaskCompetencias")
   evidences Evidence[]
+  recursos  LearningResource[] @relation("RecursoCompetencias")
 
   @@unique([tipo, grupo, orden])
 }

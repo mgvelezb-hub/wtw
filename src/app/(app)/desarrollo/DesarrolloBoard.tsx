@@ -74,6 +74,53 @@ export function DesarrolloBoard({
         )}
       </header>
 
+      {view.objetivo && view.objetivo.reactivos.length > 0 && (
+        <section className="rounded-xl border-2 border-[#0c4a45] bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">
+            Reactivos de {view.objetivo.nombre} — instrumento de VP
+          </h2>
+          <p className="mt-1 text-xs text-neutral-500">
+            Esta es la medición que decide la promoción. Se evalúa en escala de 4: Sobresaliente, Satisfactorio, Se perciben
+            brechas, No aplica.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {view.objetivo.reactivos.map((r) => (
+              <li key={r.id} className="flex items-start gap-2">
+                <span
+                  className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
+                    r.evidenciaCount > 0 ? 'bg-[#0d6d63] text-white' : 'bg-[#b43232] text-white'
+                  }`}
+                >
+                  {r.orden}
+                </span>
+                <span className="text-sm text-neutral-800">
+                  {r.texto}
+                  <span className="ml-1 text-xs text-neutral-400">
+                    {r.evidenciaCount === 0
+                      ? '· sin evidencia'
+                      : `· ${r.evidenciaCount} evidencia${r.evidenciaCount > 1 ? 's' : ''}${
+                          r.diasDesdeUltima !== null ? `, hace ${r.diasDesdeUltima}d` : ''
+                        }`}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {view.objetivo && view.objetivo.reactivos.length === 0 && (
+        <section className="rounded-xl border border-[#e8b94a] bg-[#fdf6e3] p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#4a3a10]">
+            {view.objetivo.nombre} — sin reactivos cargados
+          </h2>
+          <p className="mt-1 text-xs text-[#4a3a10]">
+            El documento de VP no publica los reactivos de este nivel. En cuanto existan, se cargan en
+            <code className="ml-1">prisma/seed-data/reactivos-nivel.ts</code>.
+          </p>
+        </section>
+      )}
+
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Registrar evidencia</h2>

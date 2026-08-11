@@ -8,6 +8,8 @@ export type CompetenciaCobertura = {
   id: string
   tipo: string
   grupo: string | null
+  // Número del reactivo en el documento de VP — permite decir "el 10 de Gerente".
+  orden: number
   texto: string
   evidenciaCount: number
   // Días desde la última evidencia. null = nunca. Es la señal que importa: una
@@ -34,9 +36,13 @@ export type DesarrolloView = {
   nivelActual: string | null
   nivelObjetivo: string | null
   expectativasObjetivo: string | null
-  // El camino completo, no solo actual→objetivo. Faltaban Director y Socio: el
-  // escalafón se cortaba en Gerente Sr y la ruta larga no se podía ver.
+  // El camino completo, no solo actual→objetivo. Faltaban Trainee, Consultor,
+  // Director y Socio: el escalafón arrancaba en Analista y se cortaba en Gerente Sr.
   escalafon: EslabonEscalafon[]
+  // Los reactivos del nivel OBJETIVO, del instrumento de VP (sección 2). Es la
+  // medición que de verdad decide la promoción, y es distinta de los 48 reactivos
+  // de conducta y rol: son 3-4 por nivel, numerados, y se evalúan en escala de 4.
+  objetivo: { nombre: string; reactivos: CompetenciaCobertura[] } | null
   grupos: CoberturaPorGrupo[]
   totalReactivos: number
   totalConEvidencia: number
@@ -72,14 +78,20 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
       id: c.id,
       tipo: c.tipo,
       grupo: c.grupo,
+      orden: c.orden,
       texto: c.texto,
       evidenciaCount: c.evidences.length,
       diasDesdeUltima: ultima ? dias(ultima, hoy) : null,
     }
   })
 
+  // Los reactivos de nivel NO entran en los grupos generales: son otro
+  // instrumento y mezclarlos diluiría ambas mediciones.
+  const deNivel = mapeadas.filter((c) => c.tipo === 'nivel')
+  const generales = mapeadas.filter((c) => c.tipo !== 'nivel')
+
   const porGrupo = new Map<string, CompetenciaCobertura[]>()
-  for (const c of mapeadas) {
+  for (const c of generales) {
     const clave = c.grupo ?? GRUPO_INDIVIDUAL
     const lista = porGrupo.get(clave)
     if (lista) lista.push(c)
@@ -104,10 +116,16 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
       esActual: n.nombre === user.nivelActual?.nombre,
       esObjetivo: n.nombre === user.nivelObjetivo?.nombre,
     })),
+    objetivo: user.nivelObjetivo
+      ? {
+          nombre: user.nivelObjetivo.nombre,
+          reactivos: deNivel.filter((c) => c.grupo === user.nivelObjetivo!.nombre).sort((a, b) => a.orden - b.orden),
+        }
+      : null,
     grupos,
-    totalReactivos: mapeadas.length,
-    totalConEvidencia: mapeadas.filter((c) => c.evidenciaCount > 0).length,
-    huecos: mapeadas.filter((c) => c.evidenciaCount === 0),
+    totalReactivos: generales.length,
+    totalConEvidencia: generales.filter((c) => c.evidenciaCount > 0).length,
+    huecos: generales.filter((c) => c.evidenciaCount === 0),
   }
 }
 
@@ -211,5 +229,135 @@ export async function getHistorialRiesgos(userId: string): Promise<HistorialRies
     abiertos: riesgos
       .filter((r) => r.ocurrio === null && r.week.estatus !== 'closed')
       .map((r) => ({ id: r.id, riesgo: r.riesgo, defensa: r.defensa, isoWeek: r.week.isoWeek })),
+  }
+}
+
+// ── Catálogo de material de desarrollo ──────────────────────────────────────
+// Se ordena por objetivo primero y por rubro después, no como lista alfabética:
+// un catálogo suelto se lee una vez y muere. El recurso tiene que aparecer donde
+// está el hueco.
+
+export type RecursoView = {
+  id: string
+  tipo: string
+  titulo: string
+  fuente: string | null
+  url: string | null
+  porQue: string
+  duracionMin: number | null
+  cadencia: string | null
+  estado: string
+  veces: number
+}
+
+export type CatalogoDesarrollo = {
+  // Un bloque por reactivo del nivel objetivo, con el material que lo mueve.
+  // Es la vista accionable: "para el reactivo 10 de Gerente, esto".
+  porObjetivo: Array<{
+    orden: number
+    texto: string
+    conEvidencia: boolean
+    recursos: RecursoView[]
+  }>
+  // El resto, agrupado por rubro (conducta individual o rol VP), con el rubro más
+  // hueco primero — así el material aparece donde falta cobertura.
+  porRubro: Array<{ rubro: string; conEvidencia: number; total: number; recursos: RecursoView[] }>
+  // Ejercicios recurrentes: el 70% del 70-20-10. Se separan porque no se
+  // "terminan", se practican.
+  practicas: RecursoView[]
+  resumen: { total: number; pendientes: number; enCurso: number; hechos: number; practicados: number }
+}
+
+const CADENCIA_UNICA = 'una vez'
+
+export async function getCatalogoDesarrollo(userId: string): Promise<CatalogoDesarrollo> {
+  const [user, recursos, competencias] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { nivelObjetivo: { select: { nombre: true } } },
+    }),
+    prisma.learningResource.findMany({
+      include: {
+        competencias: { select: { id: true, tipo: true, grupo: true, orden: true, texto: true } },
+        progresos: { where: { userId }, select: { estado: true, veces: true } },
+      },
+      orderBy: { orden: 'asc' },
+    }),
+    prisma.competency.findMany({
+      include: { evidences: { where: { userId }, select: { id: true } } },
+      orderBy: [{ grupo: 'asc' }, { orden: 'asc' }],
+    }),
+  ])
+
+  function vista(r: (typeof recursos)[number]): RecursoView {
+    const p = r.progresos[0]
+    return {
+      id: r.id,
+      tipo: r.tipo,
+      titulo: r.titulo,
+      fuente: r.fuente,
+      url: r.url,
+      porQue: r.porQue,
+      duracionMin: r.duracionMin,
+      cadencia: r.cadencia,
+      estado: p?.estado ?? 'pendiente',
+      veces: p?.veces ?? 0,
+    }
+  }
+
+  const objetivo = user.nivelObjetivo?.nombre ?? null
+
+  const porObjetivo = objetivo
+    ? competencias
+        .filter((c) => c.tipo === 'nivel' && c.grupo === objetivo)
+        .sort((a, b) => a.orden - b.orden)
+        .map((c) => ({
+          orden: c.orden,
+          texto: c.texto,
+          conEvidencia: c.evidences.length > 0,
+          recursos: recursos.filter((r) => r.competencias.some((rc) => rc.id === c.id)).map(vista),
+        }))
+    : []
+
+  // Rubros: conductas individuales y roles VP. Se excluyen los de nivel, que ya
+  // salieron arriba.
+  const rubros = new Map<string, { conEvidencia: number; total: number; ids: Set<string> }>()
+  for (const c of competencias) {
+    if (c.tipo === 'nivel') continue
+    const clave = c.grupo ?? GRUPO_INDIVIDUAL
+    const entrada = rubros.get(clave) ?? { conEvidencia: 0, total: 0, ids: new Set<string>() }
+    entrada.total += 1
+    if (c.evidences.length > 0) entrada.conEvidencia += 1
+    entrada.ids.add(c.id)
+    rubros.set(clave, entrada)
+  }
+
+  const porRubro = [...rubros.entries()]
+    .map(([rubro, e]) => ({
+      rubro,
+      conEvidencia: e.conEvidencia,
+      total: e.total,
+      recursos: recursos.filter((r) => r.competencias.some((rc) => e.ids.has(rc.id))).map(vista),
+    }))
+    .filter((r) => r.recursos.length > 0)
+    // Más hueco primero: el material se muestra donde falta cobertura.
+    .sort((a, b) => a.conEvidencia / a.total - b.conEvidencia / b.total)
+
+  const practicas = recursos
+    .filter((r) => r.tipo === 'ejercicio' && r.cadencia !== null && r.cadencia !== CADENCIA_UNICA)
+    .map(vista)
+
+  const todas = recursos.map(vista)
+  return {
+    porObjetivo,
+    porRubro,
+    practicas,
+    resumen: {
+      total: todas.length,
+      pendientes: todas.filter((r) => r.estado === 'pendiente').length,
+      enCurso: todas.filter((r) => r.estado === 'en_curso').length,
+      hechos: todas.filter((r) => r.estado === 'hecho').length,
+      practicados: practicas.reduce((s, r) => s + r.veces, 0),
+    },
   }
 }

@@ -202,3 +202,67 @@ describe('riesgos del pre-mortem', () => {
     expect(h.cerrados).toBe(0)
   })
 })
+
+describe('instrumento por nivel (Expectations Vp.pdf)', () => {
+  it('el escalafón trae los 8 eslabones en orden, de Trainee a Socio', async () => {
+    const user = await usuario()
+    const view = await getDesarrollo(user.id)
+
+    expect(view.escalafon.map((e) => e.nombre)).toEqual([
+      'Trainee',
+      'Analista',
+      'Consultor',
+      'Consultor Sr',
+      'Gerente',
+      'Gerente Sr',
+      'Director',
+      'Socio',
+    ])
+    expect(view.escalafon.find((e) => e.esActual)?.nombre).toBe('Consultor Sr')
+    expect(view.escalafon.find((e) => e.esObjetivo)?.nombre).toBe('Gerente')
+  })
+
+  it('expone los 4 reactivos de Gerente numerados como en el documento', async () => {
+    const user = await usuario()
+    const view = await getDesarrollo(user.id)
+
+    expect(view.objetivo?.nombre).toBe('Gerente')
+    expect(view.objetivo?.reactivos.map((r) => r.orden)).toEqual([9, 10, 11, 12])
+    expect(view.objetivo?.reactivos[3].texto).toBe('Establece relaciones de proximidad con stakeholders claves del cliente')
+  })
+
+  it('los reactivos de nivel NO se mezclan con los 48 de conducta y rol', async () => {
+    const user = await usuario()
+    const view = await getDesarrollo(user.id)
+
+    // Son dos instrumentos distintos: mezclarlos diluiría ambas mediciones.
+    expect(view.totalReactivos).toBe(48)
+    expect(view.grupos.some((g) => g.grupo === 'Gerente')).toBe(false)
+    expect(view.huecos.every((h) => h.tipo !== 'nivel')).toBe(true)
+  })
+
+  it('la evidencia en un reactivo de nivel se refleja en el objetivo, no en los grupos', async () => {
+    const user = await usuario()
+    const reactivo = await prisma.competency.findFirstOrThrow({ where: { tipo: 'nivel', grupo: 'Gerente', orden: 12 } })
+    await prisma.evidence.create({
+      data: { userId: user.id, competencyId: reactivo.id, nota: 'acordé agenda directa con Moisés' },
+    })
+
+    const view = await getDesarrollo(user.id)
+
+    expect(view.objetivo?.reactivos.find((r) => r.orden === 12)?.evidenciaCount).toBe(1)
+    // El conteo de los 48 no se mueve.
+    expect(view.totalConEvidencia).toBe(0)
+  })
+
+  it('Socio no tiene reactivos: el documento de VP no los publica y no se inventan', async () => {
+    const socio = await prisma.level.findFirstOrThrow({ where: { nombre: 'Socio' } })
+    const user = await usuario()
+    await prisma.user.update({ where: { id: user.id }, data: { nivelObjetivoId: socio.id } })
+
+    const view = await getDesarrollo(user.id)
+
+    expect(view.objetivo?.nombre).toBe('Socio')
+    expect(view.objetivo?.reactivos).toHaveLength(0)
+  })
+})

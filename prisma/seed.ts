@@ -2,40 +2,37 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '../src/lib/prisma'
 import { isoWeekOf, weekRange } from '../src/lib/dates'
 import { CONDUCTAS_INDIVIDUALES, ROLES_VP } from './seed-data/competencias-vp'
+import { REACTIVOS_POR_NIVEL, ESCALAFON_VP } from './seed-data/reactivos-nivel'
 
 async function seedLevels() {
-  const levels = [
-    { nombre: 'Analista', orden: 1, expectativas: null },
-    { nombre: 'Consultor Sr', orden: 2, expectativas: null },
-    {
-      nombre: 'Gerente',
-      orden: 3,
-      expectativas:
-        'Liderar tramos táctico-operativos, asignar y dar orientación a equipos, y establecer proximidad con stakeholders.',
-    },
-    { nombre: 'Gerente Sr', orden: 4, expectativas: null },
-    // Director y Socio faltaban: el escalafón se cortaba en Gerente Sr, así que
-    // /desarrollo no podía representar el camino completo. Las expectativas de
-    // cada uno las tiene que dictar VP — se dejan null en vez de inventarlas,
-    // igual que Analista, Consultor Sr y Gerente Sr.
-    { nombre: 'Director', orden: 5, expectativas: null },
-    { nombre: 'Socio', orden: 6, expectativas: null },
-  ]
+  // Escalafón completo de VP (Expectations Vp.pdf). Antes arrancaba en Analista y
+  // se cortaba en Gerente Sr: faltaban Trainee, Consultor, Director y Socio.
+  // `expectativas` es la prosa resumida; los reactivos numerados por nivel viven
+  // como Competency tipo='nivel' — ver seedCompetencies.
+  const expectativas: Record<string, string> = {
+    Gerente:
+      'Liderar tramos táctico-operativos, asignar y dar orientación a equipos, y establecer proximidad con stakeholders.',
+  }
+
+  // Level.orden es @unique: hay que despejar antes de reasignar o el update choca
+  // contra el valor que otro nivel todavía ocupa.
+  for (const l of await prisma.level.findMany()) {
+    await prisma.level.update({ where: { id: l.id }, data: { orden: l.orden + 1000 } })
+  }
+
   const byNombre = new Map<string, string>()
-  for (const l of levels) {
+  for (const [i, nombre] of ESCALAFON_VP.entries()) {
     const level = await prisma.level.upsert({
-      where: { nombre: l.nombre },
-      create: l,
-      update: { orden: l.orden, expectativas: l.expectativas },
+      where: { nombre },
+      create: { nombre, orden: i + 1, expectativas: expectativas[nombre] ?? null },
+      update: { orden: i + 1, expectativas: expectativas[nombre] ?? null },
     })
-    byNombre.set(l.nombre, level.id)
+    byNombre.set(nombre, level.id)
   }
   return byNombre
 }
 
-// Prisma no acepta `null` dentro de un where compuesto (@@unique) para upsert
-// — grupo es nullable en las conductas individuales, así que se resuelve a mano.
-async function upsertCompetency(tipo: 'individual' | 'rol', grupo: string | null, orden: number, texto: string) {
+async function upsertCompetency(tipo: 'individual' | 'rol' | 'nivel', grupo: string | null, orden: number, texto: string) {
   const existing = await prisma.competency.findFirst({ where: { tipo, grupo, orden } })
   if (existing) {
     await prisma.competency.update({ where: { id: existing.id }, data: { texto } })
@@ -52,6 +49,15 @@ async function seedCompetencies() {
   for (const [grupo, reactivos] of Object.entries(ROLES_VP)) {
     for (const [orden, texto] of reactivos.entries()) {
       await upsertCompetency('rol', grupo, orden, texto)
+    }
+  }
+
+  // Sección 2 del instrumento: reactivos por nivel. `grupo` es el nombre del
+  // nivel y `orden` el número del reactivo en el documento, para poder decir
+  // "el reactivo 10 de Gerente" sin ambigüedad.
+  for (const [nivel, reactivos] of Object.entries(REACTIVOS_POR_NIVEL)) {
+    for (const r of reactivos) {
+      await upsertCompetency('nivel', nivel, r.numero, r.texto)
     }
   }
 }
