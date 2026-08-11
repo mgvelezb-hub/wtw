@@ -24,6 +24,7 @@ const NAV = [
     grupo: 'Firma & Carrera',
     items: [
       { href: '/historico', label: 'Histórico', icon: '📈' },
+      { href: '/resumen', label: 'Resumen IA', icon: '✨' },
       { href: '/desarrollo', label: 'Desarrollo', icon: '🎯' },
     ],
   },

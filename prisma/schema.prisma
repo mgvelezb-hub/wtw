@@ -103,6 +103,10 @@ enum ArtifactTipo {
   status_equipo // Fase A
   brief_junta // Fase C
   status_cliente_texto // Fase C — narrativa para el portal, complementa el scorecard
+  // Resumen con IA de alcance variable: una junta, un periodo, un día, una
+  // semana, un proyecto o global. Cruza minutas capturadas con tareas, issues y
+  // entregables abiertos — ver src/app/(app)/resumen/service.ts
+  resumen_minuta
 }
 
 enum ArtifactEstado {
