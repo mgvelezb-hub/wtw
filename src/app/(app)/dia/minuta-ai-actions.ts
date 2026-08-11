@@ -5,7 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { callModel } from '@/lib/ai/client'
 import { GENERATE } from '@/lib/ai/models'
 import { extraerJSON } from '@/app/(app)/semana/nueva/parse-json'
-import type { MinutaItemTipo } from '@prisma/client'
+import { normalizarItems, type ItemPropuesto } from './normalizar-clasificacion'
+
+export type { ItemPropuesto }
 
 // Clasificación de minutas con IA. Toma el texto crudo tal como Mau lo captura
 // —bloques largos con encabezados libres tipo "Dimensión:", "Costos:",
@@ -13,17 +15,6 @@ import type { MinutaItemTipo } from '@prisma/client'
 //
 // La IA PROPONE, no guarda: el drawer muestra los items y Mau elige cuáles
 // agregar. Un error del modelo no debe ensuciar la minuta.
-
-const TIPOS_VALIDOS: MinutaItemTipo[] = [
-  'acuerdo',
-  'decision',
-  'pendiente_nuestro',
-  'pendiente_cliente',
-  'solicitud_data',
-  'actividad_nueva',
-  'riesgo',
-  'nota',
-]
 
 const PROMPT = `Clasificas notas de juntas de consultoría de operaciones y transporte, en español de México.
 
@@ -48,13 +39,6 @@ Reglas:
 
 Responde SOLO un array JSON, sin markdown ni explicación:
 [{"tipo":"pendiente_cliente","texto":"...","responsable":"...","fechaCompromiso":"2026-08-20"}]`
-
-export type ItemPropuesto = {
-  tipo: MinutaItemTipo
-  texto: string
-  responsable?: string
-  fechaCompromiso?: string
-}
 
 export type ResultadoClasificacion = { ok: true; items: ItemPropuesto[] } | { ok: false; error: string }
 
@@ -95,23 +79,12 @@ export async function clasificarMinutaAction(input: {
       maxTokens: 4000,
     })
 
-    const crudo = extraerJSON<ItemPropuesto[]>(text)
+    const crudo = extraerJSON<unknown>(text)
     if (!Array.isArray(crudo)) {
       return { ok: false, error: 'La IA respondió en un formato que no pude leer. Intenta otra vez.' }
     }
 
-    const items = crudo
-      .filter((i) => typeof i?.texto === 'string' && i.texto.trim() !== '')
-      .map((i) => ({
-        // Un tipo inventado por el modelo cae a 'nota' en vez de tirar: perder la
-        // clasificación de un item es mejor que perder el item.
-        tipo: TIPOS_VALIDOS.includes(i.tipo) ? i.tipo : ('nota' as MinutaItemTipo),
-        texto: i.texto.trim(),
-        responsable: typeof i.responsable === 'string' && i.responsable.trim() !== '' ? i.responsable.trim() : undefined,
-        fechaCompromiso: /^\d{4}-\d{2}-\d{2}$/.test(i.fechaCompromiso ?? '') ? i.fechaCompromiso : undefined,
-      }))
-
-    return { ok: true, items }
+    return { ok: true, items: normalizarItems(crudo) }
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'error desconocido'
     return { ok: false, error: msg.includes('ANTHROPIC_API_KEY') ? 'Falta la API key de Anthropic.' : msg }

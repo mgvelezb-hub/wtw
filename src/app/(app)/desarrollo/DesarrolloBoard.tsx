@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import type { DesarrolloView, CompetenciaOpcion, HistorialRiesgos } from './service'
-import { registrarEvidenciaAction } from './actions'
+import { registrarEvidenciaAction, cerrarRiesgoAction, reabrirRiesgoAction } from './actions'
 
 type BitacoraSerializada = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
@@ -37,6 +37,17 @@ export function DesarrolloBoard({
   const [pending, startTransition] = useTransition()
 
   const pct = view.totalReactivos > 0 ? Math.round((view.totalConEvidencia / view.totalReactivos) * 100) : 0
+
+  function accionRiesgo(fn: () => Promise<void>): void {
+    setError(null)
+    startTransition(async () => {
+      try {
+        await fn()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo actualizar el riesgo.')
+      }
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -260,10 +271,65 @@ export function DesarrolloBoard({
               </div>
             </dl>
             {riesgos.abiertos.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {riesgos.abiertos.map((r) => (
-                  <li key={r.id} className="text-sm text-neutral-700">
-                    <span className="font-mono text-xs text-neutral-400">{r.isoWeek}</span> ⚠ {r.riesgo}
+              <>
+                <p className="mt-3 text-xs text-neutral-500">
+                  Cierra cada riesgo al terminar la semana. Sin cerrarlos, el historial de capacidad predictiva no se llena —
+                  y es la evidencia de &ldquo;puede prever complicaciones inherentes al proyecto&rdquo;.
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {riesgos.abiertos.map((r) => (
+                    <li key={r.id} className="rounded-lg border border-neutral-200 p-2">
+                      <p className="text-sm text-neutral-800">
+                        <span className="font-mono text-xs text-neutral-400">{r.isoWeek}</span> ⚠ {r.riesgo}
+                      </p>
+                      <p className="mt-0.5 text-xs text-neutral-500">Defensa: {r.defensa}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        <button
+                          disabled={pending}
+                          onClick={() => accionRiesgo(() => cerrarRiesgoAction(r.id, true, true))}
+                          className="rounded border border-[#0d6d63] px-2 py-0.5 text-[10px] font-bold text-[#0c4a45] disabled:opacity-40"
+                        >
+                          ocurrió · la defensa sirvió
+                        </button>
+                        <button
+                          disabled={pending}
+                          onClick={() => accionRiesgo(() => cerrarRiesgoAction(r.id, true, false))}
+                          className="rounded border border-[#b43232] px-2 py-0.5 text-[10px] font-bold text-[#b43232] disabled:opacity-40"
+                        >
+                          ocurrió · no sirvió
+                        </button>
+                        <button
+                          disabled={pending}
+                          onClick={() => accionRiesgo(() => cerrarRiesgoAction(r.id, false))}
+                          className="rounded border border-neutral-300 px-2 py-0.5 text-[10px] font-bold text-neutral-600 disabled:opacity-40"
+                        >
+                          no ocurrió
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {riesgos.cerradosDetalle.length > 0 && (
+              <ul className="mt-3 space-y-1 border-t border-neutral-100 pt-2">
+                {riesgos.cerradosDetalle.map((r) => (
+                  <li key={r.id} className="flex items-baseline justify-between gap-2 text-xs">
+                    <span className="min-w-0 text-neutral-500">
+                      <span className="font-mono text-neutral-400">{r.isoWeek}</span>{' '}
+                      {r.ocurrio ? (r.defensaFunciono ? '✓ ocurrió, defensa sirvió' : '✕ ocurrió, defensa falló') : '— no ocurrió'}
+                      {' · '}
+                      {r.riesgo}
+                    </span>
+                    <button
+                      disabled={pending}
+                      onClick={() => accionRiesgo(() => reabrirRiesgoAction(r.id))}
+                      className="shrink-0 font-bold text-neutral-400 hover:text-[#0c4a45] disabled:opacity-40"
+                      title="Reabrir — vuelve a 'aún no se sabe'"
+                    >
+                      ↺
+                    </button>
                   </li>
                 ))}
               </ul>

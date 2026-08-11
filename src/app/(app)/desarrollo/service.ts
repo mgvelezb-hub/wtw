@@ -209,6 +209,14 @@ export type HistorialRiesgos = {
   acertados: number // se predijo y ocurrió
   defensasEfectivas: number // ocurrió y la defensa sirvió
   abiertos: Array<{ id: string; riesgo: string; defensa: string; isoWeek: string }>
+  // Los ya cerrados, para poder corregir un cierre equivocado.
+  cerradosDetalle: Array<{
+    id: string
+    riesgo: string
+    isoWeek: string
+    ocurrio: boolean
+    defensaFunciono: boolean | null
+  }>
 }
 
 export async function getHistorialRiesgos(userId: string): Promise<HistorialRiesgos> {
@@ -227,8 +235,15 @@ export async function getHistorialRiesgos(userId: string): Promise<HistorialRies
     acertados: ocurridos.length,
     defensasEfectivas: ocurridos.filter((r) => r.defensaFunciono === true).length,
     abiertos: riesgos
-      .filter((r) => r.ocurrio === null && r.week.estatus !== 'closed')
+      .filter((r) => r.ocurrio === null)
       .map((r) => ({ id: r.id, riesgo: r.riesgo, defensa: r.defensa, isoWeek: r.week.isoWeek })),
+    cerradosDetalle: cerrados.map((r) => ({
+      id: r.id,
+      riesgo: r.riesgo,
+      isoWeek: r.week.isoWeek,
+      ocurrio: r.ocurrio === true,
+      defensaFunciono: r.defensaFunciono,
+    })),
   }
 }
 

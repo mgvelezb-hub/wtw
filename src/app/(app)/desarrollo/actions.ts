@@ -122,3 +122,43 @@ export async function practicarRecursoAction(resourceId: string) {
 
   revalidatePath('/desarrollo')
 }
+
+// Cierre del ciclo del pre-mortem. Los riesgos del paso 5 del planeador se
+// guardaban pero no había forma de cerrarlos, así que el historial de capacidad
+// predictiva nunca podía llenarse: `ocurrio` se quedaba en null para siempre.
+export async function cerrarRiesgoAction(
+  riskId: string,
+  ocurrio: boolean,
+  defensaFunciono?: boolean
+): Promise<void> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+
+  const { count } = await prisma.weekRisk.updateMany({
+    where: { id: riskId, week: { userId: session.userId } },
+    data: {
+      ocurrio,
+      // Si el riesgo no ocurrió, preguntar si la defensa sirvió no tiene sentido:
+      // se limpia en vez de dejar un true/false que no significa nada.
+      defensaFunciono: ocurrio ? (defensaFunciono ?? null) : null,
+    },
+  })
+  if (count === 0) throw new Error('riesgo no encontrado')
+
+  revalidatePath('/desarrollo')
+}
+
+// Reabre un riesgo cerrado por error: vuelve a null, que es "aún no se sabe" —
+// distinto de "no ocurrió".
+export async function reabrirRiesgoAction(riskId: string): Promise<void> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+
+  const { count } = await prisma.weekRisk.updateMany({
+    where: { id: riskId, week: { userId: session.userId } },
+    data: { ocurrio: null, defensaFunciono: null },
+  })
+  if (count === 0) throw new Error('riesgo no encontrado')
+
+  revalidatePath('/desarrollo')
+}

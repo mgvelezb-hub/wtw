@@ -266,3 +266,64 @@ describe('instrumento por nivel (Expectations Vp.pdf)', () => {
     expect(view.objetivo?.reactivos).toHaveLength(0)
   })
 })
+
+describe('cierre del ciclo del pre-mortem', () => {
+  async function riesgoDe(userId: string) {
+    const week = await createWeekPayload(userId, {
+      isoWeek: '2026-W33',
+      factorUsado: 1.4,
+      wins: [],
+      tasks: [],
+      blocks: [],
+      riesgos: [{ riesgo: 'Liverpool mueve la junta', defensa: 'cerrar el análisis antes' }],
+    })
+    return prisma.weekRisk.findFirstOrThrow({ where: { weekId: week.id } })
+  }
+
+  it('un riesgo sin cerrar aparece como abierto, aunque la semana siga viva', async () => {
+    const user = await usuario()
+    await riesgoDe(user.id)
+
+    const h = await getHistorialRiesgos(user.id)
+    expect(h.abiertos).toHaveLength(1)
+    expect(h.cerrados).toBe(0)
+    expect(h.cerradosDetalle).toHaveLength(0)
+  })
+
+  it('cerrarlo como ocurrido con defensa efectiva lo cuenta en ambos indicadores', async () => {
+    const user = await usuario()
+    const r = await riesgoDe(user.id)
+    await prisma.weekRisk.update({ where: { id: r.id }, data: { ocurrio: true, defensaFunciono: true } })
+
+    const h = await getHistorialRiesgos(user.id)
+    expect(h.acertados).toBe(1)
+    expect(h.defensasEfectivas).toBe(1)
+    expect(h.abiertos).toHaveLength(0)
+    expect(h.cerradosDetalle[0].ocurrio).toBe(true)
+  })
+
+  it('si no ocurrió, defensaFunciono queda en null — preguntarlo no tiene sentido', async () => {
+    const user = await usuario()
+    const r = await riesgoDe(user.id)
+    await prisma.weekRisk.update({ where: { id: r.id }, data: { ocurrio: false, defensaFunciono: null } })
+
+    const h = await getHistorialRiesgos(user.id)
+    expect(h.cerrados).toBe(1)
+    expect(h.acertados).toBe(0)
+    expect(h.defensasEfectivas).toBe(0)
+    expect(h.cerradosDetalle[0].defensaFunciono).toBeNull()
+  })
+
+  it('reabrir vuelve a null, que es "aún no se sabe" — distinto de "no ocurrió"', async () => {
+    const user = await usuario()
+    const r = await riesgoDe(user.id)
+    await prisma.weekRisk.update({ where: { id: r.id }, data: { ocurrio: false } })
+    expect((await getHistorialRiesgos(user.id)).cerrados).toBe(1)
+
+    await prisma.weekRisk.update({ where: { id: r.id }, data: { ocurrio: null, defensaFunciono: null } })
+
+    const h = await getHistorialRiesgos(user.id)
+    expect(h.cerrados).toBe(0)
+    expect(h.abiertos).toHaveLength(1)
+  })
+})
