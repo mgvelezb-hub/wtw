@@ -1,4 +1,18 @@
 import { PrismaClient } from '@prisma/client'
+import { execSync } from 'child_process'
+
+// Siembra los datos de REFERENCIA una sola vez antes de toda la suite: niveles,
+// competencias y catálogo de recursos. Varios archivos de test los dan por
+// hechos (los de desarrollo, catálogo y planeador), y contra Neon "funcionaban"
+// solo porque esa base ya venía sembrada de antes — un falso verde que se cayó
+// en cuanto la suite se movió a una base limpia.
+export async function setup() {
+  execSync('npx tsx prisma/seed.ts', {
+    stdio: 'inherit',
+    cwd: process.cwd(),
+    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, DIRECT_URL: process.env.DIRECT_URL },
+  })
+}
 
 // Cada archivo de test limpia SU usuario al INICIO (beforeEach) para que las
 // corridas sean deterministas — pero eso deja el último usuario de cada
@@ -32,6 +46,9 @@ export async function teardown() {
       await prisma.artifact.deleteMany({ where: { userId: u.id } })
       await prisma.aiProfile.deleteMany({ where: { userId: u.id } })
       await prisma.aiCall.deleteMany({ where: { userId: u.id } })
+      // Sin cascada desde User: si faltan, el user.deleteMany de abajo truena por FK.
+      await prisma.learningProgress.deleteMany({ where: { userId: u.id } })
+      await prisma.stakeholder.deleteMany({ where: { userId: u.id } })
       await prisma.project.deleteMany({ where: { userId: u.id } })
     }
     await prisma.user.deleteMany({ where: { email: { endsWith: '@vp.mx' } } })

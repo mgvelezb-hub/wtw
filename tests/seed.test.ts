@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { execSync } from 'child_process'
 import { prisma } from '@/lib/prisma'
 
-beforeAll(() => {
-  execSync('npx tsx prisma/seed.ts', { stdio: 'inherit', cwd: process.cwd() })
-}, 180_000) // ~50 upserts, cada uno un roundtrip a Neon — con latencia mala supera los 60s
+// El seed lo corre el setup global (tests/global-teardown.ts) una sola vez antes
+// de toda la suite, apuntando a la misma base que los tests. Aquí solo se verifica
+// el resultado.
 
 describe('seed', () => {
   it('crea los 8 niveles del escalafón VP, de Trainee a Socio', async () => {
@@ -72,7 +72,13 @@ describe('seed', () => {
   it(
     'es idempotente — correr dos veces no duplica datos',
     async () => {
-      execSync('npx tsx prisma/seed.ts', { stdio: 'inherit', cwd: process.cwd() })
+      // Segunda corrida contra la MISMA base que la suite. Sin pasarle la URL, el
+      // hijo carga .env por su cuenta y sembraría producción.
+      execSync('npx tsx prisma/seed.ts', {
+        stdio: 'inherit',
+        cwd: process.cwd(),
+        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL, DIRECT_URL: process.env.DIRECT_URL },
+      })
       const count = await prisma.competency.count({ where: { tipo: 'individual' } })
       expect(count).toBeGreaterThanOrEqual(20)
       expect(count).toBeLessThan(40) // no se duplicó

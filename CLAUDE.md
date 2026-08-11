@@ -27,13 +27,41 @@ worker escrito a mano en `public/sw.js`.
 ```bash
 npm run dev              # dev server (Turbopack)
 npm run build             # build de producción
-npx vitest run             # suite completa — ~26 archivos, puede tardar 5-15 min contra Neon
-                            # (latencia de red, no bug — usa run_in_background + espera notificación)
+npx vitest run             # suite completa contra POSTGRES LOCAL — ~22 s, 34 archivos
+USE_NEON=1 npx vitest run  # contra Neon (~15 min, frágil) — solo antes de un release
 npx prisma db push --accept-data-loss   # aplicar cambios de schema (migrate dev NO funciona
                                           # sin TTY interactivo en este entorno — usar siempre db push)
 npx prisma generate
 npx tsx scripts/generate-token.ts <email>   # generar un PAT nuevo
 ```
+
+## Base de datos: producción vs. tests
+
+- **Producción** (lo que usan el iPad, el teléfono y la web): Vercel + **Neon**. No cambió.
+- **Tests**: Postgres LOCAL de Homebrew, puerto **5433** (el 5432 lo ocupa la instalación EDB).
+  Autenticación `trust`, usuario `vpconsulting` — sin contraseñas. Config en `.env.test`
+  (gitignoreado), cargada por `vitest.config.ts`.
+
+Arrancar el Postgres de tests (si la Mac se reinició):
+
+```bash
+LC_ALL=en_US.UTF-8 /usr/local/opt/postgresql@17/bin/pg_ctl \
+  -D /usr/local/var/postgresql@17 -o "-p 5433" start
+```
+
+`LC_ALL` no es opcional: sin él, Postgres 17 en macOS falla con
+"postmaster became multithreaded during startup".
+
+**Por qué se movió:** contra Neon la suite tardaba ~15 min (0.2-2 s por roundtrip a
+us-east-1), se caía por cold starts —Neon Free suspende el compute a los 5 min— y
+agotaba el pooler de 17 conexiones cuando el dev server estaba encendido. Peor: los
+tests compartían base con los DATOS REALES, y lo único que los separaba era que cada
+`deleteMany` estuviera scopeado por `userId` (regla 4 abajo). Local: 22 s y aislado.
+
+**Cómo distinguir un rojo de infraestructura de uno real** (aplica al correr con
+`USE_NEON=1`): fallas en milisegundos = "Can't reach database server"; fallas en
+10 s exactos = pool agotado. Un fallo de aserción real falla en el tiempo normal
+del test.
 
 ## Credenciales de desarrollo
 

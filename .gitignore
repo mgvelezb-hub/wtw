@@ -42,3 +42,4 @@ next-env.d.ts
 
 # evals
 tests/ai/last-eval-output.txt
+.env.test

@@ -3,6 +3,7 @@ import { prisma } from '../src/lib/prisma'
 import { isoWeekOf, weekRange } from '../src/lib/dates'
 import { CONDUCTAS_INDIVIDUALES, ROLES_VP } from './seed-data/competencias-vp'
 import { REACTIVOS_POR_NIVEL, ESCALAFON_VP } from './seed-data/reactivos-nivel'
+import { RECURSOS_DESARROLLO } from './seed-data/recursos-desarrollo'
 
 async function seedLevels() {
   // Escalafón completo de VP (Expectations Vp.pdf). Antes arrancaba en Analista y
@@ -58,6 +59,48 @@ async function seedCompetencies() {
   for (const [nivel, reactivos] of Object.entries(REACTIVOS_POR_NIVEL)) {
     for (const r of reactivos) {
       await upsertCompetency('nivel', nivel, r.numero, r.texto)
+    }
+  }
+}
+
+// Catálogo de material de desarrollo. Cada recurso se liga a las competencias que
+// mueve resolviendo su selector — sin ese mapeo el recurso no aparecería en ningún
+// hueco, que es justo lo que lo haría inútil.
+async function seedRecursos() {
+  for (const [i, r] of RECURSOS_DESARROLLO.entries()) {
+    const ids = new Set<string>()
+    for (const sel of r.competencias) {
+      const encontradas = await prisma.competency.findMany({
+        where: {
+          tipo: sel.tipo,
+          ...(sel.grupo !== undefined ? { grupo: sel.grupo } : {}),
+          ...(sel.orden !== undefined ? { orden: sel.orden } : {}),
+        },
+        select: { id: true },
+      })
+      encontradas.forEach((c) => ids.add(c.id))
+    }
+
+    const datos = {
+      tipo: r.tipo,
+      titulo: r.titulo,
+      fuente: r.fuente ?? null,
+      url: r.url ?? null,
+      porQue: r.porQue,
+      duracionMin: r.duracionMin ?? null,
+      cadencia: r.cadencia ?? null,
+      orden: i,
+    }
+    const previo = await prisma.learningResource.findFirst({ where: { tipo: r.tipo, titulo: r.titulo } })
+    if (previo) {
+      await prisma.learningResource.update({
+        where: { id: previo.id },
+        data: { ...datos, competencias: { set: [...ids].map((id) => ({ id })) } },
+      })
+    } else {
+      await prisma.learningResource.create({
+        data: { ...datos, competencias: { connect: [...ids].map((id) => ({ id })) } },
+      })
     }
   }
 }
@@ -123,6 +166,7 @@ async function seedActiveWeek(userId: string) {
 async function main() {
   const levels = await seedLevels()
   await seedCompetencies()
+  await seedRecursos()
   const user = await seedUser(levels)
   const projects = await seedProjects(user.id)
   const week = await seedActiveWeek(user.id)
@@ -131,6 +175,7 @@ async function main() {
   console.log(`  usuario: ${user.email}`)
   console.log(`  proyectos: ${projects.size}`)
   console.log(`  semana activa: ${week.isoWeek}`)
+  console.log(`  recursos de desarrollo: ${await prisma.learningResource.count()}`)
 }
 
 main()
