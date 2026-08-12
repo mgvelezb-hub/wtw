@@ -17,6 +17,7 @@ const NAV = [
     grupo: 'Proyecto',
     items: [
       { href: '/proyectos', label: 'Proyectos', icon: '📊' },
+      { href: '/stakeholders', label: 'Stakeholders', icon: '🎭' },
       { href: '/aliado', label: 'Aliado', icon: '🤝' },
     ],
   },
