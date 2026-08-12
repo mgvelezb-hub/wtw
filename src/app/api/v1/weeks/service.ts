@@ -15,6 +15,11 @@ type TaskInput = {
   alcance?: Alcance
   dolorCliente?: string
   dod?: string[]
+  // Competencias que esta tarea va a ejercitar. Se eligen AL PLANEAR y no al
+  // cerrar: el planeador es el único momento del ciclo en que todavía hay margen
+  // para decidir en qué se invierte la semana. Ver
+  // docs/plans/2026-08-10-alineacion-council.md §Fase 2b, pieza 3.
+  competenciaIds?: string[]
 }
 
 type AdoptarInput = {
@@ -22,6 +27,7 @@ type AdoptarInput = {
   winPosicion?: number
   estimadoMin?: number
   ajustadoMin?: number
+  competenciaIds?: string[]
 }
 
 type BlockInput = {
@@ -107,6 +113,7 @@ async function createTasksAndBlocks(
         dolorCliente: t.dolorCliente,
         estatus: 'planned',
         dodItems: { create: (t.dod ?? []).map((texto, orden) => ({ texto, orden })) },
+        competencias: t.competenciaIds?.length ? { connect: t.competenciaIds.map((id) => ({ id })) } : undefined,
       },
     })
     taskIdByRef.set(t.ref, task.id)
@@ -195,6 +202,16 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
         },
       })
       if (count === 0) throw new Error(`tarea ${a.id} no encontrada`)
+
+      // Las competencias van en un update aparte porque `updateMany` no escribe
+      // relaciones. Es seguro usar `where: { id }` sin userId: el count de arriba
+      // ya probó que la tarea es de este usuario.
+      if (a.competenciaIds) {
+        await tx.task.update({
+          where: { id: a.id },
+          data: { competencias: { set: a.competenciaIds.map((id) => ({ id })) } },
+        })
+      }
 
       // Una tarea arrastrada puede traer ya un bloque en esta semana, creado por
       // el carry de Mi Día. Si el planeador le asigna día, tendríamos dos bloques

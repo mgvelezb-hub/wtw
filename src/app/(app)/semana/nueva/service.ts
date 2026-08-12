@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { isoWeekOf, weekRange } from '@/lib/dates'
 import { capacityForWeek, type CapacidadSemana } from '@/app/api/v1/capacity/service'
+import { competenciasParaPlaneacion, type CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 
 // Contexto que alimenta los 5 pasos del ritual. Todo se calcula aquí, en el
 // servidor: la IA solo redacta y sugiere sobre estos números ya cerrados. Ver
@@ -56,6 +57,8 @@ export type ContextoPlaneacion = {
   backlog: PendienteBacklog[]
   proyectos: Array<{ id: string; nombre: string }>
   capacidad: CapacidadSemana
+  // Catálogo para etiquetar qué competencia ejercita cada tarea (paso 3).
+  competencias: CompetenciaPlaneacion[]
 }
 
 // La semana ISO anterior a la dada. Se resuelve restando 7 días al inicio del
@@ -122,7 +125,7 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
   const isoWeek = isoWeekOf(hoy)
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
 
-  const [previa, anterior, backlog, proyectos, capacidad] = await Promise.all([
+  const [previa, anterior, backlog, proyectos, capacidad, competencias] = await Promise.all([
     prisma.week.findUnique({
       where: { userId_isoWeek: { userId, isoWeek } },
       select: { _count: { select: { wins: true, tasks: true } } },
@@ -144,6 +147,7 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
     }),
     prisma.project.findMany({ where: { userId, estatus: 'activo' }, select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
     capacityForWeek(userId, isoWeek),
+    competenciasParaPlaneacion(userId),
   ])
 
   return {
@@ -163,6 +167,7 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
     })),
     proyectos,
     capacidad,
+    competencias,
   }
 }
 

@@ -23,6 +23,8 @@ export type NuevaSemanaTask = {
   // Día al que se asignó en el paso 4. Sin día, la tarea entra a la semana pero
   // sin bloque: queda en el parking lot de /dia.
   fecha?: string
+  // Competencia que esta tarea va a ejercitar, elegida en el paso 3.
+  competenciaId?: string
 }
 
 export type CrearSemanaInput = {
@@ -44,6 +46,18 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
   const nuevas = input.tasks.filter((t) => !t.id)
   const delBacklog = input.tasks.filter((t) => t.id)
 
+  // Las competencias vienen del <select> del cliente, así que se validan contra el
+  // catálogo antes de conectarlas: un id inventado reventaría la transacción
+  // completa por violación de llave foránea y tiraría los 10 min del ritual.
+  const pedidas = [...new Set(input.tasks.map((t) => t.competenciaId).filter((id): id is string => Boolean(id)))]
+  const validas = new Set(
+    pedidas.length > 0
+      ? (await prisma.competency.findMany({ where: { id: { in: pedidas } }, select: { id: true } })).map((c) => c.id)
+      : []
+  )
+  const competenciasDe = (t: NuevaSemanaTask): string[] | undefined =>
+    t.competenciaId && validas.has(t.competenciaId) ? [t.competenciaId] : undefined
+
   await createWeekPayload(session.userId, {
     isoWeek: isoWeekOf(new Date()),
     factorUsado,
@@ -63,12 +77,14 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
       estimadoMin: t.estimadoMin,
       ajustadoMin: ajustado(t.estimadoMin),
       dod: t.dod,
+      competenciaIds: competenciasDe(t),
     })),
     adoptar: delBacklog.map((t) => ({
       id: t.id!,
       winPosicion: t.winPosicion,
       estimadoMin: t.estimadoMin,
       ajustadoMin: ajustado(t.estimadoMin),
+      competenciaIds: competenciasDe(t),
     })),
     // Bloques "flex": el ritual decide EN QUÉ DÍA va cada tarea, no a qué hora.
     // La hora se acomoda en /dia con el reflow, que ya conoce juntas y jornada.

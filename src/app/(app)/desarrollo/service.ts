@@ -166,6 +166,56 @@ export async function competenciasParaEvidencia(userId: string): Promise<Compete
     .sort((a, b) => (a.vacia === b.vacia ? 0 : a.vacia ? -1 : 1))
 }
 
+// Competencias para etiquetar al PLANEAR (paso 3 del ritual). Se ordenan distinto
+// que las de evidencia: primero los reactivos del nivel OBJETIVO, porque son los
+// que deciden la promoción, y dentro de cada bloque los huecos primero. Elegir
+// aquí —y no al cerrar la tarea— es la única forma de que la semana se planee
+// contra el desarrollo en vez de justificarlo después.
+export type CompetenciaPlaneacion = {
+  id: string
+  etiqueta: string
+  grupo: string
+  esObjetivo: boolean
+  vacia: boolean
+}
+
+export async function competenciasParaPlaneacion(userId: string): Promise<CompetenciaPlaneacion[]> {
+  const [user, competencias] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { nivelObjetivo: { select: { nombre: true } } },
+    }),
+    prisma.competency.findMany({
+      include: { evidences: { where: { userId }, select: { id: true } } },
+      orderBy: [{ grupo: 'asc' }, { orden: 'asc' }],
+    }),
+  ])
+
+  const objetivo = user.nivelObjetivo?.nombre ?? null
+
+  return competencias
+    // Los reactivos de OTROS niveles no sirven para planear: medirían contra un
+    // puesto que no es el que se persigue. Las conductas y roles VP sí entran.
+    .filter((c) => c.tipo !== 'nivel' || c.grupo === objetivo)
+    .map((c) => {
+      const esObjetivo = c.tipo === 'nivel'
+      return {
+        id: c.id,
+        etiqueta: `${esObjetivo ? `${c.orden}. ` : ''}${c.texto.slice(0, 80)}${c.texto.length > 80 ? '…' : ''}`,
+        // Los reactivos de nivel se agrupan bajo el nombre del nivel objetivo para
+        // que el <optgroup> diga "Objetivo · Gerente" y no "nivel".
+        grupo: esObjetivo ? `Objetivo · ${objetivo}` : (c.grupo ?? GRUPO_INDIVIDUAL),
+        esObjetivo,
+        vacia: c.evidences.length === 0,
+      }
+    })
+    .sort((a, b) => {
+      if (a.esObjetivo !== b.esObjetivo) return a.esObjetivo ? -1 : 1
+      if (a.vacia !== b.vacia) return a.vacia ? -1 : 1
+      return a.grupo.localeCompare(b.grupo)
+    })
+}
+
 // Bitácora de delegación: el acumulado de trabajo que Mau hizo y no debió hacer.
 // Se reporta en horas reales, no en conteo de tareas — "23 h de trabajo de
 // analista en 6 semanas" es un argumento; "9 tareas" no lo es.

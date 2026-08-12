@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { ContextoPlaneacion } from './service'
+import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { balance } from './service'
 import { crearSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
@@ -22,6 +23,7 @@ type Item = {
   fecha?: string
   incluida: boolean
   arrastrada: boolean
+  competenciaId?: string
 }
 
 type WinDraft = { titulo: string; dod: string }
@@ -217,6 +219,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             wins={winsLlenos}
             factor={ctx.factor}
             proyectos={ctx.proyectos}
+            competencias={ctx.competencias}
             cargaAjustada={cargaAjustada}
             planeableMin={bal.planeableMin}
             sinEstimar={sinEstimar.length}
@@ -334,6 +337,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   estimadoMin: it.estimadoMin > 0 ? it.estimadoMin : 30,
                   dod: [],
                   fecha: it.fecha,
+                  competenciaId: it.competenciaId,
                 }))
                 try {
                   localStorage.removeItem(DRAFT_KEY)
@@ -505,6 +509,7 @@ function PasoVaciar({
   wins,
   factor,
   proyectos,
+  competencias,
   cargaAjustada,
   planeableMin,
   sinEstimar,
@@ -517,6 +522,7 @@ function PasoVaciar({
   wins: WinDraft[]
   factor: number
   proyectos: Array<{ id: string; nombre: string }>
+  competencias: CompetenciaPlaneacion[]
   cargaAjustada: number
   planeableMin: number
   sinEstimar: number
@@ -528,6 +534,19 @@ function PasoVaciar({
   const [nuevo, setNuevo] = useState('')
   const [nuevoProy, setNuevoProy] = useState('')
 
+  // El orden ya viene resuelto del servidor (objetivo primero, huecos primero
+  // dentro de cada bloque); agrupar aquí solo lo parte en <optgroup> sin
+  // reordenarlo — un Map preserva el orden de inserción.
+  const grupos = [...competencias.reduce((acc, c) => {
+    const lista = acc.get(c.grupo)
+    if (lista) lista.push(c)
+    else acc.set(c.grupo, [c])
+    return acc
+  }, new Map<string, CompetenciaPlaneacion[]>())]
+
+  const incluidas = items.filter((it) => it.incluida)
+  const etiquetadas = incluidas.filter((it) => it.competenciaId).length
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -537,6 +556,12 @@ function PasoVaciar({
       <p className="text-xs text-neutral-500">
         Estima el tiempo limpio. El factor {factor} se aplica solo: {horas(cargaAjustada)} ajustados de {horas(planeableMin)} planeables.
       </p>
+      {grupos.length > 0 && (
+        <p className="text-xs text-neutral-500">
+          Etiqueta qué competencia ejercita cada tarea: <strong>{etiquetadas}</strong> de {incluidas.length} incluidas.{' '}
+          <span className="text-neutral-400">○ = reactivo sin ninguna evidencia todavía.</span>
+        </p>
+      )}
 
       <div className="flex gap-1">
         <input
@@ -605,6 +630,30 @@ function PasoVaciar({
                 </option>
               ))}
             </select>
+            {/* Solo en las incluidas: etiquetar lo que se va a sacar de la semana
+                no dice nada, y la fila ya trae tres controles. */}
+            {it.incluida && grupos.length > 0 && (
+              <select
+                value={it.competenciaId ?? ''}
+                aria-label={`Competencia de ${it.titulo}`}
+                onChange={(e) => onItem(it.ref, { competenciaId: e.target.value || undefined })}
+                className={`w-full rounded border px-1 py-0.5 text-xs ${
+                  it.competenciaId ? 'border-[#0d6d63]/40 bg-[#0d6d63]/5 text-[#0c4a45]' : 'border-neutral-300 bg-white text-neutral-500'
+                }`}
+              >
+                <option value="">Sin competencia</option>
+                {grupos.map(([grupo, lista]) => (
+                  <optgroup key={grupo} label={grupo}>
+                    {lista.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.vacia ? '○ ' : '● '}
+                        {c.etiqueta}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            )}
           </li>
         ))}
         {items.length === 0 && <li className="text-xs text-neutral-400">Backlog vacío. Agrega pendientes arriba.</li>}
