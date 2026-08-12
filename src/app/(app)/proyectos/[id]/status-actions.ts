@@ -34,6 +34,8 @@ export type MinutaView = {
   fecha: string
   titulo: string
   asistentes: string[]
+  // Si ya trae el bloque crudo guardado, se puede reclasificar sin volver a pegarlo.
+  tieneNotas: boolean
   items: MinutaItemView[]
 }
 
@@ -44,6 +46,7 @@ export async function listMinutasAction(projectId: string): Promise<MinutaView[]
     id: m.id,
     fecha: m.fecha.toISOString().slice(0, 10),
     titulo: m.titulo,
+    tieneNotas: (m.notas ?? '').trim() !== '',
     asistentes: m.asistentes,
     items: m.items.map((i) => ({
       id: i.id,

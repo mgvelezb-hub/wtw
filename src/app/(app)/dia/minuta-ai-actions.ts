@@ -1,13 +1,17 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { callModel } from '@/lib/ai/client'
 import { GENERATE } from '@/lib/ai/models'
 import { extraerJSON } from '@/app/(app)/semana/nueva/parse-json'
+// El TIPO se importa aquí para las firmas, pero NO se re-exporta: un archivo
+// 'use server' solo puede exportar funciones async, y el cargador de server
+// actions de Next convierte cada export en un re-export de valor — un
+// `export type` acaba como `ItemPropuesto is not defined` en runtime.
+// Los consumidores importan el tipo de './normalizar-clasificacion'.
 import { normalizarItems, type ItemPropuesto } from './normalizar-clasificacion'
-
-export type { ItemPropuesto }
 
 // Clasificación de minutas con IA. Toma el texto crudo tal como Mau lo captura
 // —bloques largos con encabezados libres tipo "Dimensión:", "Costos:",
@@ -115,4 +119,22 @@ export async function guardarItemsClasificadosAction(minutaId: string, items: It
   })
 
   return items.length
+}
+
+// Guarda el bloque crudo de la junta en `notas`. El campo existía en el schema
+// desde Fase A ("texto libre pre-clasificación, dictado/pegado") pero ninguna
+// pantalla lo escribía: solo la API. Conservarlo permite reclasificar después
+// sin volver a pegar el texto.
+export async function guardarNotasMinutaAction(minutaId: string, notas: string): Promise<void> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+
+  const { count } = await prisma.minuta.updateMany({
+    where: { id: minutaId, userId: session.userId },
+    data: { notas: notas.trim() || null },
+  })
+  if (count === 0) throw new Error('minuta no encontrada')
+
+  revalidatePath('/proyectos')
+  revalidatePath('/dia')
 }

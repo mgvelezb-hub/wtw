@@ -1,7 +1,11 @@
 import type { MinutaItemTipo } from '@prisma/client'
 import type { MinutaView } from './status-actions'
+import { MinutaClasificar } from './MinutaClasificar'
 
-// Sección "Minutas" — solo lectura (la captura vive en /dia, Tarea 6). Lista
+// Sección "Minutas" — la captura sigue viviendo en /dia, pero la CLASIFICACIÓN
+// con IA se hace aquí: antes solo era alcanzable abriendo el drawer del día
+// exacto de la junta, lo que volvía impráctico tocar una minuta de la semana
+// pasada. Lista
 // por fecha desc: título, fecha, asistentes, e items con tipo/texto/
 // responsable/estado.
 
@@ -35,6 +39,7 @@ export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
             {m.asistentes.length > 0 && (
               <p className="mt-1 text-xs text-neutral-500">{m.asistentes.join(', ')}</p>
             )}
+            <MinutaClasificar minutaId={m.id} tieneNotas={m.tieneNotas} />
             <div className="mt-2 space-y-1.5">
               {m.items.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-sm">

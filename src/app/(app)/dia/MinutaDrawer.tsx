@@ -12,7 +12,8 @@ import {
   promoverItemAction,
   type MinutaView,
 } from './minuta-actions'
-import { clasificarMinutaAction, guardarItemsClasificadosAction, type ItemPropuesto } from './minuta-ai-actions'
+import { clasificarMinutaAction, guardarItemsClasificadosAction } from './minuta-ai-actions'
+import type { ItemPropuesto } from './normalizar-clasificacion'
 
 const TIPO_LABEL: Record<MinutaItemTipo, string> = {
   acuerdo: 'Acuerdo',
