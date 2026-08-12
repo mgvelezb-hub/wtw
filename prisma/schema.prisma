@@ -150,6 +150,7 @@ model User {
   artifacts       Artifact[]
   stakeholders    Stakeholder[]
   aprendizaje     LearningProgress[]
+  cierres         DayReconciliation[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
@@ -222,6 +223,7 @@ model Task {
   evidences     Evidence[]
   competencias  Competency[] @relation("TaskCompetencias") // etiquetado al planear
   minutaItems   MinutaItem[]
+  desvios       Desvio[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -471,6 +473,7 @@ model Stakeholder {
   cadenciaDias   Int?
   notas          String?
   interacciones  StakeholderInteraccion[]
+  desvios        Desvio[]
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
 
@@ -617,6 +620,59 @@ model Artifact {
   updatedAt     DateTime       @updatedAt
 
   @@index([userId, projectId, tipo, createdAt])
+}
+
+// ── Reconciliación de cierre de día ───────────────────
+//
+// El cronómetro SIGUE siendo el instrumento primario: es el dato honesto y es la
+// disciplina a desarrollar (cronometrar es parte de la rúbrica que hay que
+// demostrar). Esto no lo reemplaza, lo AUDITA. Su propósito es capturar POR QUÉ
+// se rompió el plan, que en este trabajo es la mitad de la información y hoy se
+// pierde completa. Ver docs/plans/2026-08-10-alineacion-council.md §Fase 1.
+//
+// La ausencia de desvíos no es un registro vacío: significa que el plan se
+// cumplió. Por eso el hecho de que exista la fila ya es la señal, y no hace falta
+// una causa "todo salió bien".
+
+model DayReconciliation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  fecha     DateTime @db.Date
+  nota      String?
+  desvios   Desvio[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, fecha])
+  @@index([userId, fecha])
+}
+
+model Desvio {
+  id               String            @id @default(cuid())
+  reconciliationId String
+  reconciliation   DayReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  causa            DesvioCausa
+  minutos          Int
+  // De qué stakeholder vino la urgencia. Sin esto "bomberazo" es un conteo; con
+  // esto es evidencia fechada para renegociar alcance, no percepción.
+  stakeholderId    String?
+  stakeholder      Stakeholder?      @relation(fields: [stakeholderId], references: [id])
+  // La tarea que se trabajó sin cronometrar, cuando aplica. Es lo que distingue
+  // "no lo hice" de "lo hice y no lo medí".
+  taskId           String?
+  task             Task?             @relation(fields: [taskId], references: [id])
+  nota             String?
+  orden            Int               @default(0)
+
+  @@index([reconciliationId])
+}
+
+enum DesvioCausa {
+  bomberazo // urgencia no planeada
+  cambio_prioridad_cliente // insumo directo para renegociar alcance
+  junta_se_alargo // corrige la capacidad real, hoy calculada del calendario nominal
+  trabajo_sin_cronometro // dato de disciplina: la reconciliación no perdona el cronómetro
 }
 
 // ── Perfiles IA (fundación; destilación automática en Fase C) ──

@@ -29,6 +29,9 @@ export async function deleteTestUser(email: string): Promise<void> {
     // MinutaItem apunta opcionalmente a Task/Issue sin cascada — hay que borrar
     // las minutas (cascada a sus items) antes de borrar tasks/issues, o la FK truena.
     prisma.minuta.deleteMany({ where: { userId: user.id } }),
+    // DayReconciliation cascadea a sus Desvio, y un Desvio apunta a Task y a
+    // Stakeholder SIN cascada: si se borra después que las tareas, la FK truena.
+    prisma.dayReconciliation.deleteMany({ where: { userId: user.id } }),
     prisma.task.deleteMany({ where: { userId: user.id } }),
     ...(weekIds.length ? [prisma.win.deleteMany({ where: { weekId: { in: weekIds } } })] : []),
     prisma.week.deleteMany({ where: { userId: user.id } }),

@@ -9,6 +9,7 @@ const NAV = [
     grupo: 'Personal',
     items: [
       { href: '/dia', label: 'Mi Día', icon: '☀️' },
+      { href: '/cierre', label: 'Cierre', icon: '🌙' },
       { href: '/semana', label: 'Mi Semana', icon: '🗓️' },
       { href: '/inbox', label: 'Actividades', icon: '📋' },
     ],
