@@ -93,6 +93,22 @@ del test.
    un `<a>`) para navegación confiable entre páginas.
 6. **`preview_console_logs` cachea errores viejos entre reloads** — para confirmar que un error
    ya no ocurre, reiniciar el server completo (`preview_stop` + `rm -rf .next` + `preview_start`).
+7. **Todo modelo nuevo que cuelgue de `User` sin cascada va a `tests/helpers/cleanup.ts`**, y en
+   el orden correcto. Si se olvida, la FK bloquea el `user.delete` y truena CUALQUIER test que
+   cree un usuario, no solo los del módulo nuevo. `DayReconciliation` se borra ANTES que `Task`
+   porque sus `Desvio` apuntan a `Task` y a `Stakeholder` sin cascada.
+8. **`updateMany` no escribe relaciones de Prisma.** Para conectar una relación tras validar
+   propiedad con `updateMany`, hace falta un `update` aparte por id — el `count` previo ya probó
+   que la fila es del usuario, así que el segundo query no necesita repetir el filtro.
+9. **Antes de tocar el schema de Neon, correr `prisma migrate diff --script` y leer el SQL.**
+   Si es puramente aditivo (`CREATE TABLE`/`CREATE TYPE`), `prisma db push` va SIN
+   `--accept-data-loss`. Ese flag solo debe aparecer contra la base de tests.
+
+## Rutas archivadas
+
+`/roi` está archivada detrás de un flag (`src/lib/flags.ts`): responde 404 y no aparece en la
+navegación. El service y sus tests siguen vivos. Revivirla es `WTW_RUTAS_ACTIVAS=roi`, y la
+condición para hacerlo es que exista una decisión de precio que dependa de ella.
 
 ## Estado del roadmap
 
@@ -105,6 +121,14 @@ borrador/final (flywheel de aprendizaje), evals gated (`EVAL=1` + `ANTHROPIC_API
 `tests/ai/status-eval.test.ts`). Requiere `ANTHROPIC_API_KEY` en `.env`/Vercel para
 generar en vivo (sin ella la UI muestra banner ámbar, no crashea). Fases B–D pendientes
 (§8 del doc de diseño).
+
+**Plan del council (2026-08-10) — Fases 1, 2 y 2b cerradas el 2026-08-12.** Reconciliación de
+cierre de día en `/cierre` (clasifica POR QUÉ se rompió el plan en 4 causas, cada una con un
+dueño distinto: cliente, código o disciplina; el panel de 14 días es la salida de la compuerta),
+mapa de stakeholders con cadencia en `/stakeholders`, etiquetado de competencias en el paso 3
+del planeador, y `/roi` archivada. **Pendiente: la Fase 0** —la tabla de "última decisión real
+que cambió" por ruta— que es trabajo de Mau, no de software, y la Fase 3 (consolidar las dos
+fuentes de verdad del PMO de Liverpool: app vs. skills sobre Obsidian/Excel).
 
 Las 6 fases del diseño original están completas (Fundación, Mi Día+PWA, Semana+Skills+Calendario,
 Proyectos+Desarrollo, Cliente+Economía, Equipo). Detalle de cada una en la memoria de Claude
