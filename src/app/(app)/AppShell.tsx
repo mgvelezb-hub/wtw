@@ -53,10 +53,23 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
   )
 }
 
-export function AppShell({ nombre, children }: { nombre: string; children: ReactNode }) {
+export function AppShell({
+  nombre,
+  archivados,
+  children,
+}: {
+  nombre: string
+  // Rutas archivadas detrás de un flag (ver src/lib/flags.ts). Se resuelven en el
+  // servidor porque el flag es de entorno y este componente corre en el cliente.
+  archivados: string[]
+  children: ReactNode
+}) {
   const pathname = usePathname()
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
-  const flat = NAV.flatMap((g) => g.items)
+  const grupos = NAV.map((g) => ({ ...g, items: g.items.filter((it) => !archivados.includes(it.href)) })).filter(
+    (g) => g.items.length > 0
+  )
+  const flat = grupos.flatMap((g) => g.items)
 
   return (
     <div className="min-h-dvh bg-[#f4efe3] md:pl-56">
@@ -75,7 +88,7 @@ export function AppShell({ nombre, children }: { nombre: string; children: React
 
         {/* Desktop: agrupado por capa */}
         <div className="hidden md:block">
-          {NAV.map((g, i) => (
+          {grupos.map((g, i) => (
             <div key={i} className="mb-3">
               {g.grupo && (
                 <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{g.grupo}</p>

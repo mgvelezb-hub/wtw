@@ -1,7 +1,13 @@
+import { notFound } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
+import { rutaArchivada } from '@/lib/flags'
 import { getROIRelacion } from './service'
 
 export default async function ROIPage() {
+  // Archivada hasta que exista una decisión de precio que dependa de ella. El
+  // service y la vista se quedan intactos: revivirla es poner WTW_RUTAS_ACTIVAS=roi.
+  if (rutaArchivada('roi')) notFound()
+
   const session = await verifySession()
   if (!session) return null
 
