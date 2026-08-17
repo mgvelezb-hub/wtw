@@ -1,6 +1,5 @@
 'use server'
 
-import { redirect } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createWeekPayload } from '@/app/api/v1/weeks/service'
@@ -101,5 +100,10 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
       })),
   })
 
-  redirect('/semana')
+  // NO se redirige desde aquí. `redirect()` de Next funciona LANZANDO un error
+  // (NEXT_REDIRECT), y el cliente espera esta action dentro de un try/catch para
+  // poder devolver el borrador si algo falla. Ese catch se tragaba el redirect: la
+  // semana sí se creaba, pero el usuario se quedaba en el planeador con un mensaje
+  // de error falso y el draft restaurado. La navegación la hace el cliente con
+  // router.push cuando esto resuelve sin lanzar.
 }

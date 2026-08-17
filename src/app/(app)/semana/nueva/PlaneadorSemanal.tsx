@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import type { ContextoPlaneacion } from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { balance, type Balance } from './service'
@@ -96,6 +97,7 @@ function draftInicial(ctx: ContextoPlaneacion): Draft {
 }
 
 export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.ReactElement {
+  const router = useRouter()
   const [draft, setDraft] = useState<Draft>(() => leerDraft(ctx))
   const [error, setError] = useState<string | null>(null)
   const [cargandoIA, setCargandoIA] = useState<string | null>(null)
@@ -408,6 +410,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   fecha: it.fecha,
                   competenciaId: it.competenciaId,
                 }))
+                let creada = false
                 try {
                   localStorage.removeItem(DRAFT_KEY)
                   await crearSemanaAction({
@@ -417,11 +420,17 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                     wins: winsLlenos.map((w) => ({ titulo: w.titulo, dod: w.dod || undefined })),
                     tasks,
                   })
+                  creada = true
                 } catch (e) {
                   // Falló el guardado: se devuelve el draft para no perder 10 min de ritual.
                   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
                   setError(e instanceof Error ? e.message : 'No se pudo crear la semana.')
                 }
+                // La navegación va FUERA del try. Antes la action terminaba con
+                // `redirect()`, que Next implementa lanzando NEXT_REDIRECT, y este
+                // mismo catch se lo tragaba: la semana se creaba pero el planeador
+                // se quedaba mostrando un error falso.
+                if (creada) router.push('/semana')
               })
             }}
             className="rounded-full bg-[#e8b94a] px-4 py-2 text-sm font-bold text-[#4a3a10] disabled:opacity-40"
