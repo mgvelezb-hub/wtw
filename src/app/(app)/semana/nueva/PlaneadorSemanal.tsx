@@ -4,9 +4,10 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { ContextoPlaneacion } from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
-import { balance } from './service'
+import { balance, type Balance } from './service'
 import { crearSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
+import { medidaDe, refDeMedida } from './medidas'
 
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
 const DRAFT_KEY = 'wtw_planeador_draft_v2'
@@ -27,7 +28,10 @@ type Item = {
 }
 
 type WinDraft = { titulo: string; dod: string }
-type Riesgo = { riesgo: string; defensa: string }
+// `medida` es opcional: un draft guardado antes de este cambio no la trae, y
+// bumpear DRAFT_KEY para "arreglarlo" borraría el ritual en curso de quien esté
+// planeando. `medidaDe()` la deriva de la prosa cuando falta.
+type Riesgo = { riesgo: string; defensa: string; medida?: { titulo: string; estimadoMin: number } }
 
 type Draft = {
   paso: number
@@ -123,6 +127,56 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
     } finally {
       setCargandoIA(null)
     }
+  }
+
+  // Estado de las medidas del pre-mortem. Se deriva de `draft.items` en cada
+  // render: la fuente de verdad de "ya está en la semana" es la lista de items,
+  // porque es la que se manda a crearSemanaAction. Un set paralelo se
+  // desincronizaría en cuanto la tarea se quite desde otro paso.
+  const medidas = draft.riesgos.map((r, i) => {
+    const ref = refDeMedida(i)
+    const item = draft.items.find((it) => it.ref === ref)
+    const m = medidaDe(r)
+    return {
+      ref,
+      agregada: item !== undefined && item.incluida,
+      titulo: item?.titulo ?? m.titulo,
+      estimadoMin: item?.estimadoMin ?? m.estimadoMin,
+      conDia: item?.fecha !== undefined,
+    }
+  })
+
+  function toggleMedida(indice: number): void {
+    const ref = refDeMedida(indice)
+    setDraft((d) => {
+      if (d.items.some((it) => it.ref === ref)) {
+        return { ...d, items: d.items.filter((it) => it.ref !== ref) }
+      }
+      const m = medidaDe(d.riesgos[indice])
+      return {
+        ...d,
+        items: [
+          ...d.items,
+          { ref, titulo: m.titulo, estimadoMin: m.estimadoMin, incluida: true, arrastrada: false },
+        ],
+      }
+    })
+  }
+
+  // La edición escribe en `riesgos[i].medida` —que es lo que persiste en el
+  // draft— y además al item si ya se agregó. Así editar antes de agregar no se
+  // pierde, y editar después no deja los dos valores divergentes.
+  function editarMedida(indice: number, cambio: { titulo?: string; estimadoMin?: number }): void {
+    setDraft((d) => {
+      const base = medidaDe(d.riesgos[indice])
+      const medida = { ...base, ...cambio }
+      const ref = refDeMedida(indice)
+      return {
+        ...d,
+        riesgos: d.riesgos.map((r, i) => (i === indice ? { ...r, medida } : r)),
+        items: d.items.map((it) => (it.ref === ref ? { ...it, ...cambio } : it)),
+      }
+    })
   }
 
   const incluidas = draft.items.filter((it) => it.incluida)
@@ -288,13 +342,28 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
           <PasoPreemptar
             riesgos={draft.riesgos}
             desbloqueador={draft.desbloqueador}
+            medidas={medidas}
+            factor={ctx.factor}
+            bal={bal}
+            onToggleMedida={toggleMedida}
+            onEditarMedida={editarMedida}
+            onIrAlPaso={(paso) => set({ paso })}
             onChange={(cambio) => set(cambio)}
             cargando={cargandoIA === 'premortem'}
             onIA={() =>
               conIA('premortem', async () => {
                 const r = await premortemAction(winsLlenos, bal.cargaMin, bal.planeableMin)
                 if (!r.ok) return setError(r.error)
-                set({ riesgos: r.datos.riesgos, desbloqueador: r.datos.desbloqueador ?? draft.desbloqueador })
+                // Los riesgos se reemplazan, así que las medidas que ya se
+                // habían agregado quedarían colgando de riesgos que ya no
+                // existen —y con el título del anterior. Se retiran junto con
+                // ellos; volver a seleccionarlas es un clic.
+                setDraft((d) => ({
+                  ...d,
+                  riesgos: r.datos.riesgos,
+                  desbloqueador: r.datos.desbloqueador ?? d.desbloqueador,
+                  items: d.items.filter((it) => !d.riesgos.some((_, i) => refDeMedida(i) === it.ref)),
+                }))
               })
             }
           />
@@ -745,16 +814,35 @@ function PasoBloquear({
 function PasoPreemptar({
   riesgos,
   desbloqueador,
+  medidas,
+  factor,
+  bal,
   onChange,
+  onToggleMedida,
+  onEditarMedida,
+  onIrAlPaso,
   onIA,
   cargando,
 }: {
   riesgos: Riesgo[]
   desbloqueador: string
+  // Estado de cada medida en el draft: si ya es un item, con qué título y minutos,
+  // y si tiene día asignado. Se deriva de `draft.items`, no se guarda aparte —
+  // dos fuentes de verdad para lo mismo se desincronizan.
+  medidas: Array<{ ref: string; agregada: boolean; titulo: string; estimadoMin: number; conDia: boolean }>
+  factor: number
+  bal: Balance
   onChange: (cambio: { riesgos?: Riesgo[]; desbloqueador?: string }) => void
+  onToggleMedida: (indice: number) => void
+  onEditarMedida: (indice: number, cambio: { titulo?: string; estimadoMin?: number }) => void
+  onIrAlPaso: (paso: number) => void
   onIA: () => void
   cargando: boolean
 }): React.ReactElement {
+  const agregadas = medidas.filter((m) => m.agregada)
+  const faltanDia = agregadas.filter((m) => !m.conDia).length
+  const todasAgregadas = medidas.length > 0 && agregadas.length === medidas.length
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -763,15 +851,101 @@ function PasoPreemptar({
       </div>
       <p className="text-xs text-neutral-500">Imagina que la semana terminó y los Wins no se lograron. ¿Qué pasó?</p>
 
+      {riesgos.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0c4a45]/5 px-2 py-1.5">
+          <span className="text-xs text-neutral-600">
+            {agregadas.length > 0 ? (
+              <>
+                <strong className="text-[#0c4a45]">{agregadas.length}</strong> de {medidas.length} medidas en la semana ·{' '}
+                {horas(Math.round(agregadas.reduce((s, m) => s + m.estimadoMin, 0) * factor))} ajustados
+              </>
+            ) : (
+              <>Una defensa que no entra al plan no se ejecuta. Selecciona las que sí vas a hacer.</>
+            )}
+          </span>
+          <button
+            onClick={() => medidas.forEach((m, i) => (todasAgregadas ? m.agregada : !m.agregada) && onToggleMedida(i))}
+            className="rounded-full border border-[#0c4a45] px-2 py-0.5 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+          >
+            {todasAgregadas ? 'Quitar todas' : 'Agregar todas'}
+          </button>
+        </div>
+      )}
+
       <ul className="space-y-2">
-        {riesgos.map((r, i) => (
-          <li key={i} className="rounded-lg border border-neutral-200 p-2">
-            <p className="text-sm font-semibold text-neutral-900">⚠ {r.riesgo}</p>
-            <p className="text-xs text-neutral-600">→ {r.defensa}</p>
-          </li>
-        ))}
+        {riesgos.map((r, i) => {
+          const m = medidas[i]
+          return (
+            <li
+              key={i}
+              className={`rounded-lg border p-2 ${m?.agregada ? 'border-[#0d6d63]/50 bg-[#0d6d63]/5' : 'border-neutral-200'}`}
+            >
+              <p className="text-sm font-semibold text-neutral-900">⚠ {r.riesgo}</p>
+              <p className="mt-0.5 text-xs text-neutral-600">→ {r.defensa}</p>
+
+              {m && (
+                <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-neutral-100 pt-2">
+                  <input
+                    type="checkbox"
+                    checked={m.agregada}
+                    aria-label={`Agregar la medida del riesgo ${i + 1} a la semana`}
+                    onChange={() => onToggleMedida(i)}
+                  />
+                  <input
+                    value={m.titulo}
+                    aria-label={`Título de la medida del riesgo ${i + 1}`}
+                    onChange={(e) => onEditarMedida(i, { titulo: e.target.value })}
+                    className="min-w-40 flex-1 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-900"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    step={15}
+                    value={m.estimadoMin || ''}
+                    aria-label={`Minutos de la medida del riesgo ${i + 1}`}
+                    onChange={(e) => onEditarMedida(i, { estimadoMin: Math.max(0, Number(e.target.value) || 0) })}
+                    className="w-16 rounded border border-neutral-300 px-1 py-0.5 text-xs text-neutral-900"
+                  />
+                  <span className="text-xs text-neutral-400">min</span>
+                </div>
+              )}
+            </li>
+          )
+        })}
         {riesgos.length === 0 && <li className="text-xs text-neutral-400">Sin riesgos anotados.</li>}
       </ul>
+
+      {/* La carga se muestra AQUÍ y no solo en el pie: los pasos 3 y 4 existen
+          para que la semana sea realista, y agregar medidas después del triage
+          sin ver el efecto es exactamente cómo se sobrecarga una semana. */}
+      {agregadas.length > 0 && (
+        <div
+          className={`rounded-lg px-2 py-1.5 text-xs ${
+            bal.sobrecargado ? 'bg-[#f7dcdc] text-[#b43232]' : 'bg-[#d3e4e0] text-[#0c4a45]'
+          }`}
+        >
+          {bal.sobrecargado ? (
+            <>
+              Con las medidas dentro te pasas <strong>{horas(-bal.colchonMin)}</strong> de lo planeable. Quita una medida, o
+              vuelve al <button onClick={() => onIrAlPaso(3)} className="underline">paso 4</button> y saca otra tarea.
+            </>
+          ) : (
+            <>
+              Cabe: quedan <strong>{horas(bal.colchonMin)}</strong> de colchón.
+            </>
+          )}
+          {faltanDia > 0 && (
+            <>
+              {' '}
+              {faltanDia === 1 ? 'Una medida no tiene' : `${faltanDia} medidas no tienen`} día asignado —{' '}
+              <button onClick={() => onIrAlPaso(3)} className="underline">
+                asígnalo en el paso 4
+              </button>{' '}
+              o queda en el parking lot de Mi Día.
+            </>
+          )}
+        </div>
+      )}
 
       <label className="block text-xs font-semibold uppercase text-neutral-500">Desbloqueador</label>
       <input

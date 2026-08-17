@@ -179,7 +179,13 @@ export async function triageAction(
 
 // --- Paso 5: pre-mortem ----------------------------------------------------
 
-export type PreMortem = { riesgos: Array<{ riesgo: string; defensa: string }>; desbloqueador?: string }
+// `medida` es la defensa expresada como actividad planeable. Es OPCIONAL en el
+// tipo a propósito: si el modelo la omite o la manda mal formada, el cliente la
+// deriva de la prosa con `medidaDe()` en vez de quedarse sin acción.
+export type PreMortem = {
+  riesgos: Array<{ riesgo: string; defensa: string; medida?: { titulo: string; estimadoMin: number } }>
+  desbloqueador?: string
+}
 
 export async function premortemAction(
   wins: Array<{ titulo: string }>,
@@ -204,7 +210,23 @@ export async function premortemAction(
     ok: true,
     datos: {
       riesgos: Array.isArray(r.datos?.riesgos)
-        ? r.datos.riesgos.filter((x) => typeof x?.riesgo === 'string' && typeof x?.defensa === 'string').slice(0, 3)
+        ? r.datos.riesgos
+            .filter((x) => typeof x?.riesgo === 'string' && typeof x?.defensa === 'string')
+            .slice(0, 3)
+            // Se sanea aquí y no en el cliente: una `medida` a medias (título
+            // vacío, minutos como string o negativos) debe caer al derivado de la
+            // prosa, no llegar al draft y de ahí a la semana.
+            .map((x) => ({
+              riesgo: x.riesgo,
+              defensa: x.defensa,
+              medida:
+                typeof x.medida?.titulo === 'string' &&
+                x.medida.titulo.trim() !== '' &&
+                typeof x.medida?.estimadoMin === 'number' &&
+                x.medida.estimadoMin > 0
+                  ? { titulo: x.medida.titulo.trim(), estimadoMin: Math.round(x.medida.estimadoMin) }
+                  : undefined,
+            }))
         : [],
       desbloqueador: typeof r.datos?.desbloqueador === 'string' ? r.datos.desbloqueador : undefined,
     },

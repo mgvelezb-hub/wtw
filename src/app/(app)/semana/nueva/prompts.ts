@@ -68,5 +68,17 @@ más probables —concretos, no genéricos— y para cada uno una defensa accion
 Propón además el "desbloqueador": la única actividad que, si se hace primero,
 destraba el resto de la semana.
 
+Cada defensa se va a poder agregar a la semana como actividad, así que además de
+la prosa devuelve "medida" con:
+- "titulo": la acción en imperativo, como se escribiría una tarea en un plan.
+  Máximo 70 caracteres, sin "Antes de..." ni condicionales, sin punto final.
+  Ejemplo: "Probar la conexión Postgres-AnyLogic aislada en la MV".
+- "estimadoMin": minutos de trabajo limpio que cuesta. Si la defensa menciona una
+  duración, usa esa. Si no, estima honesto: una verificación acotada son 30 min,
+  no 5.
+
+La medida tiene que ser una sola actividad. Si tu defensa requiere dos cosas
+distintas, elige la que desbloquea y deja la otra en la prosa.
+
 Responde SOLO JSON, sin markdown:
-{"riesgos":[{"riesgo":"...","defensa":"..."}],"desbloqueador":"..."}`
+{"riesgos":[{"riesgo":"...","defensa":"...","medida":{"titulo":"...","estimadoMin":30}}],"desbloqueador":"..."}`
