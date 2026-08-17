@@ -23,7 +23,6 @@ import {
   moveBlockAction,
   carryToTodayAction,
   carryAllToTodayAction,
-  closeDayAction,
   reflowTodayAction,
   cancelMeetingAction,
   toggleBloqueanteAction,
@@ -369,15 +368,16 @@ export function DiaBoard(p: DiaBoardProps) {
                 >
                   ▶ Arrancar día
                 </button>
-                <ConfirmarQuitar
-                  disabled={pending}
-                  onConfirm={() => startTransition(() => void closeDayAction(p.today))}
-                  icono="🌙 Cerrar día"
-                  textoArmado="¿Mover pendientes a mañana?"
-                  titulo="Cerrar día — mueve las tareas sin terminar al siguiente día hábil"
+                {/* Ya NO mueve nada aquí. Mover primero borraba la evidencia de
+                    lo planeado; ahora esto lleva al cierre, donde se registra qué
+                    pasó y de ahí se pasan los pendientes. */}
+                <Link
+                  href={`/cierre?dia=${p.today}`}
+                  title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
                   className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
-                  armedClassName="rounded-full border border-[#b43232] bg-[#b43232] px-3 py-1 text-xs font-bold text-white"
-                />
+                >
+                  Cerrar el día →
+                </Link>
               </>
             )}
           </div>

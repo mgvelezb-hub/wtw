@@ -103,6 +103,18 @@ del test.
 9. **Antes de tocar el schema de Neon, correr `prisma migrate diff --script` y leer el SQL.**
    Si es puramente aditivo (`CREATE TABLE`/`CREATE TYPE`), `prisma db push` va SIN
    `--accept-data-loss`. Ese flag solo debe aparecer contra la base de tests.
+10. **Un `@updatedAt` nuevo sobre una tabla que YA tiene filas necesita `@default(now())`.**
+    Sin él el SQL sale `ADD COLUMN ... NOT NULL` sin default y no puede rellenar lo existente.
+    Verificarlo leyendo el diff, no probándolo contra la base de tests: esa suele estar vacía y
+    da un falso verde.
+11. **Nunca mutar `Block.fecha` antes de haber leído lo que dependa de esa fecha.** Mover un
+    bloque cambia el MISMO registro, y todo lo que calcula "lo planeado del día X" lee por fecha.
+    Ese era el bug que dejó al 13-ago-2026 irrecuperable. Regla general: en un cierre, primero se
+    registra y al final se mueve.
+12. **`preview_console_logs` puede seguir sirviendo errores del proceso ANTERIOR** incluso tras
+    `preview_stop` + `rm -rf .next` + `preview_start` — el buffer es del tab, no del server. Para
+    descartar un error de compilación: `grep` el import en el fuente y `curl` la ruta (un 307/200
+    prueba que compila; un 500 no). No asumir "es caché" sin esas dos pruebas.
 
 ## Rutas archivadas
 

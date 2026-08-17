@@ -252,6 +252,15 @@ model Block {
   done    Boolean   @default(false) // para junta/hito/descanso
   orden   Int       @default(0)
   minutas Minuta[]
+  // Sin estos sellos no había forma de saber qué bloque se movió ni cuándo, y por
+  // eso el día 13-ago-2026 quedó irrecuperable tras pasar sus pendientes: los
+  // registros son los MISMOS, solo con otra fecha.
+  //
+  // `updatedAt` lleva `@default(now())` —a diferencia del resto de los modelos—
+  // porque esta columna se agrega a una tabla que YA tiene filas en producción:
+  // un NOT NULL sin default no puede rellenarlas y la migración fallaría.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model TimeEntry {
@@ -640,6 +649,17 @@ model DayReconciliation {
   user      User     @relation(fields: [userId], references: [id])
   fecha     DateTime @db.Date
   nota      String?
+  // Snapshot tomado al pasar los pendientes al día siguiente. Es necesario porque
+  // mover un bloque le cambia `fecha` EN EL MISMO registro, y el cálculo de lo
+  // planeado lee bloques por fecha: sin esto, cerrar el día borra la evidencia de
+  // qué se había planeado y el día queda en cero para siempre. Null = todavía no
+  // se pasaron pendientes, y entonces se calcula en vivo.
+  planMinCierre   Int?
+  medidoMinCierre Int?
+  // Cuántos bloques se movieron y a qué día. Se guarda para poder responder
+  // "¿qué pasó el lunes?" sin depender de la memoria.
+  movidos         Int?
+  movidosA        DateTime? @db.Date
   desvios   Desvio[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

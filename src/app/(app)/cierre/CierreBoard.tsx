@@ -5,7 +5,13 @@ import Link from 'next/link'
 import type { DesvioCausa } from '@prisma/client'
 import type { CierreDia, PatronDesvios } from './service'
 import { CAUSAS, CAUSA_LABEL, CAUSA_QUE_SIGNIFICA } from './service'
-import { guardarCierreAction, borrarCierreAction, type DesvioInput } from './actions'
+import {
+  guardarCierreAction,
+  borrarCierreAction,
+  pasarPendientesAction,
+  convertirDesvioEnTareaAction,
+  type DesvioInput,
+} from './actions'
 
 type Fila = DesvioInput & { key: string }
 
@@ -63,6 +69,13 @@ export function CierreBoard({
   const [error, setError] = useState<string | null>(null)
   const [guardado, setGuardado] = useState(false)
   const [pending, startTransition] = useTransition()
+  // Qué fila tiene abierto el formulario de "registrar como trabajo", y cuáles ya
+  // se registraron (key → título de la tarea creada). Vive local porque el desvío
+  // puede no estar guardado todavía: obligar a guardar antes de poder registrar el
+  // trabajo sería justo la fricción que hace que el trabajo aliado nunca se cargue.
+  const [promoviendo, setPromoviendo] = useState<string | null>(null)
+  const [promovidas, setPromovidas] = useState<Record<string, string>>({})
+  const [movidos, setMovidos] = useState<{ movidos: number; hacia: string } | null>(null)
 
   function set(key: string, cambio: Partial<Fila>): void {
     setFilas((f) => f.map((x) => (x.key === key ? { ...x, ...cambio } : x)))
@@ -122,12 +135,25 @@ export function CierreBoard({
         </div>
 
         {cierre.planMin === 0 ? (
-          <p className="mt-2 text-sm text-neutral-400">No había nada planeado este día. No hay nada que reconciliar.</p>
+          // Antes decía "no hay nada que reconciliar", que es lo contrario de la
+          // verdad: el día que el plan no existió o se rompió entero es cuando más
+          // importa registrar a dónde se fue el tiempo.
+          <p className="mt-2 text-xs text-neutral-500">
+            No había nada planeado este día — o los pendientes ya se pasaron. Registra abajo en qué se fue el tiempo: es el
+            único momento en que ese dato existe.
+          </p>
         ) : (
           <p className="mt-2 text-xs text-neutral-500">
             {cierre.huecoMin === 0
               ? 'El cronómetro cubre todo lo planeado. Guarda el día así: un cierre sin desvíos significa que el plan se cumplió.'
               : `${horas(cierre.huecoMin)} planeados no aparecen en ningún cronómetro. Explica a dónde se fueron.`}
+          </p>
+        )}
+
+        {cierre.desdeSnapshot && (
+          <p className="mt-2 text-[11px] text-neutral-400">
+            Estas cifras vienen del snapshot tomado al pasar los pendientes, no de los bloques vivos — por eso siguen
+            siendo fieles a lo que había planeado ese día.
           </p>
         )}
 
@@ -240,6 +266,40 @@ export function CierreBoard({
                 className="min-w-32 flex-1 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-900"
               />
             </div>
+
+            {/* Sin esto, el trabajo no planeado moría como texto libre en la nota:
+                alimentaba el patrón de causas pero nunca llegaba al ledger Aliado
+                ni generaba evidencia de competencias. */}
+            {promovidas[f.key] ? (
+              <p className="rounded bg-[#0d6d63]/10 px-2 py-1 text-xs text-[#0c4a45]">
+                ✓ Registrado como trabajo hecho: <strong>{promovidas[f.key]}</strong>
+              </p>
+            ) : promoviendo === f.key ? (
+              <PromoverDesvio
+                minutos={f.minutos}
+                notaSugerida={f.nota ?? ''}
+                proyectos={cierre.proyectos}
+                pending={pending}
+                onCancelar={() => setPromoviendo(null)}
+                onRegistrar={(datos) =>
+                  accion(async () => {
+                    await convertirDesvioEnTareaAction({ ...datos, minutos: f.minutos, fecha: cierre.fecha })
+                    setPromovidas((p) => ({ ...p, [f.key]: datos.titulo }))
+                    setPromoviendo(null)
+                  })
+                }
+              />
+            ) : (
+              f.minutos > 0 &&
+              cierre.proyectos.length > 0 && (
+                <button
+                  onClick={() => setPromoviendo(f.key)}
+                  className="text-xs text-[#0c4a45] underline"
+                >
+                  Registrar estos {f.minutos} min como trabajo hecho
+                </button>
+              )
+            )}
           </div>
         ))}
 
@@ -288,6 +348,44 @@ export function CierreBoard({
           )}
         </div>
       </section>
+
+      {/* Mover es el ÚLTIMO paso, y por eso vive después de registrar los desvíos:
+          hacerlo antes le cambia la fecha a los bloques y borra la evidencia de lo
+          que se había planeado. */}
+      {(cierre.pendientesPorMover > 0 || cierre.yaMovidos) && (
+        <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Pendientes sin terminar</h2>
+          {movidos ?? cierre.yaMovidos ? (
+            <p className="mt-1 text-sm text-neutral-700">
+              {movidos
+                ? `${movidos.movidos} ${movidos.movidos === 1 ? 'pendiente movido' : 'pendientes movidos'} a ${movidos.hacia}.`
+                : `${cierre.yaMovidos!.cuantos} ${
+                    cierre.yaMovidos!.cuantos === 1 ? 'pendiente movido' : 'pendientes movidos'
+                  } a ${cierre.yaMovidos!.hacia}.`}
+              {cierre.pendientesPorMover > 0 && ` Quedan ${cierre.pendientesPorMover} en este día.`}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-neutral-500">
+              {cierre.pendientesPorMover} sin terminar. Se pasan al siguiente día hábil, y las cifras de arriba quedan
+              congeladas para que este día siga siendo legible después.
+            </p>
+          )}
+
+          {cierre.pendientesPorMover > 0 && (
+            <button
+              disabled={pending}
+              onClick={() =>
+                accion(async () => {
+                  setMovidos(await pasarPendientesAction(cierre.fecha))
+                })
+              }
+              className="mt-2 rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10 disabled:opacity-40"
+            >
+              {pending ? 'Moviendo…' : `Pasar ${cierre.pendientesPorMover} al siguiente día hábil`}
+            </button>
+          )}
+        </section>
+      )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Qué causa domina — últimos 14 días</h2>
@@ -346,6 +444,106 @@ export function CierreBoard({
           </>
         )}
       </section>
+    </div>
+  )
+}
+
+// Formulario mínimo para convertir un desvío en trabajo registrado. Los minutos no
+// se piden: ya están en el desvío, y volver a teclearlos invita a que los dos
+// números divergan.
+function PromoverDesvio({
+  minutos,
+  notaSugerida,
+  proyectos,
+  pending,
+  onCancelar,
+  onRegistrar,
+}: {
+  minutos: number
+  notaSugerida: string
+  proyectos: Array<{ id: string; nombre: string; tieneTarifa: boolean }>
+  pending: boolean
+  onCancelar: () => void
+  onRegistrar: (datos: { titulo: string; projectId: string; alcance: 'aliado' | 'sow'; dolorCliente?: string }) => void
+}): React.ReactElement {
+  const [titulo, setTitulo] = useState(notaSugerida)
+  const [projectId, setProjectId] = useState(proyectos[0]?.id ?? '')
+  const [alcance, setAlcance] = useState<'aliado' | 'sow'>('aliado')
+  const [dolor, setDolor] = useState('')
+
+  const proyecto = proyectos.find((p) => p.id === projectId)
+  // El dolor es obligatorio en aliado: sin él el ledger acumula horas que no se
+  // pueden defender en una negociación, que es su única razón de existir.
+  const listo = titulo.trim() !== '' && projectId !== '' && (alcance === 'sow' || dolor.trim() !== '')
+
+  return (
+    <div className="space-y-1 rounded-lg border border-[#0c4a45]/30 bg-[#0c4a45]/5 p-2">
+      <p className="text-xs font-bold text-[#0c4a45]">Registrar {minutos} min como trabajo hecho</p>
+      <input
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder="Qué hiciste, como se escribiría una tarea"
+        aria-label="Título del trabajo"
+        className="w-full rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
+      />
+      <div className="flex flex-wrap items-center gap-1">
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          aria-label="Proyecto del trabajo"
+          className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+        >
+          {proyectos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre}
+            </option>
+          ))}
+        </select>
+        <select
+          value={alcance}
+          onChange={(e) => setAlcance(e.target.value as 'aliado' | 'sow')}
+          aria-label="Alcance del trabajo"
+          className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+        >
+          <option value="aliado">Fuera del SOW (aliado)</option>
+          <option value="sow">Dentro del SOW</option>
+        </select>
+      </div>
+      {alcance === 'aliado' && (
+        <>
+          <input
+            value={dolor}
+            onChange={(e) => setDolor(e.target.value)}
+            placeholder="Qué dolor del cliente atendió (requerido)"
+            aria-label="Dolor del cliente"
+            className="w-full rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
+          />
+          {proyecto && !proyecto.tieneTarifa && (
+            <p className="text-[11px] text-[#b43232]">
+              {proyecto.nombre} no tiene tarifa por hora: estas horas se van a contar, pero no se pueden valorizar en pesos.
+            </p>
+          )}
+        </>
+      )}
+      <div className="flex items-center gap-2">
+        <button
+          disabled={pending || !listo}
+          onClick={() =>
+            onRegistrar({
+              titulo,
+              projectId,
+              alcance,
+              dolorCliente: alcance === 'aliado' ? dolor : undefined,
+            })
+          }
+          className="rounded-full bg-[#0c4a45] px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+        >
+          {pending ? 'Registrando…' : 'Registrar'}
+        </button>
+        <button onClick={onCancelar} className="text-xs text-neutral-500 underline">
+          cancelar
+        </button>
+      </div>
     </div>
   )
 }

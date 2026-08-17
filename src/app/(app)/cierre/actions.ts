@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { DesvioCausa } from '@prisma/client'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { pasarPendientes, convertirDesvioEnTarea } from './service'
 
 export type DesvioInput = {
   causa: DesvioCausa
@@ -78,6 +79,35 @@ export async function guardarCierreAction(input: {
 
   revalidatePath('/cierre')
   revalidatePath('/dia')
+}
+
+// Mover pendientes y convertir un desvío en trabajo viven en `service.ts`: la
+// regla de arquitectura del proyecto es que las dos capas de auth (cookie de
+// sesión y PAT) llamen la MISMA lógica, y además así se puede probar sin sesión.
+export async function pasarPendientesAction(fecha: string): Promise<{ movidos: number; hacia: string }> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+  const r = await pasarPendientes(session.userId, fecha)
+  revalidatePath('/cierre')
+  revalidatePath('/dia')
+  return r
+}
+
+export async function convertirDesvioEnTareaAction(input: {
+  titulo: string
+  minutos: number
+  projectId: string
+  alcance: 'aliado' | 'sow'
+  dolorCliente?: string
+  fecha: string
+}): Promise<{ taskId: string }> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+  const r = await convertirDesvioEnTarea(session.userId, input)
+  revalidatePath('/cierre')
+  revalidatePath('/aliado')
+  revalidatePath('/dia')
+  return r
 }
 
 // Deshacer un cierre. Vuelve al estado "sin reconciliar", que es distinto de
