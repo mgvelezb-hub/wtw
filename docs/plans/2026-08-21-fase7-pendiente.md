@@ -1,43 +1,37 @@
-# Fase 7 (plan "Siguiente Nivel") — PENDIENTE
+# Fase 7 (plan "Siguiente Nivel") — COMPLETADA
 
-Estado: **detenida a media ejecución por decisión de Mau (2026-08-20)**. Las fases 1–6
-del plan están completas y en producción (commits `67b578f..22e6eb1`). El avance
-parcial de esta fase vive en la rama **`fase7-wip`** (2 commits) — retomar desde ahí,
-no rehacer.
+Estado: **terminada y en producción el 2026-08-21** (commit `dbed4ea`). Se detuvo a
+media ejecución el 2026-08-20, se retomó desde la rama `fase7-wip` (ya eliminada)
+y se completó con auditoría del borrador.
 
-## Alcance de la fase (del plan aprobado)
+Con esto el plan "Siguiente Nivel" queda **7 de 7 fases en producción**
+(`67b578f..dbed4ea`).
 
-1. **Briefing matutino "Tu arranque"** en /dia — determinista, calculado server-side
-   al cargar el día (sin cron, sin IA): primer bloque, causa dominante de ayer,
-   arrastradas, hasta 2 stakeholders fríos con su siguiente acción, win en riesgo
-   (sin bloques futuros y no logrado) con su si-entonces, y nivel del semáforo JD-R.
-   Card colapsable, tono dato, solo visible si es hoy y hay algo que decir.
-2. **One-pager del promotion case** en /desarrollo/caso — página print-first
-   (Cmd+P → PDF): veredicto del gap dashboard, mejores 3 evidencias por reactivo
-   (con testigo primero), impactos de cliente (baseline → delta → validó), y la
-   línea honesta de huecos. Para armar al sponsor ante el comité.
-3. **Log de propuestas desde literatura** — reactivo 11 de Gerente: registro
-   insight → fuente → dónde propuse → qué pasó, sección colapsada en /desarrollo.
+## Lo entregado
 
-## Estado del avance en `fase7-wip`
+1. **Briefing matutino "Tu arranque"** en /dia — determinista, al cargar el día:
+   primer bloque, causa dominante de ayer, arrastradas, stakeholders fríos con su
+   siguiente acción, win en riesgo con su si-entonces, semáforo JD-R.
+   `src/lib/briefing.ts`, `dia/BriefingCard.tsx`, `tests/briefing.test.ts`.
+2. **One-pager del promotion case** en /desarrollo/caso — print-first (Cmd+P → PDF):
+   veredicto del patrón, hasta 3 evidencias por reactivo (testigo primero), impacto
+   de cliente, huecos honestos. `desarrollo/caso/**`, `tests/promotion-case.test.ts`.
+3. **Log de propuestas desde literatura** (reactivo 11) — sección colapsada en
+   /desarrollo, modelo `PropuestaLiteratura`. `desarrollo/literatura-*`,
+   `tests/literatura.test.ts`.
 
-- `0ba9132`: modelo `PropuestaLiteratura` en schema + `literatura-service.ts` /
-  `literatura-actions.ts` + entradas en `cleanup.ts` / `global-teardown.ts`
-  (regla 7 aplicada) + `src/lib/briefing.ts` (service del briefing, a medias).
-- `5127a4d`: restos al detener — `dia/BriefingCard.tsx`, `desarrollo/caso/service.ts`
-  y `BotonImprimir.tsx`, edición parcial de `DesarrolloBoard.tsx`.
-- **Nada de esto está verificado**: sin tests corridos, sin tsc confirmado, sin
-  revisión visual. Tratarlo como borrador.
+## Lo que el borrador tenía mal (para la memoria del repo)
 
-## Avisos para quien retome
+- `briefing.ts` importaba de `dia/service.ts` y éste lo necesitaba a su vez:
+  ciclo de módulos + consulta de arrastradas duplicada. Fix: el conteo se pasa
+  como parámetro y `getDiaView` comparte una sola promesa.
+- `PropuestasLiteraturaSection` estaba definida pero nunca renderizada.
+- `tests/global-teardown.ts` no borraba `DayReconciliation` antes de `Task`/
+  `Stakeholder` (regla 7) — preexistente, el barrido final fallaba con FK.
 
-- **La tabla `PropuestaLiteratura` probablemente YA existe en Neon** (el agente
-  alcanzó a hacer `db push` antes de detenerse). Es aditiva y vacía — inofensiva,
-  pero al retomar verificar con `prisma migrate diff` antes de asumir estado.
-- La base de tests local (5433) puede o no tener el modelo — mismo diff.
-- Faltan por completo: tests de las 3 features, integración del BriefingCard en
-  /dia, la página `caso/page.tsx` con su CSS print, la sección de literatura en
-  DesarrolloBoard, y la pasada de verificación (tsc + suite + browser).
-- Los 3 specs completos de los agentes quedaron en la sesión de Claude del
-  2026-08-20 — el plan detallado por feature está en este archivo (arriba) y en
-  el artifact "Plan de Desarrollo WTW".
+## Primera lectura con datos reales
+
+Al primer render, el briefing mostró **52% de los minutos cronometrados de los
+últimos 14 días fuera de jornada o en fin de semana** (señal de erosión de
+frontera del semáforo JD-R). Ese es el dato que la pregunta abierta del council
+necesitaba.
