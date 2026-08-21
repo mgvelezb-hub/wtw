@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
-import type { Alcance } from '@prisma/client'
+import type { Alcance, TipoTrabajo } from '@prisma/client'
 import { createInboxTask, discardTask } from './service'
 
 async function userId(): Promise<string> {
@@ -14,6 +14,7 @@ async function userId(): Promise<string> {
 export async function captureAction(data: {
   titulo: string
   herramienta?: string
+  tipoTrabajo?: TipoTrabajo
   projectId?: string
   estimadoMin?: number
   alcance?: Alcance

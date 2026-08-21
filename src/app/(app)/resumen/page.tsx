@@ -2,13 +2,15 @@ import { redirect } from 'next/navigation'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isoWeekOf, todayStr } from '@/lib/dates'
+import { metricasAceptacion } from '@/lib/ai/metricas'
 import { ResumenBoard } from './ResumenBoard'
+import { MetricasIA } from './MetricasIA'
 
 export default async function ResumenPage() {
   const session = await verifySession()
   if (!session) redirect('/login')
 
-  const [minutas, proyectos, previos] = await Promise.all([
+  const [minutas, proyectos, previos, metricas] = await Promise.all([
     prisma.minuta.findMany({
       where: { userId: session.userId },
       select: { id: true, titulo: true, fecha: true, project: { select: { nombre: true } } },
@@ -26,6 +28,7 @@ export default async function ResumenPage() {
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
+    metricasAceptacion(session.userId),
   ])
 
   return (
@@ -47,6 +50,7 @@ export default async function ResumenPage() {
             fecha: a.createdAt.toISOString().slice(0, 10),
           }))}
         />
+        <MetricasIA metricas={metricas} />
       </div>
     </main>
   )

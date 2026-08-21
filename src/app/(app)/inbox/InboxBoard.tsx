@@ -1,52 +1,96 @@
 'use client'
 
 import { useMemo, useState, useTransition } from 'react'
-import type { Task } from '@prisma/client'
+import type { TipoTrabajo } from '@prisma/client'
+import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
 import { captureAction, discardAction } from './actions'
 
-type TaskWithProject = Task & { project: { nombre: string } | null }
+type InboxItem = {
+  id: string
+  titulo: string
+  herramienta: string | null
+  tipoTrabajo: TipoTrabajo | null
+  estimadoMin: number | null
+  proyecto: string | null
+}
+
+// Lo que el usuario tenía escrito antes de aceptar una sugerencia, para poder
+// deshacer. Mientras hay un ajuste aplicado no se ofrece otro: encadenar factores
+// multiplicaría la corrección (×1.6 sobre 96 min ya ajustados) y eso deja de ser
+// el histórico para volverse inflación.
+type Ajuste = { etiqueta: string; factor: number; previo: string }
 
 export function InboxBoard({
   tasks,
   proyectos,
   herramientas,
   factores,
+  factoresClase,
 }: {
-  tasks: TaskWithProject[]
+  tasks: InboxItem[]
   proyectos: { id: string; nombre: string }[]
   herramientas: readonly string[]
   factores: Record<string, number>
+  factoresClase: Record<TipoTrabajo, { factor: number | null; muestras: number }>
 }) {
   const [pending, startTransition] = useTransition()
   const [titulo, setTitulo] = useState('')
   const [herramienta, setHerramienta] = useState('')
+  const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo | ''>('')
   const [projectId, setProjectId] = useState('')
   const [aliado, setAliado] = useState(false)
   const [estimadoMin, setEstimadoMin] = useState('')
+  const [ajuste, setAjuste] = useState<Ajuste | null>(null)
 
-  const factor = herramienta ? factores[herramienta] : undefined
-  const sugerido = useMemo(() => {
-    const base = Number(estimadoMin)
-    if (!factor || !base || base <= 0) return null
-    return Math.round(base * factor)
-  }, [factor, estimadoMin])
+  const base = Number(estimadoMin)
+  const baseValida = estimadoMin !== '' && Number.isFinite(base) && base > 0
+
+  const claseStats = tipoTrabajo ? factoresClase[tipoTrabajo] : undefined
+  const sugerenciaClase = useMemo(() => {
+    if (!claseStats?.factor || !baseValida) return null
+    return { factor: claseStats.factor, minutos: Math.round(base * claseStats.factor) }
+  }, [claseStats, base, baseValida])
+
+  const factorHerramienta = herramienta ? factores[herramienta] : undefined
+  const sugerenciaHerramienta = useMemo(() => {
+    if (!factorHerramienta || !baseValida) return null
+    return { factor: factorHerramienta, minutos: Math.round(base * factorHerramienta) }
+  }, [factorHerramienta, base, baseValida])
 
   function reset() {
     setTitulo('')
     setHerramienta('')
+    setTipoTrabajo('')
     setProjectId('')
     setAliado(false)
     setEstimadoMin('')
+    setAjuste(null)
+  }
+
+  function aplicar(etiqueta: string, factor: number, minutos: number) {
+    setAjuste({ etiqueta, factor, previo: estimadoMin })
+    setEstimadoMin(String(minutos))
+  }
+
+  function deshacer() {
+    if (!ajuste) return
+    setEstimadoMin(ajuste.previo)
+    setAjuste(null)
   }
 
   function submit() {
     if (!titulo.trim()) return
+    // El estimado se manda tal como quedó en el campo. La sugerencia del histórico
+    // nunca se aplica sola: si el número viene ajustado es porque el usuario apretó
+    // "Usar", y ese es justo el punto — el factor solo corrige la falacia de
+    // planeación si se ve y se acepta en el momento de estimar.
     startTransition(() =>
       void captureAction({
         titulo,
         herramienta: herramienta || undefined,
+        tipoTrabajo: tipoTrabajo || undefined,
         projectId: projectId || undefined,
-        estimadoMin: sugerido ?? (estimadoMin ? Number(estimadoMin) : undefined),
+        estimadoMin: baseValida ? base : undefined,
         alcance: aliado ? 'aliado' : 'sow',
       })
     )
@@ -76,8 +120,12 @@ export function InboxBoard({
         <div className="grid grid-cols-2 gap-2">
           <select
             value={herramienta}
-            onChange={(e) => setHerramienta(e.target.value)}
+            onChange={(e) => {
+              setHerramienta(e.target.value)
+              setAjuste(null)
+            }}
             disabled={pending}
+            aria-label="Herramienta"
             className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
           >
             <option value="">Herramienta…</option>
@@ -92,12 +140,31 @@ export function InboxBoard({
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             disabled={pending}
+            aria-label="Proyecto"
             className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
           >
             <option value="">Sin proyecto</option>
             {proyectos.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nombre}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={tipoTrabajo}
+            onChange={(e) => {
+              setTipoTrabajo(e.target.value as TipoTrabajo | '')
+              setAjuste(null)
+            }}
+            disabled={pending}
+            aria-label="Tipo de trabajo"
+            className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
+          >
+            <option value="">Tipo de trabajo…</option>
+            {TIPOS_TRABAJO.map((t) => (
+              <option key={t} value={t}>
+                {TIPO_TRABAJO_LABEL[t]}
               </option>
             ))}
           </select>
@@ -116,15 +183,66 @@ export function InboxBoard({
             min={0}
             step={5}
             value={estimadoMin}
-            onChange={(e) => setEstimadoMin(e.target.value)}
+            onChange={(e) => {
+              setEstimadoMin(e.target.value)
+              setAjuste(null)
+            }}
             placeholder="Estimado en minutos…"
             disabled={pending}
+            aria-label="Estimado en minutos"
             className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
           />
-          {factor && estimadoMin && sugerido && (
+
+          {ajuste && (
+            <p className="mt-1 text-xs text-neutral-500">
+              Ajustado con tu histórico en <strong>{ajuste.etiqueta}</strong> (×{ajuste.factor.toFixed(1)}) ·{' '}
+              <button type="button" onClick={deshacer} disabled={pending} className="underline hover:text-neutral-800">
+                deshacer
+              </button>
+            </p>
+          )}
+
+          {!ajuste && tipoTrabajo && sugerenciaClase && (
             <p className="mt-1 text-xs text-brand-strong">
-              Con tareas de <strong>{herramienta}</strong> tu real ha sido en promedio {factor.toFixed(1)}× tu
-              estimado — sugerido: <strong>{sugerido} min</strong>
+              Tu histórico en <strong>{TIPO_TRABAJO_LABEL[tipoTrabajo]}</strong>: ×{sugerenciaClase.factor.toFixed(1)}{' '}
+              → ~{sugerenciaClase.minutos} min.{' '}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() =>
+                  aplicar(TIPO_TRABAJO_LABEL[tipoTrabajo], sugerenciaClase.factor, sugerenciaClase.minutos)
+                }
+                className="font-semibold underline hover:text-brand-deep"
+              >
+                Usar
+              </button>
+            </p>
+          )}
+
+          {/* La clase de referencia manda sobre la herramienta: el tipo de trabajo
+              es la variable que la evidencia dice que explica la desviación. La de
+              herramienta solo aparece cuando no hay factor de clase. */}
+          {!ajuste && !sugerenciaClase && sugerenciaHerramienta && (
+            <p className="mt-1 text-xs text-brand-strong">
+              Tu histórico en <strong>{herramienta}</strong>: ×{sugerenciaHerramienta.factor.toFixed(1)} → ~
+              {sugerenciaHerramienta.minutos} min.{' '}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => aplicar(herramienta, sugerenciaHerramienta.factor, sugerenciaHerramienta.minutos)}
+                className="font-semibold underline hover:text-brand-deep"
+              >
+                Usar
+              </button>
+            </p>
+          )}
+
+          {/* Sin muestras suficientes no se sugiere, pero sí se dice por qué: el
+              silencio se leería como "aquí no te desvías", que es lo contrario. */}
+          {!ajuste && tipoTrabajo && claseStats?.factor === null && claseStats.muestras > 0 && (
+            <p className="mt-1 text-xs text-neutral-400">
+              {claseStats.muestras} de 3 tareas de {TIPO_TRABAJO_LABEL[tipoTrabajo]} medidas — aún sin histórico
+              suficiente para sugerir.
             </p>
           )}
         </div>
@@ -155,7 +273,12 @@ export function InboxBoard({
               {t.herramienta && (
                 <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium">{t.herramienta}</span>
               )}
-              {t.project && <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium">{t.project.nombre}</span>}
+              {t.tipoTrabajo && (
+                <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand-deep">
+                  {TIPO_TRABAJO_LABEL[t.tipoTrabajo]}
+                </span>
+              )}
+              {t.proyecto && <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium">{t.proyecto}</span>}
               {t.estimadoMin != null && <span>{t.estimadoMin} min</span>}
             </div>
           </li>

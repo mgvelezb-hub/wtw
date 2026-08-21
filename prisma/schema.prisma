@@ -82,6 +82,20 @@ enum Alcance {
   aliado // valor adicional intencional — inversión en la alianza (diferencial VP)
 }
 
+// Clase de referencia del factor de realismo. Un factor global no calibra: la
+// sobre-optimización de armar un deck no se parece a la de preparar una junta.
+// El factor solo corrige si se mide POR TIPO DE TRABAJO y se re-inyecta en la
+// siguiente estimación. Nullable en Task — el histórico no lo trae y no se
+// inventa retroactivamente.
+enum TipoTrabajo {
+  deck
+  analisis
+  junta
+  gestion
+  comunicacion
+  otro
+}
+
 enum MinutaItemTipo {
   acuerdo
   decision
@@ -217,6 +231,7 @@ model Task {
   delegable     Boolean      @default(false)
   delegableNota String? // a que perfil, y por que no se delego
   herramienta   String? // Excel, PowerPoint, Python, Power BI, AnyLogic... determina complejidad/estimación
+  tipoTrabajo   TipoTrabajo? // clase de referencia para el factor de realismo (ver enum)
   dodItems      DodItem[]
   blocks        Block[]
   timeEntries   TimeEntry[]

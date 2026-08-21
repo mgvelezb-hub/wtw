@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
-import type { Alcance } from '@prisma/client'
+import type { Alcance, TipoTrabajo } from '@prisma/client'
+import { factorPorClase, type FactorClase } from '@/lib/factor-clase'
 
 export const HERRAMIENTAS = [
   'Excel',
@@ -56,11 +57,18 @@ export async function getHerramientaFactors(userId: string): Promise<Record<stri
   return factores
 }
 
+// Los factores por clase de referencia, ya planos y serializables — la página los
+// pasa tal cual al Client Component (regla 2: nunca un modelo de Prisma completo).
+export async function getFactoresPorClase(userId: string): Promise<Record<TipoTrabajo, FactorClase>> {
+  return factorPorClase(userId)
+}
+
 export async function createInboxTask(
   userId: string,
   data: {
     titulo: string
     herramienta?: string
+    tipoTrabajo?: TipoTrabajo
     projectId?: string
     estimadoMin?: number
     alcance?: Alcance
@@ -72,6 +80,7 @@ export async function createInboxTask(
       userId,
       titulo: data.titulo,
       herramienta: data.herramienta || null,
+      tipoTrabajo: data.tipoTrabajo ?? null,
       projectId: data.projectId || null,
       estimadoMin: data.estimadoMin ?? null,
       alcance: data.alcance ?? 'sow',
