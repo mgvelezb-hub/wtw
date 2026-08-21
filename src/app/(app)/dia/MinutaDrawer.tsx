@@ -43,7 +43,7 @@ function TipoChip({ tipo, active, onClick }: { tipo: MinutaItemTipo; active: boo
       type="button"
       onClick={onClick}
       className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-        active ? 'border-[#0c4a45] bg-[#0c4a45] text-white' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
+        active ? 'border-brand-deep bg-brand-deep text-white' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
       }`}
     >
       {TIPO_LABEL[tipo]}
@@ -254,11 +254,11 @@ export function MinutaDrawer({
       <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-neutral-200 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-[#0d6d63]">Minuta de junta</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-strong">Minuta de junta</p>
             <input
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
-              className="mt-0.5 w-full rounded border border-transparent bg-transparent text-lg font-bold text-[#0c4a45] focus:border-neutral-300 focus:bg-neutral-50 focus:outline-none"
+              className="mt-0.5 w-full rounded border border-transparent bg-transparent text-lg font-bold text-brand-deep focus:border-neutral-300 focus:bg-neutral-50 focus:outline-none"
             />
           </div>
           <button
@@ -301,10 +301,10 @@ export function MinutaDrawer({
                   {asistentes.map((a) => (
                     <span
                       key={a}
-                      className="flex items-center gap-1 rounded-full bg-[#d3e4e0] px-2.5 py-1 text-xs font-semibold text-[#0c4a45]"
+                      className="flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-deep"
                     >
                       {a}
-                      <button onClick={() => quitarAsistente(a)} className="text-[#0c4a45]/60 hover:text-[#0c4a45]">
+                      <button onClick={() => quitarAsistente(a)} className="text-brand-deep/60 hover:text-brand-deep">
                         ✕
                       </button>
                     </span>
@@ -337,7 +337,7 @@ export function MinutaDrawer({
                     <button
                       key={s}
                       onClick={() => agregarAsistente(s)}
-                      className="rounded-full border border-neutral-200 px-2 py-0.5 text-[11px] text-neutral-500 hover:border-[#0d6d63] hover:text-[#0d6d63]"
+                      className="rounded-full border border-neutral-200 px-2 py-0.5 text-[11px] text-neutral-500 hover:border-brand-strong hover:text-brand-strong"
                     >
                       + {s}
                     </button>
@@ -394,7 +394,7 @@ export function MinutaDrawer({
                 type="button"
                 disabled={pending || !texto.trim() || !proyectoId}
                 onClick={guardarItem}
-                className="mt-2 w-full rounded-md bg-[#e8b94a] px-3 py-2 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e] disabled:opacity-50"
+                className="mt-2 w-full rounded-md bg-brand px-3 py-2 text-sm font-bold text-white hover:bg-brand-strong disabled:opacity-50"
               >
                 + Agregar item
               </button>
@@ -403,21 +403,21 @@ export function MinutaDrawer({
                 type="button"
                 disabled={pending || clasificando || !proyectoId || (!texto.trim() && !minutaId)}
                 onClick={clasificar}
-                className="mt-1.5 w-full rounded-md border border-[#0c4a45] px-3 py-2 text-sm font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10 disabled:opacity-50"
+                className="mt-1.5 w-full rounded-md border border-brand-deep px-3 py-2 text-sm font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-50"
                 title="Parte el texto en acuerdos, pendientes, decisiones y riesgos"
               >
                 {clasificando ? '⏳ clasificando…' : '✨ Clasificar con IA'}
               </button>
 
               {errorIA && (
-                <p role="alert" className="mt-1.5 rounded border border-[#b43232] bg-red-50 px-2 py-1 text-[11px] text-[#b43232]">
+                <p role="alert" className="mt-1.5 rounded border border-danger bg-danger-soft px-2 py-1 text-[11px] text-danger">
                   {errorIA}
                 </p>
               )}
 
               {propuestos && (
-                <div className="mt-2 rounded-md border-2 border-[#0c4a45] bg-white p-2">
-                  <p className="text-[11px] font-bold uppercase text-[#0c4a45]">
+                <div className="mt-2 rounded-md border-2 border-brand-deep bg-white p-2">
+                  <p className="text-[11px] font-bold uppercase text-brand-deep">
                     {propuestos.length} items propuestos — destilda los que no
                   </p>
                   <ul className="mt-1.5 space-y-1.5">
@@ -442,7 +442,7 @@ export function MinutaDrawer({
                           <span className="ml-1 text-neutral-800">{p.texto}</span>
                           {p.responsable && <span className="ml-1 text-[11px] text-neutral-500">— {p.responsable}</span>}
                           {p.fechaCompromiso && (
-                            <span className="ml-1 rounded bg-[#f5deae] px-1 text-[10px] font-bold text-[#4a3a10]">
+                            <span className="ml-1 rounded bg-brand-soft px-1 text-[10px] font-bold text-brand-deep">
                               {p.fechaCompromiso}
                             </span>
                           )}
@@ -455,7 +455,7 @@ export function MinutaDrawer({
                       type="button"
                       disabled={pending || aceptados.size === 0}
                       onClick={agregarClasificados}
-                      className="flex-1 rounded-md bg-[#0c4a45] px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50"
+                      className="flex-1 rounded-md bg-brand-deep px-3 py-1.5 text-sm font-bold text-white disabled:opacity-50"
                     >
                       Agregar {aceptados.size}
                     </button>
@@ -470,7 +470,7 @@ export function MinutaDrawer({
                   </div>
                 </div>
               )}
-              {!proyectoId && <p className="mt-1 text-[11px] text-red-500">Selecciona un proyecto primero.</p>}
+              {!proyectoId && <p className="mt-1 text-[11px] text-danger">Selecciona un proyecto primero.</p>}
             </div>
 
             <div className="mt-5 border-t border-neutral-100 pt-4">
@@ -483,7 +483,7 @@ export function MinutaDrawer({
                         {TIPO_LABEL[it.tipo]}
                       </span>
                       {it.estado === 'convertido' ? (
-                        <span className="rounded-full bg-[#15803d]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[#15803d]">
+                        <span className="rounded-full bg-ok/10 px-2 py-0.5 text-[10px] font-bold uppercase text-ok">
                           Convertido
                         </span>
                       ) : it.tipo !== 'nota' ? (
@@ -491,7 +491,7 @@ export function MinutaDrawer({
                           type="button"
                           disabled={pending}
                           onClick={() => promoverItem(it.id)}
-                          className="text-[11px] font-bold text-[#0d6d63] hover:underline disabled:opacity-50"
+                          className="text-[11px] font-bold text-brand-strong hover:underline disabled:opacity-50"
                         >
                           → Promover
                         </button>

@@ -81,7 +81,7 @@ function Btn({
       aria-pressed={!!activo}
       onClick={onClick}
       className={`rounded px-2 py-1 text-xs font-semibold leading-none ${
-        activo ? 'bg-[#0c4a45] text-white' : 'text-neutral-700 hover:bg-neutral-200'
+        activo ? 'bg-brand-deep text-white' : 'text-neutral-700 hover:bg-neutral-200'
       }`}
     >
       {children}

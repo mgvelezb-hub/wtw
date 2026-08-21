@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
 import { MinutaDrawer } from './MinutaDrawer'
@@ -189,17 +189,17 @@ export function DiaBoard(p: DiaBoardProps) {
       />
 
       <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-[#0d6d63]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
           Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
         </p>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold text-[#0c4a45]">{p.rango}</h1>
+          <h1 className="text-2xl font-bold text-brand-deep">{p.rango}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-[#d3e4e0] px-3 py-1 text-xs font-semibold text-[#0c4a45]">
+            <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
               Factor realismo {p.factorUsado.toFixed(1)}
             </span>
             {p.desbloqueador && (
-              <span className="rounded-full bg-[#e8b94a] px-3 py-1 text-xs font-bold text-[#4a3a10]">
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
                 ⚡ {p.desbloqueador}
               </span>
             )}
@@ -208,7 +208,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 <button
                   disabled={pending}
                   onClick={() => startTransition(() => void startDayAction())}
-                  className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+                  className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
                 >
                   ▶ Arrancar día
                 </button>
@@ -218,7 +218,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 <Link
                   href={`/cierre?dia=${p.today}`}
                   title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
-                  className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+                  className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
                 >
                   Cerrar el día →
                 </Link>
@@ -230,13 +230,13 @@ export function DiaBoard(p: DiaBoardProps) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">🎯 Wins de la semana</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-brand-deep">🎯 Wins de la semana</h2>
           <ol className="space-y-2">
             {p.wins.map((w) => (
               <li key={w.posicion} className="flex gap-2 text-sm">
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    w.estatus === 'logrado' ? 'bg-[#15803d] text-white' : 'bg-[#d3e4e0] text-[#0c4a45]'
+                    w.estatus === 'logrado' ? 'bg-ok text-white' : 'bg-brand-soft text-brand-deep'
                   }`}
                 >
                   {w.posicion}
@@ -251,7 +251,7 @@ export function DiaBoard(p: DiaBoardProps) {
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">📐 Capacidad</h2>
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-brand-deep">📐 Capacidad</h2>
           <div className="flex gap-6">
             <Stat n={p.trabajable.toFixed(0)} u="h" l="Trabajable" />
             <Stat n={p.carga.toFixed(0)} u="h" l="Carga" />
@@ -259,7 +259,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
             <div
-              className={`h-full ${p.pct > 100 ? 'bg-red-500' : 'bg-[#0d6d63]'}`}
+              className={`h-full ${p.pct > 100 ? 'bg-danger' : 'bg-brand-strong'}`}
               style={{ width: `${Math.min(100, p.pct)}%` }}
             />
           </div>
@@ -281,7 +281,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
               }}
               className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm font-medium ${
-                active ? 'border-[#0c4a45] bg-[#0c4a45] text-white' : 'border-neutral-200 bg-white text-neutral-700'
+                active ? 'border-brand-deep bg-brand-deep text-white' : 'border-neutral-200 bg-white text-neutral-700'
               }`}
             >
               <span className="font-bold">{t.abr}</span>
@@ -292,9 +292,9 @@ export function DiaBoard(p: DiaBoardProps) {
       </div>
 
       {esHoy && p.stranded.length > 0 && (
-        <div className="rounded-lg border border-[#e8b94a] bg-[#fdf6e3] px-4 py-3 text-sm">
+        <div className="rounded-lg border border-warn-border bg-warn-soft px-4 py-3 text-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold text-[#7a5a00]">
+            <p className="font-semibold text-warn">
               ⚠️ Tienes {p.stranded.length} tarea{p.stranded.length > 1 ? 's' : ''} de días anteriores sin terminar.
             </p>
             <button
@@ -302,14 +302,14 @@ export function DiaBoard(p: DiaBoardProps) {
               onClick={() =>
                 startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
               }
-              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-xs font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+              className="rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
             >
               Llevar todo a hoy
             </button>
           </div>
           <ul className="mt-2 space-y-1">
             {p.stranded.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2 text-[#7a5a00]">
+              <li key={s.id} className="flex items-center justify-between gap-2 text-warn">
                 <span>
                   {s.titulo} <span className="text-xs opacity-70">({s.fecha})</span>
                 </span>
@@ -341,36 +341,53 @@ export function DiaBoard(p: DiaBoardProps) {
             }
           }}
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm">
-            <div className="flex gap-5">
-              <span className="text-[#0c4a45]">
-                Planeado <strong className="text-[#0d6d63]">{horas(p.planeadoMin)}</strong>
-              </span>
-              <span className="text-[#0c4a45]">
-                Real <strong className="text-[#15803d]">{p.realMin > 0 ? horas(p.realMin) : '0M'}</strong>
-              </span>
-              <span className="text-[#0c4a45]">
-                Factor del día <strong className="text-[#0d6d63]">{p.factorDia ? p.factorDia.toFixed(2) : '—'}</strong>
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {esHoy && (
-                <button
-                  disabled={pending}
-                  onClick={() => startTransition(() => void reflowTodayAction(p.today))}
+          {/* Único indicador de capacidad del día: la barra Planeado/Real absorbió
+              la card grande de "Capacidad de hoy" que vivía en la columna derecha.
+              Dos tarjetas midiendo lo mismo se contradecían visualmente. */}
+          <div className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-5">
+                <span className="text-brand-deep">
+                  Planeado <strong className="text-brand-strong">{horas(p.planeadoMin)}</strong>
+                </span>
+                <span className="text-brand-deep">
+                  Real <strong className="text-ok">{p.realMin > 0 ? horas(p.realMin) : '0M'}</strong>
+                </span>
+                <span className="text-brand-deep">
+                  Factor del día <strong className="text-brand-strong">{p.factorDia ? p.factorDia.toFixed(2) : '—'}</strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {esHoy && (
+                  <button
+                    disabled={pending}
+                    onClick={() => startTransition(() => void reflowTodayAction(p.today))}
+                    className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                    title="Trae las juntas más recientes de Outlook y recorre las tareas que choquen con ellas"
+                  >
+                    🔄 Actualizar juntas
+                  </button>
+                )}
+                <a
+                  href="/api/v1/calendar/export"
                   className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
-                  title="Trae las juntas más recientes de Outlook y recorre las tareas que choquen con ellas"
                 >
-                  🔄 Actualizar juntas
-                </button>
-              )}
-              <a
-                href="/api/v1/calendar/export"
-                className="rounded-md border border-neutral-300 px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
-              >
-                📅 ICS
-              </a>
+                  📅 ICS
+                </a>
+              </div>
             </div>
+            {esHoy &&
+              (p.capacidadHoy < 0 ? (
+                <p className="mt-1.5 border-t border-neutral-100 pt-1.5 text-xs font-semibold text-warn">
+                  ⚠️ Sobrecargado {Math.abs(p.capacidadHoy).toFixed(1)} h de ~{p.libresHoy.toFixed(0)} h libres — quita
+                  algo o muévelo a otro día.
+                </p>
+              ) : (
+                <p className="mt-1.5 border-t border-neutral-100 pt-1.5 text-xs text-neutral-500">
+                  Capacidad de hoy: <strong className="font-semibold text-brand-deep">{p.capacidadHoy.toFixed(1)} h</strong>{' '}
+                  libres de ~{p.libresHoy.toFixed(0)} h
+                </p>
+              ))}
           </div>
 
           {activos.map((b) => (
@@ -448,21 +465,6 @@ export function DiaBoard(p: DiaBoardProps) {
         </div>
 
         <div className="space-y-4">
-          {esHoy && (
-            <div className="rounded-xl bg-[#0c4a45] p-4 text-white shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">Capacidad de hoy</p>
-              <p className={`mt-1 text-3xl font-bold ${p.capacidadHoy < 0 ? 'text-[#e8b94a]' : 'text-white'}`}>
-                {p.capacidadHoy.toFixed(1)} h
-              </p>
-              <p className="text-xs font-medium text-[#c7e4de]">libres de ~{p.libresHoy.toFixed(0)} h</p>
-              {p.capacidadHoy < 0 && (
-                <p className="mt-2 text-xs font-semibold text-[#e8b94a]">
-                  ⚠️ Sobrecargado {Math.abs(p.capacidadHoy).toFixed(1)} h — quita algo o muévelo a otro día.
-                </p>
-              )}
-            </div>
-          )}
-
           <div
             className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
             onDragOver={(e) => e.preventDefault()}
@@ -474,7 +476,7 @@ export function DiaBoard(p: DiaBoardProps) {
               }
             }}
           >
-            <h3 className="mb-2 text-sm font-bold text-[#0c4a45]">
+            <h3 className="mb-2 text-sm font-bold text-brand-deep">
               📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
             </h3>
             <p className="mb-2 text-[10px] text-neutral-400">Arrastra un bloque agendado aquí para regresarlo a pendientes.</p>
@@ -485,17 +487,17 @@ export function DiaBoard(p: DiaBoardProps) {
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
                   className={`cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-sm active:cursor-grabbing ${
-                    pe.urgente ? 'border-neutral-200 border-l-4 border-l-red-500' : 'border-neutral-200'
+                    pe.urgente ? 'border-neutral-200 border-l-4 border-l-danger' : 'border-neutral-200'
                   }`}
                 >
                   <p className="font-medium text-neutral-900">
-                    {pe.urgente && <span className="text-red-600">★ </span>}
+                    {pe.urgente && <span className="text-danger">★ </span>}
                     {pe.titulo}
                   </p>
                   <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                     <div className="flex items-center gap-2">
                       {pe.estimadoMin != null && (
-                        <span className="rounded bg-[#f5deae] px-1.5 py-0.5 font-semibold text-[#4a3a10]">
+                        <span className="rounded bg-brand-soft px-1.5 py-0.5 font-semibold text-brand-deep">
                           {horas(pe.estimadoMin)}
                         </span>
                       )}
@@ -526,7 +528,7 @@ export function DiaBoard(p: DiaBoardProps) {
                       <button
                         disabled={pending}
                         onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
-                        className="rounded bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+                        className="rounded bg-brand px-2 py-0.5 text-[10px] font-bold text-white hover:bg-brand-strong"
                       >
                         + Hoy
                       </button>
@@ -534,8 +536,8 @@ export function DiaBoard(p: DiaBoardProps) {
                         disabled={pending}
                         onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
                         titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
-                        armedClassName="rounded bg-[#b43232] px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-danger-soft hover:text-danger"
+                        armedClassName="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white"
                       />
                     </div>
                   </div>
@@ -562,12 +564,24 @@ export function DiaBoard(p: DiaBoardProps) {
 function Stat({ n, u, l, accent }: { n: string; u: string; l: string; accent?: boolean }) {
   return (
     <div>
-      <p className={`text-2xl font-bold ${accent ? 'text-[#15803d]' : 'text-[#0c4a45]'}`}>
+      <p className={`text-2xl font-bold ${accent ? 'text-ok' : 'text-brand-deep'}`}>
         {n}
         <span className="text-sm font-medium">{u}</span>
       </p>
       <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-500">{l}</p>
     </div>
+  )
+}
+
+// Línea discreta para los estados en los que NO hay nada corriendo. El panel
+// teal prominente cuesta ~90px de alto y solo se gana cuando hay un bloque
+// "ahora" al que reaccionar; para "no pasa nada" basta una línea de texto.
+function AvisoDiscreto({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex items-center gap-2 text-sm text-neutral-500">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-300" />
+      <span>{children}</span>
+    </p>
   )
 }
 
@@ -591,13 +605,10 @@ function RunningHero({
 }) {
   if (!esHoy) {
     return (
-      <div className="sticky top-14 z-10 rounded-xl border-l-4 border-[#e8b94a] bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
-        <p className="text-xs font-bold uppercase tracking-wide text-[#e8b94a]">Vista de planeación</p>
-        <p className="mt-1 text-sm">
-          Estás viendo <strong>{selectedLabel}</strong>. El cronómetro en vivo funciona en el día de{' '}
-          <strong className="text-[#e8b94a]">hoy</strong>.
-        </p>
-      </div>
+      <AvisoDiscreto>
+        Vista de planeación de <strong className="font-semibold text-brand-deep">{selectedLabel}</strong>. El cronómetro
+        en vivo funciona en el día de hoy.
+      </AvisoDiscreto>
     )
   }
 
@@ -613,29 +624,25 @@ function RunningHero({
           .sort((a, b) => a.inicio.localeCompare(b.inicio))[0]
       : undefined
     return (
-      <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" /> Sin bloque ahora
-        </p>
-        <p className="mt-1 text-sm text-white/90">
-          {next ? (
-            <>
-              Siguiente: <strong className="text-white">{next.titulo}</strong> a las {next.inicio}.
-            </>
-          ) : (
-            'Sin más bloques agendados hoy.'
-          )}
-        </p>
-      </div>
+      <AvisoDiscreto>
+        Sin bloque ahora.{' '}
+        {next ? (
+          <>
+            Siguiente: <strong className="font-semibold text-brand-deep">{next.titulo}</strong> a las {next.inicio}.
+          </>
+        ) : (
+          'Sin más bloques agendados hoy.'
+        )}
+      </AvisoDiscreto>
     )
   }
 
   const isTareaCronometrable = current.tipo === 'tarea' && !current.externa
   if (!isTareaCronometrable) {
     return (
-      <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" /> Ahora · {current.inicio}–{current.fin}
+      <div className="sticky top-14 z-10 rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md md:top-0">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-soft">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-ok-soft" /> Ahora · {current.inicio}–{current.fin}
         </p>
         <p className="mt-1 text-lg font-bold">
           {current.externa ? '📅 ' : ''}
@@ -650,9 +657,9 @@ function RunningHero({
   const isRunning = !!current.runningSince
 
   return (
-    <div className="sticky top-14 z-10 rounded-xl bg-[#0c4a45] px-5 py-4 text-white shadow-md md:top-0">
-      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-[#9fd0c8]">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-[#e8b94a]" />
+    <div className="sticky top-14 z-10 rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md md:top-0">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-soft">
+        <span className="h-2 w-2 animate-pulse rounded-full bg-ok-soft" />
         {isRunning ? 'En curso' : 'Ahora'} · {current.inicio}–{current.fin}
       </p>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
@@ -661,22 +668,22 @@ function RunningHero({
           <div className="mt-1 flex flex-wrap gap-1.5">
             {current.proyecto && <ProyectoBadge proyecto={current.proyecto} />}
             {current.winPosicion && (
-              <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
+              <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase text-brand-deep">
                 Win {current.winPosicion}
               </span>
             )}
           </div>
         </div>
         <div className="text-right">
-          <p className={`font-mono text-3xl font-bold tabular-nums ${over ? 'text-[#e8b94a]' : 'text-white'}`}>
+          <p className={`font-mono text-3xl font-bold tabular-nums ${over ? 'text-warn-border' : 'text-white'}`}>
             {fmt(seconds)}
           </p>
-          <p className="text-xs font-medium text-[#c7e4de]">de {horas(current.planMin)} planeado</p>
+          <p className="text-xs font-medium text-ok-soft">de {horas(current.planMin)} planeado</p>
         </div>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/15">
         <div
-          className={`h-full ${over ? 'bg-[#e8b94a]' : 'bg-[#3fb6a8]'}`}
+          className={`h-full ${over ? 'bg-warn-border' : 'bg-brand-soft'}`}
           style={{ width: `${Math.min(100, (seconds / (current.planMin * 60)) * 100)}%` }}
         />
       </div>
@@ -715,14 +722,14 @@ function RunningHero({
             </button>
             <Link
               href="/focus"
-              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+              className="rounded-md bg-brand-soft px-3 py-1.5 text-sm font-bold text-brand-deep hover:bg-white"
             >
               ⏱️ Modo Focus
             </Link>
             <button
               disabled={pending}
               onClick={() => startTransition(() => void markTaskDoneAction(current.taskId!))}
-              className="rounded-md bg-[#15803d] px-3 py-1.5 text-sm font-bold text-white hover:bg-[#12692f]"
+              className="rounded-md bg-ok px-3 py-1.5 text-sm font-bold text-white hover:bg-ok/90"
             >
               ✓ Terminar
             </button>
@@ -738,7 +745,7 @@ function RunningHero({
           <button
             disabled={pending}
             onClick={() => startTransition(() => void startTimerAction(current.taskId!))}
-            className="rounded-md bg-[#e8b94a] px-4 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+            className="rounded-md bg-brand px-4 py-1.5 text-sm font-bold text-white hover:bg-brand-strong"
           >
             ▶ {seconds > 0 ? 'Reanudar' : 'Iniciar'}
           </button>
@@ -752,7 +759,7 @@ function MinutaBoton({ block, onAbrirMinuta }: { block: DayBlockView; onAbrirMin
   return (
     <button
       onClick={() => onAbrirMinuta(block)}
-      className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-semibold text-neutral-500 hover:border-[#0d6d63] hover:text-[#0d6d63]"
+      className="rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-semibold text-neutral-500 hover:border-brand-strong hover:text-brand-strong"
       title="Capturar o revisar la minuta de esta junta"
     >
       {block.minutaId ? '📝 Ver minuta' : '📝 Minuta'}
@@ -763,11 +770,106 @@ function MinutaBoton({ block, onAbrirMinuta }: { block: DayBlockView; onAbrirMin
 function NudgeMinuta() {
   return (
     <span
-      className="rounded-full bg-[#fdf6e3] px-2 py-0.5 text-[10px] font-bold uppercase text-[#7a5a00]"
+      className="rounded-full bg-warn-soft px-2 py-0.5 text-[10px] font-bold uppercase text-warn"
       title="Esta junta terminó y no tiene minuta capturada"
     >
       ¿Minuta?
     </span>
+  )
+}
+
+// Clases compartidas por las filas del menú "⋯". Se pasan también a
+// ConfirmarQuitar y CampoEnLinea, que aceptan className, para que un ítem del
+// menú se vea igual sin importar qué control lo implemente.
+const FILA_MENU =
+  'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-40'
+const FILA_MENU_DANGER =
+  'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-40'
+
+// Menú contextual del bloque. Sin diálogos nativos: es un popover con estado
+// React que se cierra con Escape, con clic afuera o cuando un ítem actúa. Los
+// controles destructivos que viven dentro siguen usando ConfirmarQuitar (dos
+// clics), así que el menú NUNCA ejecuta algo irreversible con un solo clic.
+function MenuBloque({
+  children,
+  disabled,
+}: {
+  children: (cerrar: () => void) => ReactNode
+  disabled: boolean
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    function alHacerClicAfuera(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAbierto(false)
+    }
+    function alTeclear(e: KeyboardEvent) {
+      if (e.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('mousedown', alHacerClicAfuera)
+    document.addEventListener('keydown', alTeclear)
+    return () => {
+      document.removeEventListener('mousedown', alHacerClicAfuera)
+      document.removeEventListener('keydown', alTeclear)
+    }
+  }, [abierto])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="true"
+        aria-expanded={abierto}
+        aria-label="Más acciones del bloque"
+        title="Más acciones"
+        onClick={() => setAbierto((v) => !v)}
+        className={`rounded-md px-2 py-1.5 text-sm font-bold leading-none ${
+          abierto ? 'bg-neutral-200 text-neutral-800' : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700'
+        }`}
+      >
+        ⋯
+      </button>
+      {abierto && (
+        // draggable={false} + stopPropagation: la card contenedora es draggable y
+        // sin esto arrastrar dentro de un input del menú inicia el drag del bloque.
+        <div
+          draggable={false}
+          onDragStart={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-neutral-200 bg-white p-1 shadow-lg"
+        >
+          {children(() => setAbierto(false))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BotonMenu({
+  onClick,
+  disabled,
+  titulo,
+  danger,
+  children,
+}: {
+  onClick: () => void
+  disabled: boolean
+  titulo?: string
+  danger?: boolean
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      title={titulo}
+      onClick={onClick}
+      className={danger ? FILA_MENU_DANGER : FILA_MENU}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -802,20 +904,23 @@ function BlockCard({
     return (
       <div
         className={`rounded-lg border border-l-4 p-3 ${
-          b.done ? 'border-neutral-200 border-l-neutral-300 bg-neutral-50' : 'border-neutral-200 border-l-[#0d6d63] bg-[#eef4f3]'
+          b.done
+            ? 'border-neutral-200 border-l-neutral-300 bg-neutral-50'
+            : 'border-neutral-200 border-l-brand-strong bg-brand-soft/40'
         }`}
       >
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 sm:flex-1">
             <p className="text-xs font-medium text-neutral-600">
               {b.inicio}–{b.fin}
+              <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
               {!b.bloqueante && !b.done && (
                 <span className="ml-2 rounded bg-neutral-200 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
                   Informativo
                 </span>
               )}
             </p>
-            <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
+            <p className={`font-semibold break-words ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
               📅 {b.titulo}
             </p>
             {nudgeMinuta && (
@@ -824,40 +929,67 @@ function BlockCard({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
             {b.done ? (
-              <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700">
+              <span className="rounded bg-danger-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-danger">
                 Cancelada
               </span>
             ) : (
               <>
                 {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
                 {enVivo && (
-                  <>
-                    <button
-                      disabled={pending}
-                      onClick={() => startTransition(() => void toggleBloqueanteAction(b.id))}
-                      className="text-xs font-semibold text-neutral-400 hover:text-[#0c4a45]"
-                      title="Marca si esta junta realmente ocupa tu tiempo (ej. compartida solo para visibilidad)"
-                    >
-                      {b.bloqueante ? '👁 No me bloquea' : '↺ Sí me bloquea'}
-                    </button>
-                    <button
-                      disabled={pending}
-                      onClick={() => startTransition(() => void cancelMeetingAction(b.id))}
-                      className="text-xs font-semibold text-neutral-400 hover:text-red-600"
-                      title="La junta se canceló"
-                    >
-                      ✕ Cancelar
-                    </button>
-                  </>
+                  <MenuBloque disabled={pending}>
+                    {(cerrar) => (
+                      <>
+                        <BotonMenu
+                          disabled={pending}
+                          titulo="Marca si esta junta realmente ocupa tu tiempo (ej. compartida solo para visibilidad)"
+                          onClick={() => {
+                            cerrar()
+                            startTransition(() => void toggleBloqueanteAction(b.id))
+                          }}
+                        >
+                          {b.bloqueante ? '👁 No me bloquea' : '↺ Sí me bloquea'}
+                        </BotonMenu>
+                        <BotonMenu
+                          disabled={pending}
+                          danger
+                          titulo="La junta se canceló"
+                          onClick={() => {
+                            cerrar()
+                            startTransition(() => void cancelMeetingAction(b.id))
+                          }}
+                        >
+                          ✕ La junta se canceló
+                        </BotonMenu>
+                      </>
+                    )}
+                  </MenuBloque>
                 )}
               </>
             )}
-            <span className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Outlook</span>
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Acción primaria contextual — una sola por bloque. El resto vive en "⋯".
+  const puedeIniciar = isTarea && !b.done && !b.runningSince && enVivo
+  const corriendo = isTarea && !!b.runningSince
+  // Cuando la primaria es Iniciar (o el bloque corre en el hero), el toggle de
+  // hecho baja al menú; si no, ✓/↺ ES la primaria.
+  const primariaEsHecho = !puedeIniciar && !corriendo
+
+  function alternarHecho() {
+    startTransition(() =>
+      void (b.done
+        ? isTarea
+          ? undoTaskDoneAction(b.taskId!)
+          : undoBlockDoneAction(b.id)
+        : isTarea
+          ? markTaskDoneAction(b.taskId!)
+          : markBlockDoneAction(b.id))
     )
   }
 
@@ -879,36 +1011,25 @@ function BlockCard({
       }}
       className={`cursor-grab rounded-lg border p-3 shadow-sm active:cursor-grabbing ${
         b.fueraDeJornada && !b.done
-          ? 'border-[#e8b94a] border-2 bg-[#fdf6e3]'
+          ? 'border-2 border-warn-border bg-warn-soft'
           : b.done
             ? 'border-neutral-200 bg-neutral-50'
             : 'border-neutral-200 bg-white'
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+      {/* Columna en móvil, fila desde sm: los controles nunca comprimen el título
+          a una palabra por línea, que era el bug en tablet (768px). */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 sm:flex-1">
           <p className="text-xs font-medium text-neutral-500">
             {b.inicio === 'flex' ? '⋯ sin hora' : `${b.inicio}–${b.fin}`}
-            {isTarea && !b.done && !b.runningSince && enVivo && (
-              <CampoEnLinea
-                icono="🕐"
-                titulo="Cambiar hora de inicio (HH:MM)"
-                valorInicial={b.inicio === 'flex' ? '09:00' : b.inicio}
-                placeholder="HH:MM"
-                ancho="w-16"
-                parse={parseHora}
-                disabled={pending}
-                onSubmit={(hora) => startTransition(() => void setBlockTimeAction(b.id, String(hora)))}
-                className="ml-2 text-neutral-400 hover:text-[#0c4a45]"
-              />
-            )}
             {b.fueraDeJornada && !b.done && (
-              <span className="ml-2 rounded bg-[#e8b94a] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
+              <span className="ml-2 rounded border border-warn-border bg-warn-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-warn">
                 Fuera de jornada
               </span>
             )}
           </p>
-          <p className={`font-semibold ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
+          <p className={`font-semibold break-words ${b.done ? 'text-neutral-500 line-through' : 'text-neutral-900'}`}>
             {b.titulo}
           </p>
           {nudgeMinuta && (
@@ -917,124 +1038,200 @@ function BlockCard({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
           {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
           {isTarea && !b.runningSince && (
-            <span className={`font-mono text-sm font-semibold ${over ? 'text-red-600' : 'text-[#15803d]'}`}>
+            <span className={`font-mono text-sm font-semibold ${over ? 'text-danger' : 'text-ok'}`}>
               {fmt(seconds)}
               <span className="text-xs font-medium text-neutral-400"> / {horas(b.planMin)}</span>
-              {!b.done && enVivo && (
-                <CampoEnLinea
-                  icono="✎"
-                  titulo="Ajustar duración planeada (minutos)"
-                  valorInicial={String(b.planMin)}
-                  placeholder="min"
-                  ancho="w-14"
-                  parse={parseMinutos}
-                  disabled={pending}
-                  onSubmit={(min) => startTransition(() => void setBlockDurationAction(b.id, Number(min)))}
-                  className="ml-1 text-neutral-400 hover:text-[#0c4a45]"
-                />
-              )}
             </span>
           )}
-          {isTarea && !b.done && !b.runningSince && enVivo && (
+
+          {corriendo ? (
+            <span className="rounded-full bg-brand-soft px-2 py-1 text-xs font-bold text-brand-deep">⏱ en el hero</span>
+          ) : puedeIniciar ? (
             <button
               disabled={pending}
               onClick={() => startTransition(() => void startTimerAction(b.taskId!))}
-              className="rounded-md bg-[#e8b94a] px-3 py-1.5 text-sm font-bold text-[#4a3a10] hover:bg-[#dcae3e]"
+              className="rounded-md bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-strong"
             >
               ▶ Iniciar
             </button>
-          )}
-          {isTarea && b.runningSince && (
-            <span className="rounded-full bg-[#d3e4e0] px-2 py-1 text-xs font-bold text-[#0c4a45]">
-              ⏱ en el hero
-            </span>
-          )}
-          {!b.runningSince && tabs.length > 0 && (
-            <select
-              disabled={pending}
-              defaultValue=""
-              onChange={(e) => {
-                const fecha = e.target.value
-                e.target.value = ''
-                if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
-              }}
-              className="rounded-md border border-neutral-300 bg-white px-1.5 py-1.5 text-xs font-medium text-neutral-600"
-            >
-              <option value="" disabled>
-                Mover a…
-              </option>
-              {tabs.filter((t) => t.fecha !== selectedDay).map((t) => (
-                <option key={t.fecha} value={t.fecha}>
-                  {t.abr} {t.num}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            disabled={pending}
-            onClick={() =>
-              startTransition(() =>
-                void (b.done
-                  ? isTarea
-                    ? undoTaskDoneAction(b.taskId!)
-                    : undoBlockDoneAction(b.id)
-                  : isTarea
-                    ? markTaskDoneAction(b.taskId!)
-                    : markBlockDoneAction(b.id))
-              )
-            }
-            className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-200"
-          >
-            {b.done ? '↺' : '✓'}
-          </button>
-          {isTarea && (
+          ) : (
             <button
               disabled={pending}
-              onClick={() => startTransition(() => void marcarDelegableAction(b.taskId!, !b.delegable))}
-              className={`rounded-md px-2 py-1.5 text-sm font-bold ${
-                b.delegable ? 'bg-[#5b4b8a] text-white' : 'text-neutral-300 hover:bg-neutral-100 hover:text-[#5b4b8a]'
-              }`}
-              title={
-                b.delegable
-                  ? 'Marcada como delegable — cuenta en la bitácora de Desarrollo'
-                  : 'Esto lo debió hacer un perfil más junior — marcar como delegable'
-              }
-              aria-label={b.delegable ? 'Quitar marca de delegable' : 'Marcar como delegable'}
+              onClick={alternarHecho}
+              title={b.done ? 'Deshacer — regresar a pendiente' : 'Marcar terminada'}
+              aria-label={b.done ? 'Deshacer terminada' : 'Marcar terminada'}
+              className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-200"
             >
-              ↧
+              {b.done ? '↺' : '✓'}
             </button>
           )}
-          {isTarea && !b.done && (
-            <ConfirmarQuitar
-              disabled={pending}
-              onConfirm={() => startTransition(() => void descartarTareaAction(b.id))}
-              titulo="Ya no aplica — quitar del día y de pendientes (no cuenta como terminada)"
-              className="rounded-md px-2 py-1.5 text-sm font-bold text-neutral-400 hover:bg-red-50 hover:text-[#b43232]"
-              armedClassName="rounded-md bg-[#b43232] px-2 py-1.5 text-xs font-bold text-white"
-            />
-          )}
+
+          <MenuBloque disabled={pending}>
+            {(cerrar) => (
+              <>
+                {!primariaEsHecho && (
+                  <BotonMenu
+                    disabled={pending}
+                    titulo={b.done ? 'Deshacer — regresar a pendiente' : 'Marcar terminada'}
+                    onClick={() => {
+                      cerrar()
+                      alternarHecho()
+                    }}
+                  >
+                    {b.done ? '↺ Deshacer terminada' : '✓ Marcar terminada'}
+                  </BotonMenu>
+                )}
+
+                {isTarea && !b.done && !b.runningSince && enVivo && (
+                  <div className={FILA_MENU}>
+                    <span>🕐 Cambiar hora</span>
+                    <CampoEnLinea
+                      icono="✎"
+                      titulo="Cambiar hora de inicio (HH:MM)"
+                      valorInicial={b.inicio === 'flex' ? '09:00' : b.inicio}
+                      placeholder="HH:MM"
+                      ancho="w-16"
+                      parse={parseHora}
+                      disabled={pending}
+                      onSubmit={(hora) => {
+                        cerrar()
+                        startTransition(() => void setBlockTimeAction(b.id, String(hora)))
+                      }}
+                      className="ml-auto text-neutral-400 hover:text-brand-deep"
+                    />
+                  </div>
+                )}
+
+                {isTarea && !b.done && enVivo && (
+                  <div className={FILA_MENU}>
+                    <span>⏳ Ajustar duración</span>
+                    <CampoEnLinea
+                      icono="✎"
+                      titulo="Ajustar duración planeada (minutos)"
+                      valorInicial={String(b.planMin)}
+                      placeholder="min"
+                      ancho="w-14"
+                      parse={parseMinutos}
+                      disabled={pending}
+                      onSubmit={(min) => {
+                        cerrar()
+                        startTransition(() => void setBlockDurationAction(b.id, Number(min)))
+                      }}
+                      className="ml-auto text-neutral-400 hover:text-brand-deep"
+                    />
+                  </div>
+                )}
+
+                {isTarea && !b.done && enVivo && (
+                  <div className={FILA_MENU}>
+                    <span>➕ Tiempo manual</span>
+                    <CampoEnLinea
+                      icono="✎"
+                      titulo="Agregar minutos trabajados a mano"
+                      placeholder="min"
+                      ancho="w-14"
+                      parse={parseMinutos}
+                      disabled={pending}
+                      onSubmit={(min) => {
+                        cerrar()
+                        startTransition(() => void createManualEntryAction(b.taskId!, Number(min)))
+                      }}
+                      className="ml-auto text-neutral-400 hover:text-brand-deep"
+                    />
+                  </div>
+                )}
+
+                {!b.runningSince && tabs.length > 0 && (
+                  <div className={FILA_MENU}>
+                    <span className="shrink-0">📅 Mover a</span>
+                    <select
+                      disabled={pending}
+                      defaultValue=""
+                      onChange={(e) => {
+                        const fecha = e.target.value
+                        e.target.value = ''
+                        cerrar()
+                        if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
+                      }}
+                      aria-label="Mover el bloque a otro día"
+                      className="ml-auto w-24 rounded border border-neutral-300 bg-white px-1 py-0.5 text-[11px] font-medium text-neutral-600"
+                    >
+                      <option value="" disabled>
+                        Día…
+                      </option>
+                      {tabs
+                        .filter((t) => t.fecha !== selectedDay)
+                        .map((t) => (
+                          <option key={t.fecha} value={t.fecha}>
+                            {t.abr} {t.num}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                {isTarea && (
+                  <BotonMenu
+                    disabled={pending}
+                    titulo={
+                      b.delegable
+                        ? 'Marcada como delegable — cuenta en la bitácora de Desarrollo'
+                        : 'Esto lo debió hacer un perfil más junior — marcar como delegable'
+                    }
+                    onClick={() => {
+                      cerrar()
+                      startTransition(() => void marcarDelegableAction(b.taskId!, !b.delegable))
+                    }}
+                  >
+                    {b.delegable ? '↧ Quitar marca de delegable' : '↧ Marcar como delegable'}
+                  </BotonMenu>
+                )}
+
+                {isTarea && !b.done && (
+                  <ConfirmarQuitar
+                    disabled={pending}
+                    onConfirm={() => {
+                      cerrar()
+                      startTransition(() => void descartarTareaAction(b.id))
+                    }}
+                    titulo="Ya no aplica — quitar del día y de pendientes (no cuenta como terminada)"
+                    icono="✕ Ya no aplica — quitar"
+                    className={FILA_MENU_DANGER}
+                    armedClassName={`${FILA_MENU_DANGER} bg-danger-soft`}
+                  />
+                )}
+              </>
+            )}
+          </MenuBloque>
         </div>
       </div>
 
-      {(b.proyecto || b.winPosicion || b.aliado || b.gerente) && (
+      {(b.proyecto || b.winPosicion || b.aliado || b.gerente || b.delegable) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {b.proyecto && <ProyectoBadge proyecto={b.proyecto} />}
           {b.winPosicion && (
-            <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold uppercase text-[#4a3a10]">
+            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold uppercase text-brand-deep">
               Win {b.winPosicion}
             </span>
           )}
           {b.aliado && (
-            <span className="rounded-full bg-[#15803d] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+            <span className="rounded-full bg-ok px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               Valor cliente
             </span>
           )}
           {b.gerente && (
             <span className="rounded-full bg-[#5b4b8a] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
               → Gerente
+            </span>
+          )}
+          {/* El toggle vive en el menú; el estado sigue visible aquí para no
+              perder la señal de "esto lo debió hacer alguien más". */}
+          {b.delegable && (
+            <span className="rounded-full bg-[#5b4b8a] px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+              ↧ Delegable
             </span>
           )}
           {b.proyecto?.tipo === 'interno' && !b.aliado && (
@@ -1048,7 +1245,7 @@ function BlockCard({
       {isTarea && !b.runningSince && (
         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
           <div
-            className={`h-full ${over ? 'bg-red-500' : 'bg-[#0d6d63]'}`}
+            className={`h-full ${over ? 'bg-danger' : 'bg-brand-strong'}`}
             style={{ width: `${Math.min(100, (seconds / (b.planMin * 60)) * 100)}%` }}
           />
         </div>
@@ -1068,7 +1265,7 @@ function BlockCard({
               <button
                 disabled={pending}
                 onClick={() => startTransition(() => void discardDodItemAction(d.id))}
-                className="text-neutral-300 hover:text-red-500"
+                className="text-neutral-300 hover:text-danger"
                 title="Descartar — ya no aplica"
               >
                 ✕
@@ -1076,21 +1273,6 @@ function BlockCard({
             </li>
           ))}
         </ul>
-      )}
-
-      {isTarea && enVivo && !b.done && (
-        <div className="mt-2">
-          <CampoEnLinea
-            icono="✎ agregar tiempo manual"
-            titulo="Agregar minutos trabajados a mano"
-            placeholder="min"
-            ancho="w-14"
-            parse={parseMinutos}
-            disabled={pending}
-            onSubmit={(min) => startTransition(() => void createManualEntryAction(b.taskId!, Number(min)))}
-            className="text-[10px] font-semibold text-neutral-500 hover:text-neutral-700"
-          />
-        </div>
       )}
     </div>
   )
