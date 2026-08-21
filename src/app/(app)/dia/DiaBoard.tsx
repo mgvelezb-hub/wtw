@@ -209,187 +209,137 @@ export function DiaBoard(p: DiaBoardProps) {
   const activos = p.blocks.filter((b) => !canceladas.includes(b) && !terminadas.includes(b))
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-4 py-6">
-      <RunningHero
-        blocks={activos}
-        tick={tick}
-        esHoy={esHoy}
-        selectedLabel={p.selectedLabel}
-        pending={pending}
-        startTransition={startTransition}
-      />
+    // Modo trabajo en iPad. Bajo lg los dos wrappers son `display:contents`:
+    // no generan caja, así que sus hijos apilan directo en el flex del
+    // contenedor y `order-*` los deja en el MISMO orden de siempre
+    // (hero → header → wins/capacidad → días → arrastradas → bloques →
+    // pendientes). Desde lg sí son cajas: 2/3 de timeline y 1/3 de contexto
+    // pegajoso, y el `order-*` queda inerte porque ya no son flex items.
+    <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6 lg:grid lg:grid-cols-3 lg:items-start">
+      <div className="contents lg:col-span-2 lg:block lg:space-y-5">
+        <RunningHero
+          blocks={activos}
+          tick={tick}
+          esHoy={esHoy}
+          selectedLabel={p.selectedLabel}
+          pending={pending}
+          startTransition={startTransition}
+        />
 
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
-          Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-2xl font-bold text-brand-deep">{p.rango}</h1>
-          <TourPrimeraVez
-            ruta="/dia"
-            bullets={[
-              'Tus bloques de hoy, en el orden en que los vas a hacer. Un bloque es un rato reservado para una tarea o una junta.',
-              <>
-                <strong>▶</strong> arranca el cronómetro de un bloque; <strong>⋯</strong> tiene el resto de las acciones
-                —mover de día, cambiar la hora, capturar la minuta, descartar.
-              </>,
-              'Al final del día, Cierre te pregunta qué pasó de verdad: qué se hizo, qué no y por qué. De ahí salen los pendientes del día siguiente.',
-            ]}
-          />
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
-              Factor realismo {p.factorUsado.toFixed(1)}
-            </span>
-            <ChipSobrecarga sobrecarga={p.sobrecarga} />
-            {p.desbloqueador && (
-              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
-                ⚡ {p.desbloqueador}
-              </span>
-            )}
-            {esHoy && (
-              <>
-                <button
-                  disabled={pending}
-                  onClick={() => startTransition(() => void startDayAction())}
-                  className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
-                >
-                  ▶ Arrancar día
-                </button>
-                {/* Ya NO mueve nada aquí. Mover primero borraba la evidencia de
-                    lo planeado; ahora esto lleva al cierre, donde se registra qué
-                    pasó y de ahí se pasan los pendientes. */}
-                <Link
-                  href={`/cierre?dia=${p.today}`}
-                  title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
-                  className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
-                >
-                  Cerrar el día →
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
-            🎯 Wins de la semana
-            <AyudaContextual
-              titulo="Wins de la semana"
-              ejemplo="Ej. «Entregar el modelo de transporte con los 3 escenarios corridos»."
-            >
-              Los 3 resultados que definiste el lunes en el planeador y que le dan sentido a la semana. Están aquí para
-              contrastarlos con los bloques de hoy: si nada de lo que hiciste empuja un Win, el día se fue en lo urgente.
-              Se marcan como logrados desde <strong>Mi Semana</strong>.
-            </AyudaContextual>
-          </h2>
-          <ol className="space-y-2">
-            {p.wins.map((w) => (
-              <li key={w.posicion} className="flex gap-2 text-sm">
-                <span
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                    w.estatus === 'logrado' ? 'bg-ok text-white' : 'bg-brand-soft text-brand-deep'
-                  }`}
-                >
-                  {w.posicion}
-                </span>
-                <span className={w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-800'}>
-                  {w.titulo}
-                </span>
-              </li>
-            ))}
-            {p.wins.length === 0 && <li className="text-sm text-neutral-400">Sin Wins definidos.</li>}
-          </ol>
-        </section>
-
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
-            📐 Capacidad
-            <AyudaContextual titulo="Capacidad de la semana" alineacion="derecha">
-              <strong>Trabajable</strong> son las horas de la semana que quedan libres después de las juntas.{' '}
-              <strong>Carga</strong> es lo que ya te comprometiste a hacer, ajustado por tu factor de realismo. El{' '}
-              <strong>colchón</strong> es la resta. Si sale en negativo, la semana no cabe: hay que mover trabajo a otra
-              semana o soltarlo, no apretarlo.
-            </AyudaContextual>
-          </h2>
-          <div className="flex gap-6">
-            <Stat n={p.trabajable.toFixed(0)} u="h" l="Trabajable" />
-            <Stat n={p.carga.toFixed(0)} u="h" l="Carga" />
-            <Stat n={`${p.colchon >= 0 ? '+' : ''}${p.colchon.toFixed(0)}`} u="h" l="Colchón" accent />
-          </div>
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className={`h-full ${p.pct > 100 ? 'bg-danger' : 'bg-brand-strong'}`}
-              style={{ width: `${Math.min(100, p.pct)}%` }}
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
+            Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="text-2xl font-bold text-brand-deep">{p.rango}</h1>
+            <TourPrimeraVez
+              ruta="/dia"
+              bullets={[
+                'Tus bloques de hoy, en el orden en que los vas a hacer. Un bloque es un rato reservado para una tarea o una junta.',
+                <>
+                  <strong>▶</strong> arranca el cronómetro de un bloque; <strong>⋯</strong> tiene el resto de las acciones
+                  —mover de día, cambiar la hora, capturar la minuta, descartar.
+                </>,
+                'Al final del día, Cierre te pregunta qué pasó de verdad: qué se hizo, qué no y por qué. De ahí salen los pendientes del día siguiente.',
+              ]}
             />
-          </div>
-        </section>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto">
-        {p.tabs.map((t) => {
-          const active = t.fecha === p.selectedDay
-          return (
-            <Link
-              key={t.fecha}
-              href={`/dia?dia=${t.fecha}`}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault()
-                const data = e.dataTransfer.getData('text/plain')
-                if (data.startsWith('block:')) startTransition(() => void moveBlockAction(data.slice(6), t.fecha))
-                else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
-              }}
-              className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm font-medium ${
-                active ? 'border-brand-deep bg-brand-deep text-white' : 'border-neutral-200 bg-white text-neutral-700'
-              }`}
-            >
-              <span className="font-bold">{t.abr}</span>
-              <span className="text-xs opacity-90">{t.num}</span>
-            </Link>
-          )
-        })}
-      </div>
-
-      {esHoy && p.stranded.length > 0 && (
-        <div className="rounded-lg border border-warn-border bg-warn-soft px-4 py-3 text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold text-warn">
-              ⚠️ Tienes {p.stranded.length} tarea{p.stranded.length > 1 ? 's' : ''} de días anteriores sin terminar.
-            </p>
-            <button
-              disabled={pending}
-              onClick={() =>
-                startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
-              }
-              className="rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
-            >
-              Llevar todo a hoy
-            </button>
-          </div>
-          <ul className="mt-2 space-y-1">
-            {p.stranded.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2 text-warn">
-                <span>
-                  {s.titulo} <span className="text-xs opacity-70">({s.fecha})</span>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
+                Factor realismo {p.factorUsado.toFixed(1)}
+              </span>
+              <ChipSobrecarga sobrecarga={p.sobrecarga} />
+              {p.desbloqueador && (
+                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
+                  ⚡ {p.desbloqueador}
                 </span>
-                <button
-                  disabled={pending}
-                  onClick={() => startTransition(() => void carryToTodayAction(s.id, p.today))}
-                  className="shrink-0 text-xs font-semibold underline hover:no-underline"
-                >
-                  llevar a hoy
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+              )}
+              {esHoy && (
+                <>
+                  <button
+                    disabled={pending}
+                    onClick={() => startTransition(() => void startDayAction())}
+                    className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+                  >
+                    ▶ Arrancar día
+                  </button>
+                  {/* Ya NO mueve nada aquí. Mover primero borraba la evidencia de
+                      lo planeado; ahora esto lleva al cierre, donde se registra qué
+                      pasó y de ahí se pasan los pendientes. */}
+                  <Link
+                    href={`/cierre?dia=${p.today}`}
+                    title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
+                    className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+                  >
+                    Cerrar el día →
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+        <div className="order-2 flex gap-2 overflow-x-auto">
+          {p.tabs.map((t) => {
+            const active = t.fecha === p.selectedDay
+            return (
+              <Link
+                key={t.fecha}
+                href={`/dia?dia=${t.fecha}`}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const data = e.dataTransfer.getData('text/plain')
+                  if (data.startsWith('block:')) startTransition(() => void moveBlockAction(data.slice(6), t.fecha))
+                  else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
+                }}
+                className={`flex shrink-0 flex-col items-center rounded-lg border px-4 py-2 text-sm font-medium ${
+                  active ? 'border-brand-deep bg-brand-deep text-white' : 'border-neutral-200 bg-white text-neutral-700'
+                }`}
+              >
+                <span className="font-bold">{t.abr}</span>
+                <span className="text-xs opacity-90">{t.num}</span>
+              </Link>
+            )
+          })}
+        </div>
+
+        {esHoy && p.stranded.length > 0 && (
+          <div className="order-2 rounded-lg border border-warn-border bg-warn-soft px-4 py-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="font-semibold text-warn">
+                ⚠️ Tienes {p.stranded.length} tarea{p.stranded.length > 1 ? 's' : ''} de días anteriores sin terminar.
+              </p>
+              <button
+                disabled={pending}
+                onClick={() =>
+                  startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
+                }
+                className="rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
+              >
+                Llevar todo a hoy
+              </button>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {p.stranded.map((s) => (
+                <li key={s.id} className="flex items-center justify-between gap-2 text-warn">
+                  <span>
+                    {s.titulo} <span className="text-xs opacity-70">({s.fecha})</span>
+                  </span>
+                  <button
+                    disabled={pending}
+                    onClick={() => startTransition(() => void carryToTodayAction(s.id, p.today))}
+                    className="shrink-0 text-xs font-semibold underline hover:no-underline"
+                  >
+                    llevar a hoy
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div
-          className="space-y-3"
+          className="order-2 space-y-3"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             const data = e.dataTransfer.getData('text/plain')
@@ -546,102 +496,164 @@ export function DiaBoard(p: DiaBoardProps) {
             </div>
           )}
         </div>
+      </div>
 
-        <div className="space-y-4">
-          <div
-            className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              const data = e.dataTransfer.getData('text/plain')
-              if (data.startsWith('block:')) {
-                e.preventDefault()
-                startTransition(() => void unscheduleBlockAction(data.slice(6)))
-              }
-            }}
-          >
-            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
-              📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
-              <AyudaContextual titulo="Pendientes sin agendar" alineacion="derecha">
-                Todo lo que capturaste en <strong>Actividades</strong> y todavía no tiene día. Arrastra una tarjeta a un
-                día de la barra de arriba para agendarla, o usa <strong>+ Hoy</strong>. Al revés también: arrastrar un
-                bloque ya agendado hasta aquí lo regresa a pendientes sin perderlo. El ★ marca las urgentes, que suben
-                al principio de la lista.
+      {/* Contexto: se consulta, no se opera. Pegajoso y con su propio scroll
+          para que Wins y Pendientes sigan a la vista mientras la timeline
+          de la izquierda se recorre. */}
+      <div className="contents lg:sticky lg:top-4 lg:block lg:max-h-[calc(100dvh-2rem)] lg:space-y-4 lg:overflow-y-auto lg:overscroll-contain">
+        <div className="order-1 grid gap-4 md:grid-cols-2 lg:grid-cols-1">
+          <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+              🎯 Wins de la semana
+              <AyudaContextual
+                titulo="Wins de la semana"
+                alineacion="derecha"
+                ejemplo="Ej. «Entregar el modelo de transporte con los 3 escenarios corridos»."
+              >
+                Los 3 resultados que definiste el lunes en el planeador y que le dan sentido a la semana. Están aquí para
+                contrastarlos con los bloques de hoy: si nada de lo que hiciste empuja un Win, el día se fue en lo urgente.
+                Se marcan como logrados desde <strong>Mi Semana</strong>.
               </AyudaContextual>
-            </h3>
-            <p className="mb-2 text-[10px] text-neutral-400">Arrastra un bloque agendado aquí para regresarlo a pendientes.</p>
-            <div className="max-h-[32rem] space-y-2 overflow-y-auto">
-              {p.pendientes.map((pe) => (
-                <div
-                  key={pe.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
-                  className={`cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-sm active:cursor-grabbing ${
-                    pe.urgente ? 'border-neutral-200 border-l-4 border-l-danger' : 'border-neutral-200'
-                  }`}
-                >
-                  <p className="font-medium text-neutral-900">
-                    {pe.urgente && <span className="text-danger">★ </span>}
-                    {pe.titulo}
-                  </p>
-                  <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2">
-                      {pe.estimadoMin != null && (
-                        <span className="rounded bg-brand-soft px-1.5 py-0.5 font-semibold text-brand-deep">
-                          {horas(pe.estimadoMin)}
-                        </span>
-                      )}
-                      {pe.proyecto && <span className="font-medium text-neutral-500">{pe.proyecto}</span>}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <select
-                        disabled={pending}
-                        defaultValue=""
-                        onChange={(e) => {
-                          const fecha = e.target.value
-                          e.target.value = ''
-                          if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
-                        }}
-                        className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-[10px] font-medium text-neutral-600"
-                      >
-                        <option value="" disabled>
-                          Agendar a…
-                        </option>
-                        {moveOptions
-                          .filter((t) => t.fecha !== p.today)
-                          .map((t) => (
-                            <option key={t.fecha} value={t.fecha}>
-                              {t.abr} {t.num}
-                            </option>
-                          ))}
-                      </select>
-                      <button
-                        disabled={pending}
-                        onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
-                        className="rounded bg-brand px-2 py-0.5 text-[10px] font-bold text-white hover:bg-brand-strong"
-                      >
-                        + Hoy
-                      </button>
-                      <ConfirmarQuitar
-                        disabled={pending}
-                        onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
-                        titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-                        className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-danger-soft hover:text-danger"
-                        armedClassName="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white"
-                      />
-                    </div>
+            </h2>
+            <ol className="space-y-2">
+              {p.wins.map((w) => (
+                <li key={w.posicion} className="flex gap-2 text-sm">
+                  <span
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                      w.estatus === 'logrado' ? 'bg-ok text-white' : 'bg-brand-soft text-brand-deep'
+                    }`}
+                  >
+                    {w.posicion}
+                  </span>
+                  <span className={w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-800'}>
+                    {w.titulo}
+                  </span>
+                </li>
+              ))}
+              {p.wins.length === 0 && <li className="text-sm text-neutral-400">Sin Wins definidos.</li>}
+            </ol>
+          </section>
+
+          <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+              📐 Capacidad
+              <AyudaContextual titulo="Capacidad de la semana" alineacion="derecha">
+                <strong>Trabajable</strong> son las horas de la semana que quedan libres después de las juntas.{' '}
+                <strong>Carga</strong> es lo que ya te comprometiste a hacer, ajustado por tu factor de realismo. El{' '}
+                <strong>colchón</strong> es la resta. Si sale en negativo, la semana no cabe: hay que mover trabajo a otra
+                semana o soltarlo, no apretarlo.
+              </AyudaContextual>
+            </h2>
+            <div className="flex gap-6">
+              <Stat n={p.trabajable.toFixed(0)} u="h" l="Trabajable" />
+              <Stat n={p.carga.toFixed(0)} u="h" l="Carga" />
+              <Stat n={`${p.colchon >= 0 ? '+' : ''}${p.colchon.toFixed(0)}`} u="h" l="Colchón" accent />
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
+              <div
+                className={`h-full ${p.pct > 100 ? 'bg-danger' : 'bg-brand-strong'}`}
+                style={{ width: `${Math.min(100, p.pct)}%` }}
+              />
+            </div>
+          </section>
+        </div>
+
+        <div
+          className="order-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            const data = e.dataTransfer.getData('text/plain')
+            if (data.startsWith('block:')) {
+              e.preventDefault()
+              startTransition(() => void unscheduleBlockAction(data.slice(6)))
+            }
+          }}
+        >
+          <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+            📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
+            <AyudaContextual titulo="Pendientes sin agendar" alineacion="derecha">
+              Todo lo que capturaste en <strong>Actividades</strong> y todavía no tiene día. Arrastra una tarjeta a un
+              día de la barra de arriba para agendarla, o usa <strong>+ Hoy</strong>. Al revés también: arrastrar un
+              bloque ya agendado hasta aquí lo regresa a pendientes sin perderlo. El ★ marca las urgentes, que suben
+              al principio de la lista.
+            </AyudaContextual>
+          </h3>
+          <p className="mb-2 text-[10px] text-neutral-400">Arrastra un bloque agendado aquí para regresarlo a pendientes.</p>
+          {/* Desde lg la columna entera ya tiene su propio scroll: un segundo
+              scroll anidado aquí adentro pelearía con el de afuera. */}
+          <div className="max-h-[32rem] space-y-2 overflow-y-auto lg:max-h-none lg:overflow-visible">
+            {p.pendientes.map((pe) => (
+              <div
+                key={pe.id}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
+                className={`cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-sm active:cursor-grabbing ${
+                  pe.urgente ? 'border-neutral-200 border-l-4 border-l-danger' : 'border-neutral-200'
+                }`}
+              >
+                <p className="font-medium text-neutral-900">
+                  {pe.urgente && <span className="text-danger">★ </span>}
+                  {pe.titulo}
+                </p>
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    {pe.estimadoMin != null && (
+                      <span className="rounded bg-brand-soft px-1.5 py-0.5 font-semibold text-brand-deep">
+                        {horas(pe.estimadoMin)}
+                      </span>
+                    )}
+                    {pe.proyecto && <span className="font-medium text-neutral-500">{pe.proyecto}</span>}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <select
+                      disabled={pending}
+                      defaultValue=""
+                      onChange={(e) => {
+                        const fecha = e.target.value
+                        e.target.value = ''
+                        if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
+                      }}
+                      className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-[10px] font-medium text-neutral-600"
+                    >
+                      <option value="" disabled>
+                        Agendar a…
+                      </option>
+                      {moveOptions
+                        .filter((t) => t.fecha !== p.today)
+                        .map((t) => (
+                          <option key={t.fecha} value={t.fecha}>
+                            {t.abr} {t.num}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      disabled={pending}
+                      onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
+                      className="rounded bg-brand px-2 py-0.5 text-[10px] font-bold text-white hover:bg-brand-strong"
+                    >
+                      + Hoy
+                    </button>
+                    <ConfirmarQuitar
+                      disabled={pending}
+                      onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
+                      titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
+                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 hover:bg-danger-soft hover:text-danger"
+                      armedClassName="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white"
+                    />
                   </div>
                 </div>
-              ))}
-              {p.pendientes.length === 0 && (
-                <p className="text-xs leading-relaxed text-neutral-400">
-                  Nada sin agendar. Lo que captures en{' '}
-                  <Link href="/inbox" className="font-semibold text-brand-deep underline">
-                    Actividades
-                  </Link>{' '}
-                  aparece aquí hasta que le das día.
-                </p>
-              )}
-            </div>
+              </div>
+            ))}
+            {p.pendientes.length === 0 && (
+              <p className="text-xs leading-relaxed text-neutral-400">
+                Nada sin agendar. Lo que captures en{' '}
+                <Link href="/inbox" className="font-semibold text-brand-deep underline">
+                  Actividades
+                </Link>{' '}
+                aparece aquí hasta que le das día.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -923,7 +935,9 @@ function MenuBloque({
         aria-label="Más acciones del bloque"
         title="Más acciones"
         onClick={() => setAbierto((v) => !v)}
-        className={`rounded-md px-2 py-1.5 text-sm font-bold leading-none ${
+        // Desde lg el dedo, no el mouse: 40×40 mínimo de área de toque sin
+        // agrandar el glifo (el ⋯ se ve igual, solo deja de fallarse en iPad).
+        className={`inline-flex items-center justify-center rounded-md px-2 py-1.5 text-sm font-bold leading-none lg:min-h-10 lg:min-w-10 ${
           abierto ? 'bg-neutral-200 text-neutral-800' : 'text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700'
         }`}
       >
@@ -1150,7 +1164,7 @@ function BlockCard({
             <button
               disabled={pending}
               onClick={() => startTransition(() => void startTimerAction(b.taskId!))}
-              className="rounded-md bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-strong"
+              className="inline-flex items-center justify-center rounded-md bg-brand px-3 py-1.5 text-sm font-bold text-white hover:bg-brand-strong lg:min-h-10"
             >
               ▶ Iniciar
             </button>
@@ -1160,7 +1174,7 @@ function BlockCard({
               onClick={alternarHecho}
               title={b.done ? 'Deshacer — regresar a pendiente' : 'Marcar terminada'}
               aria-label={b.done ? 'Deshacer terminada' : 'Marcar terminada'}
-              className="rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-200"
+              className="inline-flex items-center justify-center rounded-md bg-neutral-100 px-2.5 py-1.5 text-sm font-bold text-neutral-700 hover:bg-neutral-200 lg:min-h-10 lg:min-w-10"
             >
               {b.done ? '↺' : '✓'}
             </button>
