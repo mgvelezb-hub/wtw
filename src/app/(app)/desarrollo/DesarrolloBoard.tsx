@@ -1,8 +1,16 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { DesarrolloView, CompetenciaOpcion, HistorialRiesgos, CompetenciaCobertura } from './service'
+import type {
+  DesarrolloView,
+  CompetenciaOpcion,
+  HistorialRiesgos,
+  CompetenciaCobertura,
+  PatronNivel,
+  ReactivoPatron,
+} from './service'
 import { registrarEvidenciaAction, cerrarRiesgoAction, reabrirRiesgoAction } from './actions'
+import { AyudaContextual } from '@/components/ayuda-contextual'
 
 type BitacoraSerializada = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
@@ -123,6 +131,136 @@ function SubSeccionRubro({
   )
 }
 
+// ── Gap dashboard: "¿Ya opero como Gerente?" ────────────────────────────────
+// El semáforo NO es de progreso: es de lectura del comité. Rojo = no existe el
+// episodio, ámbar = existe pero es anécdota, verde = hay patrón. Un ámbar con 2
+// piezas no está "casi"; está a una pieza de poder defenderse.
+
+const ESTILO_SEMAFORO: Record<ReactivoPatron['semaforo'], { caja: string; chip: string; etiqueta: string }> = {
+  sin_evidencia: {
+    caja: 'border-danger/40 bg-danger-soft',
+    chip: 'bg-danger text-white',
+    etiqueta: 'sin evidencia',
+  },
+  anecdota: {
+    caja: 'border-warn-border/60 bg-warn-soft',
+    chip: 'bg-warn-border text-warn',
+    etiqueta: 'anécdota',
+  },
+  patron: {
+    caja: 'border-ok/40 bg-ok-soft',
+    chip: 'bg-ok text-white',
+    etiqueta: 'patrón',
+  },
+}
+
+function plural(n: number, singular: string, plural_: string): string {
+  return `${n} ${n === 1 ? singular : plural_}`
+}
+
+function ReactivoPatronCard({ r }: { r: ReactivoPatron }): React.ReactElement {
+  const [abierto, setAbierto] = useState(false)
+  const estilo = ESTILO_SEMAFORO[r.semaforo]
+
+  return (
+    <li className={`rounded-lg border p-3 ${estilo.caja}`}>
+      <div className="flex items-start gap-2">
+        <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${estilo.chip}`}>
+          {r.orden}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-neutral-800">{r.texto}</p>
+          <p className="mt-1 text-xs text-neutral-600">
+            <strong className="font-semibold">
+              {r.evidenciaCount === 0 ? estilo.etiqueta : `${plural(r.evidenciaCount, 'pieza', 'piezas')} · ${estilo.etiqueta}`}
+            </strong>
+            {r.evidenciaCount > 0 && (
+              <>
+                {' · '}
+                {plural(r.proyectos.length, 'proyecto', 'proyectos')}
+                {' · '}
+                {plural(r.testigos.length, 'testigo', 'testigos')}
+              </>
+            )}
+          </p>
+
+          {r.alertas.map((a) => (
+            <p key={a} className="mt-1 text-xs font-medium text-warn">
+              ⚠ {a}
+            </p>
+          ))}
+
+          {r.piezas.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setAbierto((v) => !v)}
+                aria-expanded={abierto}
+                className="mt-1 text-[11px] font-bold text-brand-deep underline-offset-2 hover:underline"
+              >
+                {abierto ? 'ocultar las piezas' : `ver ${plural(r.piezas.length, 'pieza', 'piezas')}`}
+              </button>
+              {abierto && (
+                <ul className="mt-1.5 space-y-1 border-t border-neutral-200/70 pt-1.5">
+                  {r.piezas.map((p) => (
+                    <li key={p.id} className="text-xs text-neutral-700">
+                      {p.nota}
+                      {p.proyecto && <span className="text-neutral-500"> · {p.proyecto}</span>}
+                      {p.testigo && <span className="text-neutral-500"> · puede corroborarlo {p.testigo}</span>}
+                      {p.nivelDemostrado && (
+                        <span className="ml-1 rounded bg-brand-soft px-1 py-0.5 text-[10px] font-bold text-brand-deep">
+                          nivel {p.nivelDemostrado}
+                        </span>
+                      )}
+                      <span className="text-neutral-400"> · hace {p.diasDesde}d</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function PatronSection({ patron }: { patron: PatronNivel }): React.ReactElement {
+  return (
+    <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">¿Ya opero como {patron.nombre}?</h2>
+        <AyudaContextual
+          titulo="Patrón, no anécdota"
+          alineacion="derecha"
+          ejemplo="Cinco evidencias del reactivo 10, todas de Liverpool, siguen leyéndose como “le tocó una vez”."
+        >
+          El comité no evalúa un episodio: evalúa si YA operas en el siguiente nivel, de forma repetida. Tres piezas o más,
+          de proyectos distintos y con testigos distintos, es lo que se lee como patrón. Menos de tres es anécdota; tres del
+          mismo proyecto es una anécdota larga.
+        </AyudaContextual>
+      </div>
+
+      <p className="mt-1.5 text-sm font-semibold text-neutral-900">
+        {patron.veredicto}
+        {patron.conPatron === 0 && <span className="ml-1 font-normal text-neutral-500">— ninguno defendible todavía</span>}
+      </p>
+
+      <ul className="mt-3 space-y-2">
+        {patron.reactivos.map((r) => (
+          <ReactivoPatronCard key={r.id} r={r} />
+        ))}
+      </ul>
+
+      {patron.siguientePaso && (
+        <p className="mt-3 rounded-lg bg-brand-soft px-3 py-2 text-xs text-brand-deep">
+          <strong>Siguiente paso:</strong> {patron.siguientePaso}
+        </p>
+      )}
+    </section>
+  )
+}
+
 export function DesarrolloBoard({
   view,
   opciones,
@@ -137,6 +275,8 @@ export function DesarrolloBoard({
   const [abierto, setAbierto] = useState(false)
   const [competencyId, setCompetencyId] = useState('')
   const [nota, setNota] = useState('')
+  const [testigo, setTestigo] = useState('')
+  const [nivelDemostrado, setNivelDemostrado] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [ok, setOk] = useState(false)
   const [pending, startTransition] = useTransition()
@@ -206,6 +346,8 @@ export function DesarrolloBoard({
           </p>
         )}
       </header>
+
+      {view.patron && <PatronSection patron={view.patron} />}
 
       {view.objetivo && view.objetivo.reactivos.length > 0 && (
         <Seccion
@@ -302,15 +444,49 @@ export function DesarrolloBoard({
               placeholder="Qué hiciste, cuándo, y por qué demuestra esa competencia…"
               className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
             />
+
+            {/* Opcionales, pero son las dos preguntas que hace el comité: quién lo
+                vio, y a qué altura estabas operando. Sin testigo, la evidencia es
+                tu palabra; sin nivel, no se sabe si demuestra el siguiente escalón. */}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-[11px] font-semibold text-neutral-600">¿Quién lo puede corroborar?</span>
+                <input
+                  value={testigo}
+                  onChange={(e) => setTestigo(e.target.value)}
+                  placeholder="Nombre del stakeholder o cliente"
+                  className="mt-0.5 w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-semibold text-neutral-600">Nivel demostrado</span>
+                <select
+                  value={nivelDemostrado}
+                  onChange={(e) => setNivelDemostrado(e.target.value)}
+                  className="mt-0.5 w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
+                >
+                  <option value="">Sin especificar</option>
+                  {view.escalafon.map((e) => (
+                    <option key={e.nombre} value={e.nombre}>
+                      {e.nombre}
+                      {e.esObjetivo ? ' (objetivo)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             <button
               disabled={pending || competencyId === '' || nota.trim() === ''}
               onClick={() => {
                 setError(null)
                 startTransition(async () => {
                   try {
-                    await registrarEvidenciaAction({ competencyId, nota })
+                    await registrarEvidenciaAction({ competencyId, nota, testigo, nivelDemostrado })
                     setNota('')
                     setCompetencyId('')
+                    setTestigo('')
+                    setNivelDemostrado('')
                     setAbierto(false)
                     setOk(true)
                   } catch (e) {

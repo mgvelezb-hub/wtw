@@ -32,6 +32,49 @@ export type EslabonEscalafon = {
   esObjetivo: boolean
 }
 
+// ── Patrón vs. anécdota ─────────────────────────────────────────────────────
+// El comité no evalúa un episodio: evalúa un PATRÓN multi-proyecto. Un solo
+// proyecto no basta por bueno que sea, porque no distingue "sabe hacerlo" de
+// "le tocó una vez". De ahí el umbral de 3 piezas y la alerta de concentración:
+// 5 evidencias que salen todas de Liverpool siguen siendo una anécdota larga.
+
+export const UMBRAL_PATRON = 3
+
+export type SemaforoPatron = 'sin_evidencia' | 'anecdota' | 'patron'
+
+export type PiezaEvidencia = {
+  id: string
+  nota: string
+  testigo: string | null
+  nivelDemostrado: string | null
+  proyecto: string | null
+  diasDesde: number
+}
+
+export type ReactivoPatron = {
+  id: string
+  orden: number
+  texto: string
+  evidenciaCount: number
+  semaforo: SemaforoPatron
+  // Amplitud: de cuántos frentes distintos viene el respaldo. Es lo que separa
+  // el patrón de la anécdota repetida.
+  proyectos: string[]
+  testigos: string[]
+  alertas: string[]
+  piezas: PiezaEvidencia[]
+}
+
+export type PatronNivel = {
+  nombre: string
+  total: number
+  conPatron: number
+  // Una línea honesta, sin maquillaje: "0 de 4 reactivos con patrón".
+  veredicto: string
+  reactivos: ReactivoPatron[]
+  siguientePaso: string | null
+}
+
 export type DesarrolloView = {
   nivelActual: string | null
   nivelObjetivo: string | null
@@ -43,6 +86,11 @@ export type DesarrolloView = {
   // medición que de verdad decide la promoción, y es distinta de los 48 reactivos
   // de conducta y rol: son 3-4 por nivel, numerados, y se evalúan en escala de 4.
   objetivo: { nombre: string; reactivos: CompetenciaCobertura[] } | null
+  // "¿Ya opero como Gerente?" — el mismo conjunto de reactivos leído como lo lee
+  // el comité: no cuántas evidencias hay, sino si forman patrón y de cuántos
+  // frentes vienen. null cuando no hay nivel objetivo o el documento de VP no
+  // publica sus reactivos.
+  patron: PatronNivel | null
   grupos: CoberturaPorGrupo[]
   totalReactivos: number
   totalConEvidencia: number
@@ -56,6 +104,74 @@ function dias(desde: Date, hasta: Date): number {
   return Math.floor((hasta.getTime() - desde.getTime()) / 86_400_000)
 }
 
+function unicos(valores: Array<string | null>): string[] {
+  return [...new Set(valores.filter((v): v is string => v !== null && v.trim() !== ''))]
+}
+
+function semaforoDe(count: number): SemaforoPatron {
+  if (count === 0) return 'sin_evidencia'
+  return count >= UMBRAL_PATRON ? 'patron' : 'anecdota'
+}
+
+// La concentración solo es diagnosticable con 2+ piezas: con una sola no hay
+// nada que estar concentrado todavía, y marcarla sería ruido.
+const MINIMO_PARA_CONCENTRACION = 2
+
+function alertasDe(orden: number, piezas: PiezaEvidencia[], proyectos: string[], testigos: string[]): string[] {
+  if (piezas.length < MINIMO_PARA_CONCENTRACION) return []
+
+  const alertas: string[] = []
+  if (proyectos.length === 1) {
+    alertas.push(
+      `Toda tu evidencia del reactivo ${orden} viene de ${proyectos[0]} — el comité pide patrón, no un solo proyecto.`
+    )
+  } else if (proyectos.length === 0) {
+    alertas.push(
+      `Ninguna de las ${piezas.length} piezas del reactivo ${orden} está ligada a un proyecto — sin proyecto no puedes demostrar amplitud.`
+    )
+  }
+  if (testigos.length === 1) {
+    alertas.push(`Solo ${testigos[0]} puede corroborar el reactivo ${orden} — un testigo único no es patrón.`)
+  } else if (testigos.length === 0) {
+    alertas.push(`Nadie está anotado como testigo del reactivo ${orden} — sin quién lo corrobore es tu palabra sola.`)
+  }
+  return alertas
+}
+
+// El reactivo más hueco primero: menos piezas, y a igualdad de piezas el que
+// menos frentes tiene. Devuelve UNA acción, no una lista: la lista se ignora.
+function siguientePasoDe(reactivos: ReactivoPatron[]): string | null {
+  if (reactivos.length === 0) return null
+
+  const [peor] = [...reactivos].sort(
+    (a, b) =>
+      a.evidenciaCount - b.evidenciaCount ||
+      a.proyectos.length - b.proyectos.length ||
+      a.testigos.length - b.testigos.length ||
+      a.orden - b.orden
+  )
+
+  if (peor.evidenciaCount === 0) {
+    return `Empieza por el reactivo ${peor.orden}: no tiene una sola pieza. Registra el episodio más reciente en que lo hiciste y anota quién puede corroborarlo.`
+  }
+
+  const concentrado = peor.proyectos.length === 1 ? peor.proyectos[0] : null
+
+  if (peor.semaforo === 'anecdota') {
+    const faltan = UMBRAL_PATRON - peor.evidenciaCount
+    const base = `Al reactivo ${peor.orden} le ${faltan === 1 ? 'falta 1 pieza' : `faltan ${faltan} piezas`} para ser patrón`
+    return concentrado
+      ? `${base}, y las que tiene vienen de ${concentrado}: la siguiente tiene que salir de otro proyecto.`
+      : `${base}.`
+  }
+
+  if (concentrado) {
+    return `El reactivo ${peor.orden} ya tiene ${peor.evidenciaCount} piezas, pero todas de ${concentrado}. Consigue una de otro proyecto antes de llevarlo al comité.`
+  }
+
+  return null
+}
+
 export async function getDesarrollo(userId: string, hoy: Date = new Date()): Promise<DesarrolloView> {
   const [user, competencias, niveles] = await Promise.all([
     prisma.user.findUniqueOrThrow({
@@ -66,7 +182,23 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
       },
     }),
     prisma.competency.findMany({
-      include: { evidences: { where: { userId }, select: { createdAt: true } } },
+      include: {
+        evidences: {
+          where: { userId },
+          // La amplitud se lee por Evidence→Task/Deliverable→Project: es el único
+          // camino que existe de una pieza a un proyecto.
+          select: {
+            id: true,
+            nota: true,
+            testigo: true,
+            nivelDemostrado: true,
+            createdAt: true,
+            task: { select: { project: { select: { nombre: true } } } },
+            deliverable: { select: { project: { select: { nombre: true } } } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
       orderBy: [{ tipo: 'asc' }, { grupo: 'asc' }, { orden: 'asc' }],
     }),
     prisma.level.findMany({ orderBy: { orden: 'asc' }, select: { nombre: true, orden: true } }),
@@ -106,6 +238,40 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
     competencias: lista,
   }))
 
+  const objetivoNombre = user.nivelObjetivo?.nombre ?? null
+  const reactivosObjetivo = objetivoNombre
+    ? competencias
+        .filter((c) => c.tipo === 'nivel' && c.grupo === objetivoNombre)
+        .sort((a, b) => a.orden - b.orden)
+    : []
+
+  const reactivosPatron: ReactivoPatron[] = reactivosObjetivo.map((c) => {
+    const piezas: PiezaEvidencia[] = c.evidences.map((e) => ({
+      id: e.id,
+      nota: e.nota,
+      testigo: e.testigo,
+      nivelDemostrado: e.nivelDemostrado,
+      proyecto: e.task?.project?.nombre ?? e.deliverable?.project?.nombre ?? null,
+      diasDesde: dias(e.createdAt, hoy),
+    }))
+    const proyectos = unicos(piezas.map((p) => p.proyecto))
+    const testigos = unicos(piezas.map((p) => p.testigo))
+
+    return {
+      id: c.id,
+      orden: c.orden,
+      texto: c.texto,
+      evidenciaCount: piezas.length,
+      semaforo: semaforoDe(piezas.length),
+      proyectos,
+      testigos,
+      alertas: alertasDe(c.orden, piezas, proyectos, testigos),
+      piezas,
+    }
+  })
+
+  const conPatron = reactivosPatron.filter((r) => r.semaforo === 'patron').length
+
   return {
     nivelActual: user.nivelActual?.nombre ?? null,
     nivelObjetivo: user.nivelObjetivo?.nombre ?? null,
@@ -116,12 +282,23 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
       esActual: n.nombre === user.nivelActual?.nombre,
       esObjetivo: n.nombre === user.nivelObjetivo?.nombre,
     })),
-    objetivo: user.nivelObjetivo
+    objetivo: objetivoNombre
       ? {
-          nombre: user.nivelObjetivo.nombre,
-          reactivos: deNivel.filter((c) => c.grupo === user.nivelObjetivo!.nombre).sort((a, b) => a.orden - b.orden),
+          nombre: objetivoNombre,
+          reactivos: deNivel.filter((c) => c.grupo === objetivoNombre).sort((a, b) => a.orden - b.orden),
         }
       : null,
+    patron:
+      objetivoNombre !== null && reactivosPatron.length > 0
+        ? {
+            nombre: objetivoNombre,
+            total: reactivosPatron.length,
+            conPatron,
+            veredicto: `Evidencia de nivel ${objetivoNombre}: ${conPatron} de ${reactivosPatron.length} reactivos con patrón`,
+            reactivos: reactivosPatron,
+            siguientePaso: siguientePasoDe(reactivosPatron),
+          }
+        : null,
     grupos,
     totalReactivos: generales.length,
     totalConEvidencia: generales.filter((c) => c.evidenciaCount > 0).length,

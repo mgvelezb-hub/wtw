@@ -41,6 +41,7 @@ export default async function SemanaPage() {
         cargaHoras={view.cargaHoras}
         trabajableTotal={view.capacidad.trabajableTotal}
         trabajablePlaneable={view.capacidad.trabajablePlaneable}
+        sobrecarga={view.sobrecarga}
       />
     </main>
   )

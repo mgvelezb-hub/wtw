@@ -618,17 +618,24 @@ model Competency {
 }
 
 model Evidence {
-  id            String       @id @default(cuid())
-  userId        String
-  user          User         @relation(fields: [userId], references: [id])
-  competencyId  String
-  competency    Competency   @relation(fields: [competencyId], references: [id])
-  taskId        String?
-  task          Task?        @relation(fields: [taskId], references: [id])
-  deliverableId String?
-  deliverable   Deliverable? @relation(fields: [deliverableId], references: [id])
-  nota          String
-  createdAt     DateTime     @default(now())
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id])
+  competencyId    String
+  competency      Competency   @relation(fields: [competencyId], references: [id])
+  taskId          String?
+  task            Task?        @relation(fields: [taskId], references: [id])
+  deliverableId   String?
+  deliverable     Deliverable? @relation(fields: [deliverableId], references: [id])
+  nota            String
+  // Quién puede corroborarlo — nombre de una persona, típicamente el stakeholder
+  // o el cliente. Sin testigo un episodio es palabra contra palabra frente al
+  // comité; con nombre es verificable.
+  testigo         String?
+  // A qué nivel del escalafón operaste en ESE episodio. La regla de oro del
+  // comité es demostrar que YA operas en el siguiente nivel, no que podrías.
+  nivelDemostrado String?
+  createdAt       DateTime     @default(now())
 }
 
 // ── Captura: minutas por junta ────────────────────────

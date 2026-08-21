@@ -3,46 +3,19 @@
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { registrarEvidencia, type RegistrarEvidenciaInput } from '@/app/api/v1/evidence/service'
 
 // Registro de evidencia desde la UI. Hasta ahora Evidence solo se podía crear vía
 // POST /api/v1/evidence — es decir, la rúbrica de 48 reactivos existía sin ninguna
 // forma de alimentarla desde la app. Ver docs/plans/2026-08-10-alineacion-council.md §Fase 2b.
+// La validación (nota, testigo, nivelDemostrado, ownership) vive en el service
+// compartido con la capa Bearer PAT.
 
-export async function registrarEvidenciaAction(input: {
-  competencyId: string
-  nota: string
-  taskId?: string
-  deliverableId?: string
-}) {
+export async function registrarEvidenciaAction(input: RegistrarEvidenciaInput) {
   const session = await verifySession()
   if (!session) throw new Error('no autenticado')
 
-  const nota = input.nota.trim()
-  if (nota === '') throw new Error('la evidencia necesita una nota')
-
-  // Ownership: una evidencia solo puede colgar de trabajo propio. Sin esto, un id
-  // ajeno permitiría acreditarse el trabajo de otro usuario.
-  if (input.taskId) {
-    const task = await prisma.task.findFirst({ where: { id: input.taskId, userId: session.userId }, select: { id: true } })
-    if (!task) throw new Error('tarea no encontrada')
-  }
-  if (input.deliverableId) {
-    const entregable = await prisma.deliverable.findFirst({
-      where: { id: input.deliverableId, project: { userId: session.userId } },
-      select: { id: true },
-    })
-    if (!entregable) throw new Error('entregable no encontrado')
-  }
-
-  await prisma.evidence.create({
-    data: {
-      userId: session.userId,
-      competencyId: input.competencyId,
-      taskId: input.taskId,
-      deliverableId: input.deliverableId,
-      nota,
-    },
-  })
+  await registrarEvidencia(session.userId, input)
 
   revalidatePath('/desarrollo')
   revalidatePath('/dia')

@@ -3,10 +3,38 @@
 import { useTransition } from 'react'
 import Link from 'next/link'
 import { AyudaContextual } from '@/components/ayuda-contextual'
+import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
 import { toggleWinAction } from './actions'
 
 type Win = { id: string; posicion: number; titulo: string; dod: string | null; siEntonces: string | null; estatus: string }
 type Block = { id: string; fecha: Date; inicio: string; fin: string; tipo: string; titulo: string; planMin: number }
+
+// Calm tech: en verde no se muestra nada. En ámbar/rojo, un chip junto a la
+// barra de capacidad con las señales activas y la única recomendación
+// accionable.
+function ChipSobrecarga({ sobrecarga }: { sobrecarga: ResultadoSobrecarga }) {
+  if (sobrecarga.nivel === 'verde') return null
+  const esRojo = sobrecarga.nivel === 'rojo'
+  return (
+    <span
+      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
+        esRojo ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn'
+      }`}
+    >
+      {esRojo ? 'Carga: en espiral' : 'Carga: al límite'}
+      <AyudaContextual
+        titulo="Semáforo de sobrecarga"
+        alineacion="derecha"
+        ejemplo="Antes de aceptar algo nuevo, corre /wtw-comprometer — o recorta en el planeador."
+      >
+        {sobrecarga.senales
+          .filter((s) => s.activa)
+          .map((s) => s.detalle)
+          .join(' ')}
+      </AyudaContextual>
+    </span>
+  )
+}
 
 export function SemanaBoard({
   wins,
@@ -14,12 +42,14 @@ export function SemanaBoard({
   cargaHoras,
   trabajableTotal,
   trabajablePlaneable,
+  sobrecarga,
 }: {
   wins: Win[]
   blocks: Block[]
   cargaHoras: number
   trabajableTotal: number
   trabajablePlaneable: number
+  sobrecarga: ResultadoSobrecarga
 }) {
   const [pending, startTransition] = useTransition()
 
@@ -115,6 +145,11 @@ export function SemanaBoard({
             cabe: la respuesta es mover o soltar trabajo, no exprimir el colchón.
           </AyudaContextual>
         </h2>
+        {sobrecarga.nivel !== 'verde' && (
+          <div className="mb-2">
+            <ChipSobrecarga sobrecarga={sobrecarga} />
+          </div>
+        )}
         <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
           <div className="flex justify-between text-sm text-neutral-700">
             <span>Carga: {cargaHoras.toFixed(1)}h</span>

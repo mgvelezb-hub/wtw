@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { runningEntry, stopTimer } from '@/app/api/v1/timer/service'
 import { getWeek } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
+import { senalesSobrecarga } from '@/lib/carga-sostenible'
 
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -190,7 +191,7 @@ export async function getProyectosActivos(userId: string): Promise<ProyectoActiv
 }
 
 export async function getDiaView(userId: string, isoWeek: string, dateStr: string, todayStr: string) {
-  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos] = await Promise.all([
+  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos, sobrecarga] = await Promise.all([
     getWeek(userId, isoWeek),
     capacityForWeek(userId, isoWeek),
     getDayBlocks(userId, dateStr),
@@ -201,6 +202,10 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     }),
     dateStr === todayStr ? getStrandedBlocks(userId, todayStr) : Promise.resolve([]),
     getProyectosActivos(userId),
+    // Semáforo de sobrecarga: se evalúa contra el día real de hoy, no contra
+    // el día seleccionado — no tiene sentido que cambie al navegar las
+    // pestañas de la semana.
+    senalesSobrecarga(userId, new Date(todayStr)),
   ])
 
   const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
@@ -234,6 +239,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     pendientes,
     stranded,
     proyectosActivos,
+    sobrecarga,
   }
 }
 

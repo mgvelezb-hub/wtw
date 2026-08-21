@@ -1,6 +1,7 @@
 import type { MinutaItemTipo } from '@prisma/client'
 import type { MinutaView } from './status-actions'
 import { MinutaClasificar } from './MinutaClasificar'
+import { MinutaEvidencia } from './MinutaEvidencia'
 
 // Sección "Minutas" — la captura sigue viviendo en /dia, pero la CLASIFICACIÓN
 // con IA se hace aquí: antes solo era alcanzable abriendo el drawer del día
@@ -39,7 +40,14 @@ export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
             {m.asistentes.length > 0 && (
               <p className="mt-1 text-xs text-neutral-500">{m.asistentes.join(', ')}</p>
             )}
-            <MinutaClasificar minutaId={m.id} tieneNotas={m.tieneNotas} />
+            {/* Bloque de flujo normal, no flex: colapsados los dos son botones
+                inline que caben en un renglón; abierto, cada panel es un div de
+                ancho completo. Con flex el panel abierto quedaría en media
+                columna. */}
+            <div>
+              <MinutaClasificar minutaId={m.id} tieneNotas={m.tieneNotas} />
+              <MinutaEvidencia minutaId={m.id} />
+            </div>
             <div className="mt-2 space-y-1.5">
               {m.items.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-sm">

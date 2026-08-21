@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
+import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
 import { MinutaDrawer } from './MinutaDrawer'
 import {
   startTimerAction,
@@ -82,6 +83,34 @@ export type DiaBoardProps = {
   pendientes: PendienteView[]
   stranded: StrandedBlockView[]
   proyectosActivos: ProyectoActivoView[]
+  sobrecarga: ResultadoSobrecarga
+}
+
+// Calm tech: en verde no se muestra nada — la ausencia de alarma no necesita
+// anuncio. En ámbar/rojo, un chip junto a Factor realismo con la explicación
+// de qué señales están activas y la única recomendación accionable.
+function ChipSobrecarga({ sobrecarga }: { sobrecarga: ResultadoSobrecarga }) {
+  if (sobrecarga.nivel === 'verde') return null
+  const esRojo = sobrecarga.nivel === 'rojo'
+  return (
+    <span
+      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
+        esRojo ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn'
+      }`}
+    >
+      {esRojo ? 'Carga: en espiral' : 'Carga: al límite'}
+      <AyudaContextual
+        titulo="Semáforo de sobrecarga"
+        alineacion="derecha"
+        ejemplo="Antes de aceptar algo nuevo, corre /wtw-comprometer — o recorta en el planeador."
+      >
+        {sobrecarga.senales
+          .filter((s) => s.activa)
+          .map((s) => s.detalle)
+          .join(' ')}
+      </AyudaContextual>
+    </span>
+  )
 }
 
 // Bloques donde tiene sentido capturar una minuta: juntas internas del
@@ -211,6 +240,7 @@ export function DiaBoard(p: DiaBoardProps) {
             <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
               Factor realismo {p.factorUsado.toFixed(1)}
             </span>
+            <ChipSobrecarga sobrecarga={p.sobrecarga} />
             {p.desbloqueador && (
               <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
                 ⚡ {p.desbloqueador}
