@@ -47,11 +47,13 @@ export async function deleteTestUser(email: string): Promise<void> {
     prisma.artifact.deleteMany({ where: { userId: user.id } }),
     prisma.aiProfile.deleteMany({ where: { userId: user.id } }),
     prisma.aiCall.deleteMany({ where: { userId: user.id } }),
-    // LearningProgress y Stakeholder cuelgan de User sin cascada: si se olvidan,
-    // la FK bloquea el user.delete y truena CUALQUIER test que cree un usuario,
-    // no solo los de desarrollo. StakeholderInteraccion sí cascadea.
+    // LearningProgress, Stakeholder y PropuestaLiteratura cuelgan de User sin
+    // cascada: si se olvidan, la FK bloquea el user.delete y truena CUALQUIER
+    // test que cree un usuario, no solo los del módulo nuevo. StakeholderInteraccion
+    // sí cascadea.
     prisma.learningProgress.deleteMany({ where: { userId: user.id } }),
     prisma.stakeholder.deleteMany({ where: { userId: user.id } }),
+    prisma.propuestaLiteratura.deleteMany({ where: { userId: user.id } }),
     prisma.project.deleteMany({ where: { userId: user.id } }),
     prisma.user.delete({ where: { id: user.id } }),
   ])
