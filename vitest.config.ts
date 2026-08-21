@@ -22,6 +22,9 @@ export default defineConfig({
     // `// @vitest-environment jsdom` por archivo.
     environment: 'node',
     globals: true,
+    // Los worktrees de Claude viven DENTRO del repo: sin este exclude, vitest
+    // corre también sus copias (viejas) de tests/ contra el src actual.
+    exclude: ['**/node_modules/**', '**/.claude/worktrees/**'],
     setupFiles: [],
     globalSetup: ['./tests/global-teardown.ts'], // solo exporta teardown() — corre al final de toda la suite
     fileParallelism: false, // los tests comparten una sola base — sin paralelismo entre archivos
