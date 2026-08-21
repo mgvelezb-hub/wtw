@@ -55,7 +55,7 @@ export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
                     {item.responsable && <span className="text-neutral-500"> — {item.responsable}</span>}
                   </span>
                   {item.estado === 'convertido' && (
-                    <span className="shrink-0 rounded-full bg-[#0A7C82]/10 px-2 py-0.5 text-[10px] font-semibold text-[#0A7C82]">
+                    <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
                       Convertido
                     </span>
                   )}

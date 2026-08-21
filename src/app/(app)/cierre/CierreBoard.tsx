@@ -16,9 +16,9 @@ import {
 type Fila = DesvioInput & { key: string }
 
 const A_QUIEN_TOCA_COLOR: Record<string, string> = {
-  cliente: 'bg-[#e8b94a] text-[#4a3a10]',
+  cliente: 'bg-warn-border text-warn',
   disciplina: 'bg-[#5b4b8a] text-white',
-  código: 'bg-[#0d6d63] text-white',
+  código: 'bg-brand text-white',
 }
 
 function horas(min: number): string {
@@ -118,7 +118,7 @@ export function CierreBoard({
         </p>
       </header>
 
-      {error && <p className="rounded-lg bg-[#f7dcdc] px-3 py-2 text-sm text-[#b43232]">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
@@ -129,8 +129,11 @@ export function CierreBoard({
             Cronometrado <strong className="text-neutral-900">{horas(cierre.medidoMin)}</strong>
           </span>
           <span className="text-neutral-500">
+            {/* "Sin explicar" es el dato, no un veredicto: por eso el color solo
+                marca si falta registrar algo (danger) o si ya quedó completo
+                (ok) — nunca "qué tan mal te fue". */}
             Sin explicar{' '}
-            <strong className={faltaPorExplicar > 0 ? 'text-[#b43232]' : 'text-[#0d6d63]'}>{horas(faltaPorExplicar)}</strong>
+            <strong className={faltaPorExplicar > 0 ? 'text-danger' : 'text-ok'}>{horas(faltaPorExplicar)}</strong>
           </span>
         </div>
 
@@ -146,7 +149,7 @@ export function CierreBoard({
           <p className="mt-2 text-xs text-neutral-500">
             {cierre.huecoMin === 0
               ? 'El cronómetro cubre todo lo planeado. Guarda el día así: un cierre sin desvíos significa que el plan se cumplió.'
-              : `${horas(cierre.huecoMin)} planeados no aparecen en ningún cronómetro. Explica a dónde se fueron.`}
+              : `${horas(cierre.huecoMin)} planeados no aparecen en ningún cronómetro. Regístralo abajo — no es una confesión, es el dato que calibra el plan de mañana.`}
           </p>
         )}
 
@@ -158,7 +161,7 @@ export function CierreBoard({
         )}
 
         {cierre.tareas.some((t) => t.hechaSinMedir) && (
-          <p className="mt-2 rounded bg-[#f5deae] px-2 py-1 text-xs text-[#4a3a10]">
+          <p className="mt-2 rounded bg-warn-soft px-2 py-1 text-xs text-warn">
             Terminaste sin cronometrar:{' '}
             {cierre.tareas
               .filter((t) => t.hechaSinMedir)
@@ -170,13 +173,13 @@ export function CierreBoard({
 
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Qué pasó de verdad</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Qué pasó de verdad</h2>
           <button
             onClick={() => {
               setFilas((f) => [...f, { key: `n${f.length}${Date.now()}`, causa: 'bomberazo', minutos: 30 }])
               setGuardado(false)
             }}
-            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             + Desvío
           </button>
@@ -271,7 +274,7 @@ export function CierreBoard({
                 alimentaba el patrón de causas pero nunca llegaba al ledger Aliado
                 ni generaba evidencia de competencias. */}
             {promovidas[f.key] ? (
-              <p className="rounded bg-[#0d6d63]/10 px-2 py-1 text-xs text-[#0c4a45]">
+              <p className="rounded bg-ok-soft px-2 py-1 text-xs text-ok">
                 ✓ Registrado como trabajo hecho: <strong>{promovidas[f.key]}</strong>
               </p>
             ) : promoviendo === f.key ? (
@@ -294,7 +297,7 @@ export function CierreBoard({
               cierre.proyectos.length > 0 && (
                 <button
                   onClick={() => setPromoviendo(f.key)}
-                  className="text-xs text-[#0c4a45] underline"
+                  className="text-xs text-brand-deep underline"
                 >
                   Registrar estos {f.minutos} min como trabajo hecho
                 </button>
@@ -332,11 +335,11 @@ export function CierreBoard({
                 })
               )
             }
-            className="rounded-full bg-[#0c4a45] px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             {pending ? 'Guardando…' : cierre.yaReconciliado ? 'Actualizar cierre' : 'Cerrar el día'}
           </button>
-          {guardado && <span className="text-xs font-bold text-[#0d6d63]">✓ guardado</span>}
+          {guardado && <span className="text-xs font-bold text-ok">✓ guardado</span>}
           {cierre.yaReconciliado && (
             <button
               disabled={pending}
@@ -354,7 +357,7 @@ export function CierreBoard({
           que se había planeado. */}
       {(cierre.pendientesPorMover > 0 || cierre.yaMovidos) && (
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Pendientes sin terminar</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Pendientes sin terminar</h2>
           {movidos ?? cierre.yaMovidos ? (
             <p className="mt-1 text-sm text-neutral-700">
               {movidos
@@ -379,7 +382,7 @@ export function CierreBoard({
                   setMovidos(await pasarPendientesAction(cierre.fecha))
                 })
               }
-              className="mt-2 rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10 disabled:opacity-40"
+              className="mt-2 rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-40"
             >
               {pending ? 'Moviendo…' : `Pasar ${cierre.pendientesPorMover} al siguiente día hábil`}
             </button>
@@ -388,7 +391,7 @@ export function CierreBoard({
       )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Qué causa domina — últimos 14 días</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Qué causa domina — últimos 14 días</h2>
         <p className="mt-1 text-xs text-neutral-500">
           La compuerta no evalúa si el factor de realismo sobrevive: sobrevive, es el objetivo. Evalúa qué causa domina,
           porque cada una lleva a un trabajo distinto.
@@ -405,7 +408,7 @@ export function CierreBoard({
         ) : (
           <>
             <p className="mt-2 text-sm text-neutral-700">
-              Domina <strong className="text-[#0c4a45]">{CAUSA_LABEL[patron.dominante]}</strong> sobre{' '}
+              Domina <strong className="text-brand-deep">{CAUSA_LABEL[patron.dominante]}</strong> sobre{' '}
               {horas(patron.totalMin)} en {patron.diasReconciliados} día{patron.diasReconciliados > 1 ? 's' : ''}{' '}
               reconciliado{patron.diasReconciliados > 1 ? 's' : ''}.
             </p>
@@ -416,7 +419,7 @@ export function CierreBoard({
                   <li key={c.causa} className="flex items-center gap-2 text-xs">
                     <span className="w-52 shrink-0 truncate text-neutral-700">{c.label}</span>
                     <span className="h-2 flex-1 overflow-hidden rounded bg-neutral-100">
-                      <span className="block h-full bg-[#0d6d63]" style={{ width: `${c.pct}%` }} />
+                      <span className="block h-full bg-brand" style={{ width: `${c.pct}%` }} />
                     </span>
                     <span className="w-16 shrink-0 text-right text-neutral-500">{horas(c.minutos)}</span>
                     <span className={`shrink-0 rounded px-1 text-[10px] font-bold uppercase ${A_QUIEN_TOCA_COLOR[c.aQuienToca]}`}>
@@ -428,7 +431,7 @@ export function CierreBoard({
 
             {patron.origenUrgencias.length > 0 && (
               <div className="mt-3 border-t border-neutral-100 pt-2">
-                <p className="text-xs font-bold text-[#0c4a45]">De dónde vienen las urgencias</p>
+                <p className="text-xs font-bold text-brand-deep">De dónde vienen las urgencias</p>
                 <ul className="mt-1 space-y-0.5">
                   {patron.origenUrgencias.map((o) => (
                     <li key={o.nombre} className="text-xs text-neutral-600">
@@ -477,8 +480,8 @@ function PromoverDesvio({
   const listo = titulo.trim() !== '' && projectId !== '' && (alcance === 'sow' || dolor.trim() !== '')
 
   return (
-    <div className="space-y-1 rounded-lg border border-[#0c4a45]/30 bg-[#0c4a45]/5 p-2">
-      <p className="text-xs font-bold text-[#0c4a45]">Registrar {minutos} min como trabajo hecho</p>
+    <div className="space-y-1 rounded-lg border border-brand-deep/30 bg-brand-deep/5 p-2">
+      <p className="text-xs font-bold text-brand-deep">Registrar {minutos} min como trabajo hecho</p>
       <input
         value={titulo}
         onChange={(e) => setTitulo(e.target.value)}
@@ -519,7 +522,7 @@ function PromoverDesvio({
             className="w-full rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
           />
           {proyecto && !proyecto.tieneTarifa && (
-            <p className="text-[11px] text-[#b43232]">
+            <p className="text-[11px] text-danger">
               {proyecto.nombre} no tiene tarifa por hora: estas horas se van a contar, pero no se pueden valorizar en pesos.
             </p>
           )}
@@ -536,7 +539,7 @@ function PromoverDesvio({
               dolorCliente: alcance === 'aliado' ? dolor : undefined,
             })
           }
-          className="rounded-full bg-[#0c4a45] px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+          className="rounded-full bg-brand-deep px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
         >
           {pending ? 'Registrando…' : 'Registrar'}
         </button>

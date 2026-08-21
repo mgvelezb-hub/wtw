@@ -37,9 +37,9 @@ function Recurso({
     <li
       className={`rounded-lg border p-2 ${
         r.estado === 'hecho'
-          ? 'border-[#0d6d63]/40 bg-[#d3e4e0]/40'
+          ? 'border-brand-strong/40 bg-brand-soft/40'
           : r.estado === 'en_curso'
-            ? 'border-[#e8b94a] bg-[#fdf6e3]'
+            ? 'border-warn-border bg-warn-soft'
             : r.estado === 'descartado'
               ? 'border-neutral-200 bg-neutral-50 opacity-60'
               : 'border-neutral-200 bg-white'
@@ -65,12 +65,12 @@ function Recurso({
             {r.cadencia && <span>· {r.cadencia}</span>}
             {r.duracionMin !== null && <span>· {r.duracionMin} min</span>}
             {esPractica && r.veces > 0 && (
-              <span className="rounded bg-[#0d6d63] px-1 font-bold text-white">{r.veces}× practicado</span>
+              <span className="rounded bg-brand-strong px-1 font-bold text-white">{r.veces}× practicado</span>
             )}
           </p>
           <button
             onClick={() => setAbierto(!abierto)}
-            className="mt-1 text-[10px] font-semibold uppercase text-[#0c4a45] hover:underline"
+            className="mt-1 text-[10px] font-semibold uppercase text-brand-deep hover:underline"
           >
             {abierto ? 'ocultar' : 'por qué sirve'}
           </button>
@@ -82,7 +82,7 @@ function Recurso({
             <button
               disabled={pending}
               onClick={onPracticar}
-              className="rounded bg-[#0c4a45] px-2 py-1 text-[10px] font-bold text-white disabled:opacity-40"
+              className="rounded bg-brand-deep px-2 py-1 text-[10px] font-bold text-white disabled:opacity-40"
               title="Registrar una práctica más"
             >
               +1 practicado
@@ -93,7 +93,7 @@ function Recurso({
                 <button
                   disabled={pending}
                   onClick={() => onEstado('en_curso')}
-                  className="rounded border border-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10] disabled:opacity-40"
+                  className="rounded border border-brand px-2 py-0.5 text-[10px] font-bold text-brand disabled:opacity-40"
                 >
                   empezar
                 </button>
@@ -102,7 +102,7 @@ function Recurso({
                 <button
                   disabled={pending}
                   onClick={() => onEstado('hecho')}
-                  className="rounded border border-[#0d6d63] px-2 py-0.5 text-[10px] font-bold text-[#0c4a45] disabled:opacity-40"
+                  className="rounded border border-brand-strong px-2 py-0.5 text-[10px] font-bold text-brand-deep disabled:opacity-40"
                 >
                   hecho
                 </button>
@@ -111,7 +111,7 @@ function Recurso({
                 <button
                   disabled={pending}
                   onClick={() => onEstado('descartado')}
-                  className="rounded px-2 py-0.5 text-[10px] font-bold text-neutral-400 hover:text-[#b43232] disabled:opacity-40"
+                  className="rounded px-2 py-0.5 text-[10px] font-bold text-neutral-400 hover:text-danger disabled:opacity-40"
                   title="Lo evalué y no aplica"
                 >
                   no aplica
@@ -168,13 +168,13 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="rounded-lg border border-[#b43232] bg-red-50 px-3 py-2 text-sm text-[#b43232]">
+        <p role="alert" className="rounded-lg border border-danger bg-red-50 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Material de desarrollo</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Material de desarrollo</h2>
         <p className="mt-1 text-xs text-neutral-500">
           {resumen.total} recursos · {resumen.hechos} hechos · {resumen.enCurso} en curso · {resumen.practicados} prácticas
           registradas. Esto es el 10% del 70-20-10: existe para que la práctica sea deliberada, no para leerse completo.
@@ -182,8 +182,8 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
       </section>
 
       {catalogo.practicas.length > 0 && (
-        <section className="rounded-xl border-2 border-[#0c4a45] bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Prácticas — el 70%</h2>
+        <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Prácticas — el 70%</h2>
           <p className="mt-1 text-xs text-neutral-500">
             Estos no se terminan, se repiten. Son lo que convierte una oportunidad en algo intencional.
           </p>
@@ -197,14 +197,14 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
 
       {catalogo.porObjetivo.length > 0 && (
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Material por reactivo del nivel objetivo</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Material por reactivo del nivel objetivo</h2>
           <div className="mt-2 space-y-3">
             {catalogo.porObjetivo.map((o) => (
               <div key={o.orden}>
                 <p className="flex items-start gap-2 text-sm">
                   <span
                     className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
-                      o.conEvidencia ? 'bg-[#0d6d63] text-white' : 'bg-[#b43232] text-white'
+                      o.conEvidencia ? 'bg-brand-strong text-white' : 'bg-danger text-white'
                     }`}
                   >
                     {o.orden}
@@ -234,10 +234,10 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Material por rubro</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Material por rubro</h2>
           <button
             onClick={() => setVerRubros(!verRubros)}
-            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {verRubros ? 'Ocultar' : `Ver ${catalogo.porRubro.length} rubros`}
           </button>

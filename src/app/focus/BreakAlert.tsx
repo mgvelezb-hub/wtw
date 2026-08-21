@@ -10,7 +10,7 @@ export function BreakAlert({
   onPosponer: () => void
 }) {
   return (
-    <div className="fixed left-1/2 top-8 z-40 flex -translate-x-1/2 items-center gap-4 rounded-lg border border-[#c9a24b]/40 bg-[#141414] px-5 py-3 shadow-lg">
+    <div className="fixed left-1/2 top-8 z-40 flex -translate-x-1/2 items-center gap-4 rounded-lg border border-warn-strong/40 bg-[#141414] px-5 py-3 shadow-lg">
       <span className="text-2xl">🧘</span>
       <div>
         <p className="text-base font-medium text-[#ededed]">Llevas rato enfocado — tómate {breakMin} min</p>

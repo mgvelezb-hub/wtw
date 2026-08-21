@@ -17,6 +17,29 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Gramática de color — un color, un significado. Tokens Tailwind v4 (@theme
+   genera bg-brand, text-warn, border-danger, etc.). Regla:
+   - brand (teal): acción primaria, selección, identidad. El ÚNICO acento.
+   - brand-deep: paneles primarios invertidos y énfasis de marca.
+   - warn (ámbar): SOLO advertencias. Nunca botones, nunca chips decorativos.
+   - danger (rojo): SOLO destructivo/atrasado.
+   - ok (verde): SOLO confirmación/a tiempo.
+   Los hex históricos (#0c4a45, #e8b94a, #b43232…) migran a estos tokens. */
+@theme {
+  --color-brand: #0a7c82;
+  --color-brand-strong: #086a6f;
+  --color-brand-deep: #0c4a45;
+  --color-brand-soft: #d3e4e0;
+  --color-warn: #8a6116;
+  --color-warn-strong: #b8923f;
+  --color-warn-soft: #fdf6e3;
+  --color-warn-border: #e8b94a;
+  --color-danger: #b43232;
+  --color-danger-soft: #f7dcdc;
+  --color-ok: #15803d;
+  --color-ok-soft: #c7e4de;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

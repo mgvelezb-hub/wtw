@@ -27,7 +27,7 @@ export function ProyectosBoard({
       <section className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
         <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Utilización</h2>
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-neutral-100">
-          <div className="bg-[#0A7C82]" style={{ width: `${utilizacion.pctFacturable}%` }} title="Facturable" />
+          <div className="bg-brand" style={{ width: `${utilizacion.pctFacturable}%` }} title="Facturable" />
           <div className="bg-[#B8860B]" style={{ width: `${(utilizacion.aliadoHoras / (utilizacion.facturableHoras + utilizacion.aliadoHoras + utilizacion.internoHoras || 1)) * 100}%` }} title="Aliado" />
         </div>
         <p className="mt-2 text-xs text-neutral-500">

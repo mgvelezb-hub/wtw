@@ -75,7 +75,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
     return (
       <button
         onClick={() => setAbierto(true)}
-        className="mt-1 rounded-full border border-[#0c4a45] px-2.5 py-0.5 text-[11px] font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+        className="mt-1 rounded-full border border-brand-deep px-2.5 py-0.5 text-[11px] font-bold text-brand-deep hover:bg-brand-deep/10"
       >
         ✨ Clasificar con IA
       </button>
@@ -83,9 +83,9 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
   }
 
   return (
-    <div className="mt-2 rounded-md border border-[#0c4a45] bg-white p-2">
+    <div className="mt-2 rounded-md border border-brand-deep bg-white p-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase text-[#0c4a45]">Clasificar con IA</p>
+        <p className="text-[11px] font-bold uppercase text-brand-deep">Clasificar con IA</p>
         <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-neutral-400">
           cerrar
         </button>
@@ -107,23 +107,23 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
       />
 
       {error && (
-        <p role="alert" className="mt-1.5 rounded border border-[#b43232] bg-red-50 px-2 py-1 text-[11px] text-[#b43232]">
+        <p role="alert" className="mt-1.5 rounded border border-danger bg-red-50 px-2 py-1 text-[11px] text-danger">
           {error}
         </p>
       )}
-      {ok && <p className="mt-1.5 rounded bg-[#d3e4e0] px-2 py-1 text-[11px] text-[#0c4a45]">{ok}</p>}
+      {ok && <p className="mt-1.5 rounded bg-brand-soft px-2 py-1 text-[11px] text-brand-deep">{ok}</p>}
 
       {propuestos === null ? (
         <button
           disabled={pending}
           onClick={clasificar}
-          className="mt-1.5 w-full rounded bg-[#0c4a45] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+          className="mt-1.5 w-full rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
         >
           {pending ? '⏳ clasificando…' : 'Clasificar'}
         </button>
       ) : (
         <>
-          <p className="mt-2 text-[11px] font-bold uppercase text-[#0c4a45]">
+          <p className="mt-2 text-[11px] font-bold uppercase text-brand-deep">
             {propuestos.length} propuestos — destilda los que no
           </p>
           <ul className="mt-1 space-y-1">
@@ -148,7 +148,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
                   <span className="ml-1 text-neutral-800">{p.texto}</span>
                   {p.responsable && <span className="ml-1 text-neutral-500">— {p.responsable}</span>}
                   {p.fechaCompromiso && (
-                    <span className="ml-1 rounded bg-[#f5deae] px-1 text-[10px] font-bold text-[#4a3a10]">
+                    <span className="ml-1 rounded bg-neutral-100 px-1 text-[10px] font-bold text-neutral-600">
                       {p.fechaCompromiso}
                     </span>
                   )}
@@ -160,7 +160,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
             <button
               disabled={pending || aceptados.size === 0}
               onClick={agregar}
-              className="flex-1 rounded bg-[#0c4a45] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
             >
               Agregar {aceptados.size}
             </button>

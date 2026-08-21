@@ -47,7 +47,7 @@ export function FocusActivity({
       )}
       <h1 className="mt-3 font-serif text-5xl font-light text-[#ededed]">{activity.titulo}</h1>
 
-      <p className={`mt-6 font-mono text-8xl font-bold tabular-nums ${over ? 'text-[#c9a24b]' : 'text-white'}`}>
+      <p className={`mt-6 font-mono text-8xl font-bold tabular-nums ${over ? 'text-warn-strong' : 'text-white'}`}>
         {over ? '+' : ''}
         {fmt(display)}
       </p>
@@ -57,7 +57,7 @@ export function FocusActivity({
 
       <div className="mx-auto mt-4 h-1 max-w-md overflow-hidden rounded-full bg-white/10">
         <div
-          className={`h-full transition-all ${over ? 'bg-[#c9a24b]' : 'bg-white/40'}`}
+          className={`h-full transition-all ${over ? 'bg-warn-strong' : 'bg-white/40'}`}
           style={{ width: `${progressPct}%` }}
         />
       </div>
@@ -83,7 +83,7 @@ export function FocusActivity({
           <button
             disabled={pending || !activity.taskId}
             onClick={() => activity.taskId && startTransition(() => void startTimerAction(activity.taskId!))}
-            className="rounded-md bg-[#c9a24b] px-5 py-2 text-base font-bold text-[#1a1a1a] hover:bg-[#b8923f]"
+            className="rounded-md bg-brand px-5 py-2 text-base font-bold text-white hover:bg-brand-strong"
           >
             ▶ Reanudar
           </button>
@@ -99,7 +99,7 @@ export function FocusActivity({
         <button
           disabled={pending || !activity.taskId}
           onClick={() => activity.taskId && onTerminar(activity.taskId, activity.fin)}
-          className="rounded-md bg-[#15803d] px-5 py-2 text-base font-bold text-white hover:bg-[#12692f]"
+          className="rounded-md bg-ok px-5 py-2 text-base font-bold text-white hover:bg-[#12692f]"
         >
           ✓ Terminar
         </button>

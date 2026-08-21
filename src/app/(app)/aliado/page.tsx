@@ -28,7 +28,7 @@ export default async function AliadoPage() {
                   <span className="text-sm text-neutral-500">{l.horasAliado.toFixed(1)}h</span>
                 </div>
                 {l.valorizado !== null && (
-                  <p className="mt-1 text-sm font-medium text-[#0A7C82]">
+                  <p className="mt-1 text-sm font-medium text-brand">
                     ${l.valorizado.toLocaleString('es-MX')} MXN de valor entregado no cobrado
                   </p>
                 )}

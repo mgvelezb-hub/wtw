@@ -23,7 +23,7 @@ export function StartNextModal({
           </button>
           <button
             onClick={onIniciar}
-            className="rounded-md bg-[#c9a24b] px-4 py-2 text-base font-bold text-[#1a1a1a] hover:bg-[#b8923f]"
+            className="rounded-md bg-brand px-4 py-2 text-base font-bold text-white hover:bg-brand-strong"
           >
             Iniciar ahora
           </button>

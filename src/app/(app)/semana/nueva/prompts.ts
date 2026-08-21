@@ -11,10 +11,16 @@ export const RECAP = `${VOZ}
 Te doy los números de la semana que terminó. Redacta un recap de 3 a 4 frases que
 responda: qué se logró, qué se atoró, y dónde se fue el tiempo respecto al plan.
 
+La semana que terminó ya está archivada: el recap la lee para calibrar la que
+sigue, no para juzgarla. Trátala como el registro de un experimento, no como una
+racha rota ni un examen reprobado.
+
 Reglas:
 - Menciona el factor logrado solo si te lo dan, y explícalo en términos llanos
   (1.6 = "tardaste 60% más de lo que estimaste").
-- Si hay Wins fallidos, nómbralos; no los suavices.
+- Si hay Wins fallidos, nómbralos con el mismo tono que el resto del dato — no
+  los suavices, pero tampoco los conviertas en un reproche. "No se logró X" es
+  un dato de calibración; "fallaste en X" no lo es.
 - Nada de recomendaciones para la semana que entra — eso es otro paso.
 - Solo prosa, sin encabezados ni listas.`
 

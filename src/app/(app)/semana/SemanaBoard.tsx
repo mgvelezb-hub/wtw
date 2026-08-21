@@ -42,21 +42,21 @@ export function SemanaBoard({
               los Wins ni de llegar al ritual. */}
           <Link
             href="/semana/nueva"
-            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {wins.length === 0 ? 'Planear la semana' : 'Abrir el planeador'}
           </Link>
         </div>
         {wins.length === 0 && (
-          <div className="mb-2 rounded-lg border border-[#e8b94a] bg-[#fdf6e3] p-3">
-            <p className="text-sm font-semibold text-[#4a3a10]">Esta semana no tiene Wins definidos</p>
-            <p className="mt-1 text-xs text-[#4a3a10]">
+          <div className="mb-2 rounded-lg border border-warn-border bg-warn-soft p-3">
+            <p className="text-sm font-semibold text-warn">Esta semana no tiene Wins definidos</p>
+            <p className="mt-1 text-xs text-warn">
               Sin Wins, las actividades no se pueden priorizar contra un resultado. El planeador te lleva por los 5 pasos del
               ritual: reflejar, definir Wins, vaciar y dimensionar, bloquear y pre-emptar.
             </p>
             <Link
               href="/semana/nueva"
-              className="mt-2 inline-block rounded-full bg-[#0c4a45] px-4 py-2 text-sm font-bold text-white"
+              className="mt-2 inline-block rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white"
             >
               Planear la semana →
             </Link>
@@ -92,7 +92,7 @@ export function SemanaBoard({
           </div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
             <div
-              className={`h-full ${cargaHoras > trabajablePlaneable ? 'bg-red-500' : 'bg-[#0A7C82]'}`}
+              className={`h-full ${cargaHoras > trabajablePlaneable ? 'bg-danger' : 'bg-brand'}`}
               style={{ width: `${pct}%` }}
             />
           </div>

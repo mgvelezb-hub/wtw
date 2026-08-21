@@ -15,10 +15,10 @@ const TIPOS: InteraccionTipo[] = ['junta', 'llamada', 'correo', 'informal', 'pre
 const POSTURAS: StakeholderPostura[] = ['aliado', 'neutral', 'opositor', 'desconocida']
 
 const POSTURA_COLOR: Record<string, string> = {
-  aliado: 'bg-[#0d6d63] text-white',
+  aliado: 'bg-brand-strong text-white',
   neutral: 'bg-neutral-200 text-neutral-600',
-  opositor: 'bg-[#b43232] text-white',
-  desconocida: 'bg-[#f5deae] text-[#4a3a10]',
+  opositor: 'bg-danger text-white',
+  desconocida: 'bg-warn-soft text-warn',
 }
 
 const ESCALA = [
@@ -63,7 +63,7 @@ export function StakeholdersBoard({
       <header>
         <h1 className="text-lg font-bold text-neutral-900">Stakeholders</h1>
         <p className="text-sm text-neutral-500">
-          {mapa.resumen.total} mapeados · <strong className="text-[#b43232]">{mapa.resumen.vencidos}</strong> con cadencia
+          {mapa.resumen.total} mapeados · <strong className="text-danger">{mapa.resumen.vencidos}</strong> con cadencia
           vencida
           {mapa.resumen.poderAltoVencidos > 0 && (
             <> · {mapa.resumen.poderAltoVencidos} de ellos con poder alto</>
@@ -76,11 +76,11 @@ export function StakeholdersBoard({
         </p>
       </header>
 
-      {error && <p className="rounded-lg bg-[#f7dcdc] px-3 py-2 text-sm text-[#b43232]">{error}</p>}
+      {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
       {vencidos.length > 0 && (
-        <section className="rounded-xl border-2 border-[#b43232] bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#b43232]">Por contactar</h2>
+        <section className="rounded-xl border-2 border-danger bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-danger">Por contactar</h2>
           <p className="mt-1 text-xs text-neutral-500">
             Ordenados por retraso contra su propia cadencia, no por antigüedad: 20 días sobre una cadencia de 7 pesa más
             que 2 sobre una de 30.
@@ -90,7 +90,7 @@ export function StakeholdersBoard({
               <li key={s.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                 <strong className="text-neutral-900">{s.nombre}</strong>
                 {s.puesto && <span className="text-xs text-neutral-500">{s.puesto}</span>}
-                <span className="rounded bg-[#f7dcdc] px-1.5 text-xs font-bold text-[#b43232]">
+                <span className="rounded bg-danger-soft px-1.5 text-xs font-bold text-danger">
                   {s.diasSinContacto === null ? 'nunca contactado' : `${s.diasDeRetraso}d de retraso`}
                 </span>
                 {s.proyecto && <span className="text-xs text-neutral-400">· {s.proyecto}</span>}
@@ -102,10 +102,10 @@ export function StakeholdersBoard({
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Matriz de poder e interés</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Matriz de poder e interés</h2>
           <button
             onClick={() => setNuevoAbierto((v) => !v)}
-            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {nuevoAbierto ? 'Cancelar' : '+ Stakeholder'}
           </button>
@@ -136,18 +136,18 @@ export function StakeholdersBoard({
                 key={c.cuadrante}
                 className={`rounded-lg border p-3 ${
                   c.cuadrante === 'gestionar_de_cerca' || c.cuadrante === 'mantener_satisfecho'
-                    ? 'border-[#0c4a45]/40 bg-[#0c4a45]/5'
+                    ? 'border-brand-deep/40 bg-brand-deep/5'
                     : 'border-neutral-200 bg-neutral-50'
                 }`}
               >
-                <h3 className="text-xs font-bold text-[#0c4a45]">
+                <h3 className="text-xs font-bold text-brand-deep">
                   {c.label} <span className="text-neutral-400">({c.stakeholders.length})</span>
                 </h3>
                 <p className="mt-0.5 text-[11px] leading-tight text-neutral-500">{c.nota}</p>
                 <ul className="mt-2 space-y-0.5">
                   {c.stakeholders.map((s) => (
                     <li key={s.id} className="truncate text-xs text-neutral-700">
-                      {s.cadenciaVencida && <span className="text-[#b43232]">● </span>}
+                      {s.cadenciaVencida && <span className="text-danger">● </span>}
                       {s.nombre}
                     </li>
                   ))}
@@ -161,7 +161,7 @@ export function StakeholdersBoard({
 
       {mapa.stakeholders.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Fichas</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Fichas</h2>
           {mapa.stakeholders.map((s) => (
             <Ficha
               key={s.id}
@@ -208,7 +208,7 @@ function FormaNuevo({
   const [cadencia, setCadencia] = useState('')
 
   return (
-    <div className="mt-3 space-y-2 rounded-lg border border-[#0c4a45]/30 bg-[#0c4a45]/5 p-3">
+    <div className="mt-3 space-y-2 rounded-lg border border-brand-deep/30 bg-brand-deep/5 p-3">
       <div className="flex flex-wrap gap-1">
         <input
           value={nombre}
@@ -322,7 +322,7 @@ function FormaNuevo({
             cadenciaDias: cadencia ? Number(cadencia) : null,
           })
         }
-        className="rounded-full bg-[#0c4a45] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+        className="rounded-full bg-brand-deep px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
       >
         {pending ? 'Guardando…' : 'Agregar'}
       </button>
@@ -355,7 +355,7 @@ function Ficha({
 
   return (
     <article
-      className={`rounded-xl border bg-white p-3 shadow-sm ${s.cadenciaVencida ? 'border-[#b43232]/50' : 'border-neutral-200'}`}
+      className={`rounded-xl border bg-white p-3 shadow-sm ${s.cadenciaVencida ? 'border-danger/50' : 'border-neutral-200'}`}
     >
       <button onClick={onToggle} className="flex w-full flex-wrap items-baseline gap-x-2 text-left">
         <strong className="text-sm text-neutral-900">{s.nombre}</strong>
@@ -366,7 +366,7 @@ function Ficha({
         </span>
         <span className="ml-auto text-xs text-neutral-500">
           {s.diasSinContacto === null ? (
-            <span className="text-[#b43232]">sin contacto registrado</span>
+            <span className="text-danger">sin contacto registrado</span>
           ) : (
             <>
               hace {s.diasSinContacto}d
@@ -386,7 +386,7 @@ function Ficha({
       {abierto && (
         <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
           <div className="space-y-2 rounded-lg bg-neutral-50 p-2">
-            <p className="text-xs font-bold text-[#0c4a45]">Registrar contacto</p>
+            <p className="text-xs font-bold text-brand-deep">Registrar contacto</p>
             <div className="flex flex-wrap gap-1">
               <input
                 type="date"
@@ -421,7 +421,7 @@ function Ficha({
                 onChange={(e) => setCompetencyId(e.target.value)}
                 aria-label={`Competencia que acredita el contacto con ${s.nombre}`}
                 className={`w-full rounded border px-1 py-0.5 text-xs ${
-                  competencyId ? 'border-[#0d6d63]/40 bg-[#0d6d63]/5 text-[#0c4a45]' : 'border-neutral-300 bg-white text-neutral-500'
+                  competencyId ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-neutral-300 bg-white text-neutral-500'
                 }`}
               >
                 <option value="">No cuenta como evidencia</option>
@@ -448,7 +448,7 @@ function Ficha({
                   setCompetencyId('')
                 })
               }
-              className="rounded-full bg-[#0c4a45] px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+              className="rounded-full bg-brand-deep px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
             >
               {pending ? 'Guardando…' : 'Registrar'}
             </button>
@@ -558,7 +558,7 @@ function Ficha({
                 <button
                   disabled={pending}
                   onClick={() => onAccion(() => borrarStakeholderAction(s.id))}
-                  className="rounded-full bg-[#b43232] px-2 py-0.5 font-bold text-white disabled:opacity-40"
+                  className="rounded-full bg-danger px-2 py-0.5 font-bold text-white disabled:opacity-40"
                 >
                   Borrar de verdad
                 </button>

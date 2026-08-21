@@ -55,7 +55,7 @@ export function InboxBoard({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4">
-      <h1 className="text-lg font-bold text-[#0c4a45]">📥 Actividades</h1>
+      <h1 className="text-lg font-bold text-brand-deep">📥 Actividades</h1>
 
       <form
         onSubmit={(e) => {
@@ -70,7 +70,7 @@ export function InboxBoard({
           onChange={(e) => setTitulo(e.target.value)}
           placeholder="Descripción de la tarea…"
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A7C82]"
+          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
         />
 
         <div className="grid grid-cols-2 gap-2">
@@ -122,7 +122,7 @@ export function InboxBoard({
             className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
           />
           {factor && estimadoMin && sugerido && (
-            <p className="mt-1 text-xs text-[#0d6d63]">
+            <p className="mt-1 text-xs text-brand-strong">
               Con tareas de <strong>{herramienta}</strong> tu real ha sido en promedio {factor.toFixed(1)}× tu
               estimado — sugerido: <strong>{sugerido} min</strong>
             </p>
@@ -132,7 +132,7 @@ export function InboxBoard({
         <button
           type="submit"
           disabled={pending || !titulo.trim()}
-          className="w-full rounded-md bg-[#0A7C82] px-4 py-2 text-sm font-semibold text-white hover:bg-[#086a6f] disabled:opacity-50"
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-50"
         >
           Agregar a pendientes
         </button>

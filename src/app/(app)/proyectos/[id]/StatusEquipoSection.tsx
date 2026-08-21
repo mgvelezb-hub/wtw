@@ -134,7 +134,7 @@ export function StatusEquipoSection({
           type="button"
           onClick={alGenerar}
           disabled={pending}
-          className="rounded-md bg-[#0c4a45] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-md bg-brand-deep px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
         >
           {pending && !activo ? 'Generando…' : 'Generar status'}
         </button>
@@ -164,7 +164,7 @@ export function StatusEquipoSection({
                 type="button"
                 onClick={alCopiar}
                 disabled={pending}
-                className="rounded-md bg-[#0A7C82] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {copiado ? 'Copiado ✓' : 'Copiar para Slack'}
               </button>

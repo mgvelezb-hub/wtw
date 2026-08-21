@@ -13,7 +13,7 @@ export function FocusNextShadow({ next, nowHHMM }: { next: FocusBlock | null; no
     <p className="text-center text-base text-white/30">
       Sigue: <span className="text-white/50">{next.titulo}</span>{' '}
       {atrasada ? (
-        <span className="text-[#c9a24b]/70">— debía empezar a las {next.inicio}</span>
+        <span className="text-warn-strong/70">— debía empezar a las {next.inicio}</span>
       ) : (
         <>a las {next.inicio}</>
       )}

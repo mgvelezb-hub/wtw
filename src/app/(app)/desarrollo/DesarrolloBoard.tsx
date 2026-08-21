@@ -54,7 +54,7 @@ export function DesarrolloBoard({
       <header>
         <h1 className="text-lg font-bold text-neutral-900">Desarrollo</h1>
         <p className="text-sm text-neutral-500">
-          {view.nivelActual ?? '—'} → <strong className="text-[#0c4a45]">{view.nivelObjetivo ?? '—'}</strong> ·{' '}
+          {view.nivelActual ?? '—'} → <strong className="text-brand-deep">{view.nivelObjetivo ?? '—'}</strong> ·{' '}
           {view.totalConEvidencia} de {view.totalReactivos} reactivos con evidencia ({pct}%)
         </p>
         {view.escalafon.length > 0 && (
@@ -64,9 +64,9 @@ export function DesarrolloBoard({
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
                     e.esActual
-                      ? 'bg-[#0c4a45] text-white'
+                      ? 'bg-brand-deep text-white'
                       : e.esObjetivo
-                        ? 'bg-[#e8b94a] text-[#4a3a10]'
+                        ? 'bg-brand-soft text-brand-deep'
                         : 'bg-neutral-100 text-neutral-500'
                   }`}
                 >
@@ -79,15 +79,15 @@ export function DesarrolloBoard({
         )}
 
         {view.expectativasObjetivo && (
-          <p className="mt-2 rounded-lg bg-[#d3e4e0] px-3 py-2 text-xs text-[#0c4a45]">
+          <p className="mt-2 rounded-lg bg-brand-soft px-3 py-2 text-xs text-brand-deep">
             <strong>Lo que exige {view.nivelObjetivo}:</strong> {view.expectativasObjetivo}
           </p>
         )}
       </header>
 
       {view.objetivo && view.objetivo.reactivos.length > 0 && (
-        <section className="rounded-xl border-2 border-[#0c4a45] bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">
+        <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">
             Reactivos de {view.objetivo.nombre} — instrumento de VP
           </h2>
           <p className="mt-1 text-xs text-neutral-500">
@@ -99,7 +99,7 @@ export function DesarrolloBoard({
               <li key={r.id} className="flex items-start gap-2">
                 <span
                   className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${
-                    r.evidenciaCount > 0 ? 'bg-[#0d6d63] text-white' : 'bg-[#b43232] text-white'
+                    r.evidenciaCount > 0 ? 'bg-brand-strong text-white' : 'bg-danger text-white'
                   }`}
                 >
                   {r.orden}
@@ -121,11 +121,11 @@ export function DesarrolloBoard({
       )}
 
       {view.objetivo && view.objetivo.reactivos.length === 0 && (
-        <section className="rounded-xl border border-[#e8b94a] bg-[#fdf6e3] p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#4a3a10]">
+        <section className="rounded-xl border border-warn-border bg-warn-soft p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-warn">
             {view.objetivo.nombre} — sin reactivos cargados
           </h2>
-          <p className="mt-1 text-xs text-[#4a3a10]">
+          <p className="mt-1 text-xs text-warn">
             El documento de VP no publica los reactivos de este nivel. En cuanto existan, se cargan en
             <code className="ml-1">prisma/seed-data/reactivos-nivel.ts</code>.
           </p>
@@ -134,22 +134,22 @@ export function DesarrolloBoard({
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Registrar evidencia</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Registrar evidencia</h2>
           <button
             onClick={() => {
               setAbierto(!abierto)
               setOk(false)
               setError(null)
             }}
-            className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {abierto ? 'Cerrar' : '+ Nueva'}
           </button>
         </div>
 
-        {ok && <p className="mt-2 rounded bg-[#d3e4e0] px-3 py-2 text-sm text-[#0c4a45]">Evidencia registrada.</p>}
+        {ok && <p className="mt-2 rounded bg-brand-soft px-3 py-2 text-sm text-brand-deep">Evidencia registrada.</p>}
         {error && (
-          <p role="alert" className="mt-2 rounded border border-[#b43232] bg-red-50 px-3 py-2 text-sm text-[#b43232]">
+          <p role="alert" className="mt-2 rounded border border-danger bg-red-50 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
@@ -197,7 +197,7 @@ export function DesarrolloBoard({
                   }
                 })
               }}
-              className="rounded-full bg-[#0c4a45] px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+              className="rounded-full bg-brand-deep px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
             >
               {pending ? 'Guardando…' : 'Guardar evidencia'}
             </button>
@@ -206,14 +206,14 @@ export function DesarrolloBoard({
       </section>
 
       {view.huecos.length > 0 && (
-        <section className="rounded-xl border border-[#e8b94a] bg-[#fdf6e3] p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-[#4a3a10]">
+        <section className="rounded-xl border border-warn-border bg-warn-soft p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-warn">
             Huecos — {view.huecos.length} reactivos sin evidencia
           </h2>
-          <p className="mt-1 text-xs text-[#4a3a10]">Esta es la lista de trabajo real, no la de competencias que ya dominas.</p>
+          <p className="mt-1 text-xs text-warn">Esta es la lista de trabajo real, no la de competencias que ya dominas.</p>
           <ul className="mt-2 space-y-1">
             {view.huecos.map((c) => (
-              <li key={c.id} className="text-sm text-[#4a3a10]">
+              <li key={c.id} className="text-sm text-warn">
                 <span className="font-semibold">{c.grupo ?? 'Individual'}</span> · {c.texto}
               </li>
             ))}
@@ -222,7 +222,7 @@ export function DesarrolloBoard({
       )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Cobertura por grupo</h2>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-brand-deep">Cobertura por grupo</h2>
         <ul className="space-y-2">
           {view.grupos.map((g) => {
             const gpct = g.total > 0 ? Math.round((g.conEvidencia / g.total) * 100) : 0
@@ -236,7 +236,7 @@ export function DesarrolloBoard({
                 </div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
                   <div
-                    className={`h-full ${gpct === 0 ? 'bg-[#b43232]' : gpct < 50 ? 'bg-[#e8b94a]' : 'bg-[#0d6d63]'}`}
+                    className={`h-full ${gpct === 0 ? 'bg-danger' : gpct < 50 ? 'bg-warn-border' : 'bg-brand-strong'}`}
                     style={{ width: `${gpct}%` }}
                   />
                 </div>
@@ -247,7 +247,7 @@ export function DesarrolloBoard({
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Pre-mortem — capacidad predictiva</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Pre-mortem — capacidad predictiva</h2>
         {riesgos.total === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">
             Sin riesgos registrados todavía. El paso 5 del planeador semanal los genera; se cierran al cerrar la semana.
@@ -287,14 +287,14 @@ export function DesarrolloBoard({
                         <button
                           disabled={pending}
                           onClick={() => accionRiesgo(() => cerrarRiesgoAction(r.id, true, true))}
-                          className="rounded border border-[#0d6d63] px-2 py-0.5 text-[10px] font-bold text-[#0c4a45] disabled:opacity-40"
+                          className="rounded border border-brand-strong px-2 py-0.5 text-[10px] font-bold text-brand-deep disabled:opacity-40"
                         >
                           ocurrió · la defensa sirvió
                         </button>
                         <button
                           disabled={pending}
                           onClick={() => accionRiesgo(() => cerrarRiesgoAction(r.id, true, false))}
-                          className="rounded border border-[#b43232] px-2 py-0.5 text-[10px] font-bold text-[#b43232] disabled:opacity-40"
+                          className="rounded border border-danger px-2 py-0.5 text-[10px] font-bold text-danger disabled:opacity-40"
                         >
                           ocurrió · no sirvió
                         </button>
@@ -325,7 +325,7 @@ export function DesarrolloBoard({
                     <button
                       disabled={pending}
                       onClick={() => accionRiesgo(() => reabrirRiesgoAction(r.id))}
-                      className="shrink-0 font-bold text-neutral-400 hover:text-[#0c4a45] disabled:opacity-40"
+                      className="shrink-0 font-bold text-neutral-400 hover:text-brand-deep disabled:opacity-40"
                       title="Reabrir — vuelve a 'aún no se sabe'"
                     >
                       ↺
@@ -339,7 +339,7 @@ export function DesarrolloBoard({
       </section>
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">Bitácora de delegación</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Bitácora de delegación</h2>
         {bitacora.tareas.length === 0 ? (
           <p className="mt-2 text-sm text-neutral-500">
             Nada marcado como delegable. En Mi Día, marca las tareas que hiciste tú pero debió hacer un perfil más junior.

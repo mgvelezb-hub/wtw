@@ -13,6 +13,15 @@ import { medidaDe, refDeMedida } from './medidas'
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
 const DRAFT_KEY = 'wtw_planeador_draft_v2'
 
+// Solo cambia lo que se muestra, no el valor que compara la lógica (`w.estatus`
+// sigue siendo 'fallido' en la DB): "no logrado" es el mismo dato que "fallido"
+// sin el tono de indictment — la semana se archiva, no se sentencia.
+const ESTATUS_WIN_LABEL: Record<string, string> = {
+  logrado: 'logrado',
+  fallido: 'no logrado',
+  pendiente: 'pendiente',
+}
+
 type Item = {
   ref: string
   id?: string
@@ -189,12 +198,12 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
 
   if (ctx.yaPlaneada) {
     return (
-      <div className="rounded-xl border border-[#e8b94a] bg-[#fdf6e3] p-6">
-        <h1 className="text-lg font-bold text-[#4a3a10]">La semana {ctx.isoWeek} ya está planeada</h1>
-        <p className="mt-2 text-sm text-[#4a3a10]">
+      <div className="rounded-xl border border-warn-border bg-warn-soft p-6">
+        <h1 className="text-lg font-bold text-warn">La semana {ctx.isoWeek} ya está planeada</h1>
+        <p className="mt-2 text-sm text-warn">
           Para replanear, primero cierra o borra la semana actual. Así no se duplican tareas ni bloques.
         </p>
-        <Link href="/semana" className="mt-4 inline-block rounded-full bg-[#0c4a45] px-4 py-2 text-sm font-bold text-white">
+        <Link href="/semana" className="mt-4 inline-block rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white">
           Ver mi semana
         </Link>
       </div>
@@ -204,7 +213,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-lg font-bold text-[#0c4a45]">Planear la semana {ctx.isoWeek}</h1>
+        <h1 className="text-lg font-bold text-brand-deep">Planear la semana {ctx.isoWeek}</h1>
         <p className="text-xs text-neutral-500">
           Factor de realismo {ctx.factor} · {horas(Math.round(ctx.capacidad.trabajablePlaneable * 60))} planeables
         </p>
@@ -217,9 +226,9 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
               onClick={() => set({ paso: i })}
               className={`rounded-full px-3 py-1 text-xs font-bold ${
                 i === draft.paso
-                  ? 'bg-[#0c4a45] text-white'
+                  ? 'bg-brand-deep text-white'
                   : i < draft.paso
-                    ? 'bg-[#d3e4e0] text-[#0c4a45]'
+                    ? 'bg-brand-soft text-brand-deep'
                     : 'bg-neutral-100 text-neutral-500'
               }`}
             >
@@ -230,7 +239,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
       </ol>
 
       {error && (
-        <p className="rounded-lg border border-[#b43232] bg-red-50 px-3 py-2 text-sm text-[#b43232]" role="alert">
+        <p className="rounded-lg border border-danger bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">
           {error}
         </p>
       )}
@@ -383,13 +392,13 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
 
         <span className="text-xs text-neutral-500">
           {incluidas.length} tareas · {horas(cargaAjustada)} de {horas(bal.planeableMin)}
-          {bal.sobrecargado && <strong className="ml-1 text-[#b43232]">se pasa {horas(-bal.colchonMin)}</strong>}
+          {bal.sobrecargado && <strong className="ml-1 text-danger">se pasa {horas(-bal.colchonMin)}</strong>}
         </span>
 
         {draft.paso < 4 ? (
           <button
             onClick={() => set({ paso: draft.paso + 1 })}
-            className="rounded-full bg-[#0c4a45] px-4 py-2 text-sm font-bold text-white"
+            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white"
           >
             Siguiente →
           </button>
@@ -433,7 +442,9 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                 if (creada) router.push('/semana')
               })
             }}
-            className="rounded-full bg-[#e8b94a] px-4 py-2 text-sm font-bold text-[#4a3a10] disabled:opacity-40"
+            // Antes ámbar (color de advertencia): un botón primario es una acción,
+            // y la gramática reserva el ámbar solo para advertencias — nunca botones.
+            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             {pending ? 'Creando…' : '✓ Crear semana'}
           </button>
@@ -448,7 +459,7 @@ function BotonIA({ onClick, cargando, texto }: { onClick: () => void; cargando: 
     <button
       onClick={onClick}
       disabled={cargando}
-      className="rounded-full border border-[#0c4a45] px-3 py-1 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10 disabled:opacity-50"
+      className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-50"
     >
       {cargando ? '⏳ pensando…' : `✨ ${texto}`}
     </button>
@@ -471,12 +482,19 @@ function PasoReflejar({
   const a = ctx.anterior
   return (
     <div className="space-y-3">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">1 · Reflejar la semana que terminó</h2>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">1 · Reflejar la semana que terminó</h2>
 
       {!a ? (
         <p className="text-sm text-neutral-500">No hay semana anterior registrada. Este paso no aplica todavía.</p>
       ) : (
         <>
+          {/* La semana pasada ya quedó archivada — este paso no la reabre ni la
+              califica, la lee como el único insumo real para calibrar la que
+              sigue. Una semana con Wins fallidos o factor alto no es una racha
+              rota: es más dato, no menos. */}
+          <p className="text-xs text-neutral-500">
+            La semana pasada está archivada. Estos números no son un veredicto — son la calibración de esta semana.
+          </p>
           <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
             <Dato etiqueta="Plan" valor={horas(a.planMin)} />
             <Dato etiqueta="Real" valor={horas(a.realMin)} />
@@ -487,7 +505,7 @@ function PasoReflejar({
             <Dato etiqueta="Tareas" valor={`${a.tareasHechas}/${a.tareasPlaneadas}`} />
           </dl>
           {a.medicionIncompleta && (
-            <p className="rounded-lg bg-[#fdf6e3] px-3 py-2 text-xs text-[#4a3a10]">
+            <p className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
               Solo {a.tareasConTiempo} de {a.tareasHechas} tareas terminadas traen cronómetro, así que el factor logrado no dice
               nada sobre tu velocidad — mide cuánto cronometraste.
             </p>
@@ -497,10 +515,10 @@ function PasoReflejar({
               <li key={w.posicion} className="flex items-center gap-2">
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    w.estatus === 'logrado' ? 'bg-[#15803d] text-white' : w.estatus === 'fallido' ? 'bg-[#b43232] text-white' : 'bg-neutral-200 text-neutral-700'
+                    w.estatus === 'logrado' ? 'bg-ok text-white' : w.estatus === 'fallido' ? 'bg-danger text-white' : 'bg-neutral-200 text-neutral-700'
                   }`}
                 >
-                  {w.estatus}
+                  {ESTATUS_WIN_LABEL[w.estatus] ?? w.estatus}
                 </span>
                 <span className="text-neutral-800">{w.titulo}</span>
                 <span className="text-xs text-neutral-400">
@@ -554,7 +572,7 @@ function PasoWins({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">2 · Los 3 Wins de la semana</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">2 · Los 3 Wins de la semana</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto="Sugerir con IA" />
       </div>
       <p className="text-xs text-neutral-500">Un Win es un resultado, no una actividad. Si no se puede declarar logrado o fallido, no es un Win.</p>
@@ -562,7 +580,10 @@ function PasoWins({
       {wins.map((w, i) => (
         <div key={i} className="space-y-1 rounded-lg border border-neutral-200 p-3">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[#e8b94a] px-2 py-0.5 text-[10px] font-bold text-[#4a3a10]">Win {i + 1}</span>
+            {/* Chip decorativo (numeración, no advertencia): la gramática de
+                color reserva warn para advertencias reales, así que usa el
+                acento de marca en vez de ámbar. */}
+            <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold text-brand-deep">Win {i + 1}</span>
             <input
               value={w.titulo}
               onChange={(e) => editar(i, { titulo: e.target.value })}
@@ -628,7 +649,7 @@ function PasoVaciar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">3 · Vaciar y dimensionar</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">3 · Vaciar y dimensionar</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto={`Estimar ${sinEstimar || ''} con IA`} />
       </div>
       <p className="text-xs text-neutral-500">
@@ -670,7 +691,7 @@ function PasoVaciar({
 
       <ul className="space-y-1">
         {items.map((it) => (
-          <li key={it.ref} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 ${it.incluida ? 'border-[#0d6d63]/30 bg-white' : 'border-neutral-200 bg-neutral-50'}`}>
+          <li key={it.ref} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 ${it.incluida ? 'border-brand/30 bg-white' : 'border-neutral-200 bg-neutral-50'}`}>
             <input
               type="checkbox"
               checked={it.incluida}
@@ -683,7 +704,7 @@ function PasoVaciar({
                 <span className="ml-1 rounded bg-[#5b4b8a] px-1 text-[10px] font-bold uppercase text-white">viene de antes</span>
               )}
               {it.proyecto && <span className="ml-1 text-xs text-neutral-400">· {it.proyecto}</span>}
-              {it.deadline && <span className="ml-1 rounded bg-[#f5deae] px-1 text-[10px] font-bold text-[#4a3a10]">{it.deadline}</span>}
+              {it.deadline && <span className="ml-1 rounded bg-warn-soft px-1 text-[10px] font-bold text-warn">{it.deadline}</span>}
             </span>
             <input
               type="number"
@@ -716,7 +737,7 @@ function PasoVaciar({
                 aria-label={`Competencia de ${it.titulo}`}
                 onChange={(e) => onItem(it.ref, { competenciaId: e.target.value || undefined })}
                 className={`w-full rounded border px-1 py-0.5 text-xs ${
-                  it.competenciaId ? 'border-[#0d6d63]/40 bg-[#0d6d63]/5 text-[#0c4a45]' : 'border-neutral-300 bg-white text-neutral-500'
+                  it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-neutral-300 bg-white text-neutral-500'
                 }`}
               >
                 <option value="">Sin competencia</option>
@@ -760,13 +781,13 @@ function PasoBloquear({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">4 · Bloquear en la semana</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">4 · Bloquear en la semana</h2>
         {bal.sobrecargado && <BotonIA onClick={onIA} cargando={cargando} texto="Proponer recorte con IA" />}
       </div>
 
       <div
         className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-          bal.sobrecargado ? 'bg-red-50 text-[#b43232]' : 'bg-[#d3e4e0] text-[#0c4a45]'
+          bal.sobrecargado ? 'bg-danger-soft text-danger' : 'bg-brand-soft text-brand-deep'
         }`}
       >
         {bal.sobrecargado
@@ -779,9 +800,9 @@ function PasoBloquear({
           const asignado = items.filter((it) => it.fecha === d.fecha).reduce((s, it) => s + Math.round(it.estimadoMin * factor), 0)
           const libre = Math.round(d.horasLibres * 60)
           return (
-            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-red-50' : 'bg-neutral-50'}`}>
+            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-danger-soft' : 'bg-neutral-50'}`}>
               <dt className="text-[10px] font-bold uppercase text-neutral-500">{d.fecha.slice(5)}</dt>
-              <dd className={`font-mono text-xs font-semibold ${asignado > libre ? 'text-[#b43232]' : 'text-neutral-900'}`}>
+              <dd className={`font-mono text-xs font-semibold ${asignado > libre ? 'text-danger' : 'text-neutral-900'}`}>
                 {horas(asignado)}
                 <span className="text-neutral-400">/{horas(libre)}</span>
               </dd>
@@ -855,17 +876,17 @@ function PasoPreemptar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-[#0c4a45]">5 · Pre-emptar</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">5 · Pre-emptar</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto="Pre-mortem con IA" />
       </div>
       <p className="text-xs text-neutral-500">Imagina que la semana terminó y los Wins no se lograron. ¿Qué pasó?</p>
 
       {riesgos.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0c4a45]/5 px-2 py-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-deep/5 px-2 py-1.5">
           <span className="text-xs text-neutral-600">
             {agregadas.length > 0 ? (
               <>
-                <strong className="text-[#0c4a45]">{agregadas.length}</strong> de {medidas.length} medidas en la semana ·{' '}
+                <strong className="text-brand-deep">{agregadas.length}</strong> de {medidas.length} medidas en la semana ·{' '}
                 {horas(Math.round(agregadas.reduce((s, m) => s + m.estimadoMin, 0) * factor))} ajustados
               </>
             ) : (
@@ -874,7 +895,7 @@ function PasoPreemptar({
           </span>
           <button
             onClick={() => medidas.forEach((m, i) => (todasAgregadas ? m.agregada : !m.agregada) && onToggleMedida(i))}
-            className="rounded-full border border-[#0c4a45] px-2 py-0.5 text-xs font-bold text-[#0c4a45] hover:bg-[#0c4a45]/10"
+            className="rounded-full border border-brand-deep px-2 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {todasAgregadas ? 'Quitar todas' : 'Agregar todas'}
           </button>
@@ -887,7 +908,7 @@ function PasoPreemptar({
           return (
             <li
               key={i}
-              className={`rounded-lg border p-2 ${m?.agregada ? 'border-[#0d6d63]/50 bg-[#0d6d63]/5' : 'border-neutral-200'}`}
+              className={`rounded-lg border p-2 ${m?.agregada ? 'border-brand/50 bg-brand/5' : 'border-neutral-200'}`}
             >
               <p className="text-sm font-semibold text-neutral-900">⚠ {r.riesgo}</p>
               <p className="mt-0.5 text-xs text-neutral-600">→ {r.defensa}</p>
@@ -930,7 +951,7 @@ function PasoPreemptar({
       {agregadas.length > 0 && (
         <div
           className={`rounded-lg px-2 py-1.5 text-xs ${
-            bal.sobrecargado ? 'bg-[#f7dcdc] text-[#b43232]' : 'bg-[#d3e4e0] text-[#0c4a45]'
+            bal.sobrecargado ? 'bg-danger-soft text-danger' : 'bg-brand-soft text-brand-deep'
           }`}
         >
           {bal.sobrecargado ? (
@@ -961,7 +982,7 @@ function PasoPreemptar({
         value={desbloqueador}
         onChange={(e) => onChange({ desbloqueador: e.target.value })}
         placeholder="La actividad que, hecha primero, destraba el resto…"
-        className="w-full rounded-lg border border-[#e8b94a] px-3 py-2 text-sm text-neutral-900"
+        className="w-full rounded-lg border border-warn-border px-3 py-2 text-sm text-neutral-900"
       />
     </div>
   )

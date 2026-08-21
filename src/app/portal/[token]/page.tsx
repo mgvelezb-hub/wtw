@@ -22,7 +22,7 @@ export default async function PortalPage({ params }: { params: Promise<{ token: 
                 <span className="text-sm text-neutral-500">{e.avancePct}%</span>
               </div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                <div className="h-full bg-[#0A7C82]" style={{ width: `${e.avancePct}%` }} />
+                <div className="h-full bg-brand" style={{ width: `${e.avancePct}%` }} />
               </div>
             </div>
           ))}

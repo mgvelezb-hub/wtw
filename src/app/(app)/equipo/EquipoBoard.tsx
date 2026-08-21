@@ -40,7 +40,7 @@ export function EquipoBoard({ reports }: { reports: Report[] }) {
       >
         <input ref={nombreRef} placeholder="Nombre" disabled={pending} className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm" />
         <input ref={emailRef} type="email" placeholder="correo@vpconsulting.mx" disabled={pending} className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm" />
-        <button type="submit" disabled={pending} className="rounded-md bg-[#0A7C82] px-4 py-2 text-sm font-semibold text-white hover:bg-[#086a6f]">
+        <button type="submit" disabled={pending} className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong">
           Agregar
         </button>
       </form>
