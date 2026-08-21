@@ -4,6 +4,8 @@ import { type ReactNode, useEffect, useRef, useState, useTransition } from 'reac
 import Link from 'next/link'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
 import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
+import type { Briefing } from '@/lib/briefing'
+import { BriefingCard } from './BriefingCard'
 import { MinutaDrawer } from './MinutaDrawer'
 import {
   startTimerAction,
@@ -84,6 +86,9 @@ export type DiaBoardProps = {
   stranded: StrandedBlockView[]
   proyectosActivos: ProyectoActivoView[]
   sobrecarga: ResultadoSobrecarga
+  // null cuando el día seleccionado no es hoy: el briefing es del arranque, y
+  // solo se arranca una vez.
+  briefing: Briefing | null
 }
 
 // Calm tech: en verde no se muestra nada — la ausencia de alarma no necesita
@@ -225,6 +230,12 @@ export function DiaBoard(p: DiaBoardProps) {
           pending={pending}
           startTransition={startTransition}
         />
+
+        {/* Lo primero que se lee al abrir el día, justo debajo de "en qué estás
+            ahorita". Sin `order-*`: comparte el order 0 del hero y del header, y
+            entre iguales manda el orden del DOM — así queda en medio de los dos
+            tanto en la columna de lg como en el flex apilado de abajo. */}
+        {esHoy && p.briefing && <BriefingCard briefing={p.briefing} />}
 
         <header>
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">

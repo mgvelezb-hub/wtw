@@ -29,6 +29,11 @@ export async function teardown() {
       const taskIds = (await prisma.task.findMany({ where: { userId: u.id }, select: { id: true } })).map((t) => t.id)
       const projectIds = (await prisma.project.findMany({ where: { userId: u.id }, select: { id: true } })).map((p) => p.id)
 
+      // DayReconciliation va ANTES que Task y Stakeholder: sus Desvio apuntan a
+      // ambos sin cascada (regla 7, igual que en cleanup.ts). Sin esta línea el
+      // barrido final tronaba con DayReconciliation_userId_fkey y dejaba vivos
+      // los usuarios de prueba.
+      await prisma.dayReconciliation.deleteMany({ where: { userId: u.id } })
       await prisma.evidence.deleteMany({ where: { userId: u.id } })
       await prisma.timeEntry.deleteMany({ where: { userId: u.id } })
       await prisma.dodItem.deleteMany({ where: { taskId: { in: taskIds } } })

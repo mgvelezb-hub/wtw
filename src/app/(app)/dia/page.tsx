@@ -70,6 +70,7 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
       stranded={view.stranded}
       proyectosActivos={view.proyectosActivos}
       sobrecarga={view.sobrecarga}
+      briefing={view.briefing}
     />
   )
 }

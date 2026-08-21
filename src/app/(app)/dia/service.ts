@@ -3,6 +3,7 @@ import { runningEntry, stopTimer } from '@/app/api/v1/timer/service'
 import { getWeek } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { senalesSobrecarga } from '@/lib/carga-sostenible'
+import { briefingDe } from '@/lib/briefing'
 
 function toMin(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -191,22 +192,37 @@ export async function getProyectosActivos(userId: string): Promise<ProyectoActiv
 }
 
 export async function getDiaView(userId: string, isoWeek: string, dateStr: string, todayStr: string) {
-  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos, sobrecarga] = await Promise.all([
-    getWeek(userId, isoWeek),
-    capacityForWeek(userId, isoWeek),
-    getDayBlocks(userId, dateStr),
-    prisma.task.findMany({
-      where: { userId, estatus: 'backlog' },
-      include: { project: true },
-      orderBy: [{ urgente: 'desc' }, { createdAt: 'desc' }],
-    }),
-    dateStr === todayStr ? getStrandedBlocks(userId, todayStr) : Promise.resolve([]),
-    getProyectosActivos(userId),
-    // Semáforo de sobrecarga: se evalúa contra el día real de hoy, no contra
-    // el día seleccionado — no tiene sentido que cambie al navegar las
-    // pestañas de la semana.
-    senalesSobrecarga(userId, new Date(todayStr)),
-  ])
+  const esHoy = dateStr === todayStr
+  // Una sola promesa compartida: el banner de arrastradas la consume como lista
+  // y el briefing como conteo. Encadenar sobre la MISMA promesa evita repetir la
+  // consulta y mantiene todo dentro del mismo Promise.all.
+  const strandedPromise: Promise<StrandedBlockView[]> = esHoy
+    ? getStrandedBlocks(userId, todayStr)
+    : Promise.resolve([])
+
+  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos, sobrecarga, briefing] =
+    await Promise.all([
+      getWeek(userId, isoWeek),
+      capacityForWeek(userId, isoWeek),
+      getDayBlocks(userId, dateStr),
+      prisma.task.findMany({
+        where: { userId, estatus: 'backlog' },
+        include: { project: true },
+        orderBy: [{ urgente: 'desc' }, { createdAt: 'desc' }],
+      }),
+      strandedPromise,
+      getProyectosActivos(userId),
+      // Semáforo de sobrecarga: se evalúa contra el día real de hoy, no contra
+      // el día seleccionado — no tiene sentido que cambie al navegar las
+      // pestañas de la semana.
+      senalesSobrecarga(userId, new Date(todayStr)),
+      // Briefing matutino: solo existe para HOY. En la vista de planeación de
+      // otro día no hay arranque que resumir, y decir "tu arranque" del jueves
+      // estando en martes sería mentira.
+      esHoy
+        ? strandedPromise.then((s) => briefingDe(userId, new Date(todayStr), s.length))
+        : Promise.resolve(null),
+    ])
 
   const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
   const realMin = blocks.reduce((s, b) => s + b.accumulatedSeconds, 0) / 60
@@ -240,6 +256,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     stranded,
     proyectosActivos,
     sobrecarga,
+    briefing,
   }
 }
 

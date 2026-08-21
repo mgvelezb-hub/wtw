@@ -66,13 +66,18 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
     else window.localStorage.removeItem(CLAVE_COLAPSO)
   }
 
+  // Guarda propia además de la del tablero: una card de arranque vacía —marco,
+  // título y nada adentro— es peor que no tenerla. El hook va ANTES del return
+  // para no romper el orden de hooks entre renders.
+  if (!briefing.hayContenido) return null
+
   const abierto = colapsado !== true
   const b = briefing
 
   return (
-    <section className="rounded-xl border border-brand-soft bg-white p-4 shadow-sm">
+    <section aria-labelledby="briefing-titulo" className="rounded-xl border border-brand-soft bg-white p-4 shadow-sm">
       <div className="flex items-center gap-1.5">
-        <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+        <h2 id="briefing-titulo" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
           Tu arranque
           <AyudaContextual
             titulo="Tu arranque"
@@ -88,6 +93,7 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
           type="button"
           onClick={alternar}
           aria-expanded={abierto}
+          aria-controls="briefing-lineas"
           className="ml-auto text-xs font-semibold text-neutral-400 hover:text-brand-deep"
         >
           {abierto ? '▾ ocultar' : '▸ ver'}
@@ -95,7 +101,7 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
       </div>
 
       {abierto && (
-        <ul className="mt-2.5 space-y-1.5 text-sm">
+        <ul id="briefing-lineas" className="mt-2.5 space-y-1.5 text-sm">
           {b.primerBloque && (
             <Linea icono="→">
               Primer bloque {b.primerBloque.hora === 'flex' ? 'sin hora fija' : b.primerBloque.hora} —{' '}

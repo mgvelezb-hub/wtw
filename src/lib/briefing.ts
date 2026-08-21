@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { isoWeekOf } from '@/lib/dates'
 import { senalesSobrecarga, type NivelCarga } from '@/lib/carga-sostenible'
 import { CAUSA_LABEL, getPatronDesvios } from '@/app/(app)/cierre/service'
-import { getStrandedBlocks } from '@/app/(app)/dia/service'
 import {
   ETIQUETA_SALUD_LABEL,
   VARIABLE_CONFIANZA_LABEL,
@@ -177,16 +176,21 @@ async function cierreQueMovioElPlan(userId: string, hoy: Date): Promise<Briefing
 //
 // Orden: primero en riesgo (hay un incumplimiento sin compensar — la cadencia no
 // lo repara), luego el score más bajo, y como desempate el de más poder.
-const PRIORIDAD_ETIQUETA: Record<string, number> = { en_riesgo: 0, fria: 1 }
+type EtiquetaFria = Extract<EtiquetaSalud, 'fria' | 'en_riesgo'>
+const PRIORIDAD_ETIQUETA: Record<EtiquetaFria, number> = { en_riesgo: 0, fria: 1 }
+
+function esFria(e: EtiquetaSalud): e is EtiquetaFria {
+  return e === 'fria' || e === 'en_riesgo'
+}
 
 async function stakeholdersFrios(userId: string, hoy: Date): Promise<BriefingStakeholderFrio[] | null> {
   const mapa = await getMapaStakeholders(userId, hoy)
 
   const frios = mapa.stakeholders
-    .filter((s) => s.salud.etiqueta === 'fria' || s.salud.etiqueta === 'en_riesgo')
+    .filter((s) => esFria(s.salud.etiqueta))
     .sort((a, b) => {
-      const pa = PRIORIDAD_ETIQUETA[a.salud.etiqueta]
-      const pb = PRIORIDAD_ETIQUETA[b.salud.etiqueta]
+      const pa = PRIORIDAD_ETIQUETA[a.salud.etiqueta as EtiquetaFria]
+      const pb = PRIORIDAD_ETIQUETA[b.salud.etiqueta as EtiquetaFria]
       if (pa !== pb) return pa - pb
       if (a.salud.score !== b.salud.score) return a.salud.score - b.salud.score
       return b.poder - a.poder
@@ -261,21 +265,29 @@ async function sobrecargaSiAplica(userId: string, hoy: Date): Promise<BriefingSo
   }
 }
 
-export async function briefingDe(userId: string, hoy: Date): Promise<Briefing> {
+// `arrastradasCount` se INYECTA en vez de calcularse aquí, por dos razones que
+// apuntan al mismo lado:
+//
+//   - Quien llama —`getDiaView`— ya trae la lista completa para pintar el banner
+//     de "tareas de días anteriores". Recalcularla adentro sería la misma consulta
+//     dos veces en la ruta más usada de la app.
+//   - `getStrandedBlocks` vive en `dia/service`, y `dia/service` importa este
+//     módulo. Importarlo de vuelta cerraría un ciclo entre los dos.
+//
+// La definición de "arrastrada" sigue existiendo UNA sola vez, en
+// `getStrandedBlocks`; aquí solo entra ya contada.
+export async function briefingDe(userId: string, hoy: Date, arrastradasCount: number): Promise<Briefing> {
   const hoyStr = iso(hoy)
 
-  const [primerBloque, seMovioAyer, stranded, frios, win, sobrecarga] = await Promise.all([
+  const [primerBloque, seMovioAyer, frios, win, sobrecarga] = await Promise.all([
     primerBloquePendiente(userId, hoyStr),
     cierreQueMovioElPlan(userId, hoy),
-    // Misma fuente que el banner de arrastradas del tablero — si cambia el
-    // criterio de "viene de días anteriores", cambia en un solo lugar.
-    getStrandedBlocks(userId, hoyStr),
     stakeholdersFrios(userId, hoy),
     winEnRiesgo(userId, hoy, hoyStr),
     sobrecargaSiAplica(userId, hoy),
   ])
 
-  const arrastradas = stranded.length > 0 ? stranded.length : null
+  const arrastradas = arrastradasCount > 0 ? arrastradasCount : null
 
   return {
     fecha: hoyStr,

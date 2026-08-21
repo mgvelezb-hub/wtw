@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import Link from 'next/link'
 import type {
   DesarrolloView,
   CompetenciaOpcion,
@@ -233,6 +234,9 @@ function PatronSection({ patron }: { patron: PatronNivel }): React.ReactElement 
     <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">¿Ya opero como {patron.nombre}?</h2>
+        <Link href="/desarrollo/caso" className="shrink-0 text-[11px] font-medium text-brand-deep underline-offset-2 hover:underline">
+          Exportar caso →
+        </Link>
         <AyudaContextual
           titulo="Patrón, no anécdota"
           alineacion="derecha"
@@ -882,6 +886,8 @@ export function DesarrolloBoard({
           </>
         )}
       </Seccion>
+
+      <PropuestasLiteraturaSection />
     </div>
   )
 }

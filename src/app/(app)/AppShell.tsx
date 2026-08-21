@@ -127,17 +127,40 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
 // visible en línea dentro del grupo — ahí no hay hover confiable, así que no
 // tiene sentido esconderla detrás de uno.
 function DesktopNavItem({ item, active, subActive }: { item: NavItem; active: boolean; subActive: (href: string) => boolean }) {
+  const tieneSub = !!item.sub && item.sub.length > 0
+  const algunSubActivo = tieneSub && item.sub!.some((s) => subActive(s.href))
+  // Sub-items colapsados por default para que la sidebar no sea un árbol
+  // permanente; se abren solos cuando el usuario ya está dentro de uno de
+  // ellos (si no, el proyecto actual quedaría invisible en la nav).
+  const [abierto, setAbierto] = useState(false)
+  const desplegado = abierto || algunSubActivo
+
   return (
     <div className="group/item relative">
-      <Link
-        href={item.href}
-        className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-          active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'
-        }`}
-      >
-        <Icono name={item.icon} />
-        <span>{item.label}</span>
-      </Link>
+      <div className="flex items-center">
+        <Link
+          href={item.href}
+          className={`flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'
+          }`}
+        >
+          <Icono name={item.icon} />
+          <span>{item.label}</span>
+        </Link>
+        {tieneSub && (
+          <button
+            type="button"
+            onClick={() => setAbierto((v) => !v)}
+            aria-expanded={desplegado}
+            aria-label={desplegado ? `Ocultar sub-secciones de ${item.label}` : `Mostrar sub-secciones de ${item.label}`}
+            className={`ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-transform hover:bg-neutral-100 hover:text-neutral-600 ${
+              desplegado ? 'rotate-180' : ''
+            }`}
+          >
+            <Icono name="chevron" className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
       <div
         role="tooltip"
@@ -150,7 +173,7 @@ function DesktopNavItem({ item, active, subActive }: { item: NavItem; active: bo
         {item.desc}
       </p>
 
-      {item.sub && item.sub.length > 0 && (
+      {item.sub && desplegado && (
         <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-neutral-200 pl-2">
           {item.sub.map((s) => (
             <Link
