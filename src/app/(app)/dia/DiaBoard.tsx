@@ -19,6 +19,8 @@ import {
 import { createManualEntryAction } from './timeentry-actions'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
+import { AyudaContextual } from '@/components/ayuda-contextual'
+import { TourPrimeraVez } from '@/components/tour-primera-vez'
 import {
   scheduleTaskAction,
   moveBlockAction,
@@ -192,9 +194,20 @@ export function DiaBoard(p: DiaBoardProps) {
         <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
           Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
         </p>
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
           <h1 className="text-2xl font-bold text-brand-deep">{p.rango}</h1>
-          <div className="flex flex-wrap items-center gap-2">
+          <TourPrimeraVez
+            ruta="/dia"
+            bullets={[
+              'Tus bloques de hoy, en el orden en que los vas a hacer. Un bloque es un rato reservado para una tarea o una junta.',
+              <>
+                <strong>▶</strong> arranca el cronómetro de un bloque; <strong>⋯</strong> tiene el resto de las acciones
+                —mover de día, cambiar la hora, capturar la minuta, descartar.
+              </>,
+              'Al final del día, Cierre te pregunta qué pasó de verdad: qué se hizo, qué no y por qué. De ahí salen los pendientes del día siguiente.',
+            ]}
+          />
+          <div className="ml-auto flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
               Factor realismo {p.factorUsado.toFixed(1)}
             </span>
@@ -230,7 +243,17 @@ export function DiaBoard(p: DiaBoardProps) {
 
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-brand-deep">🎯 Wins de la semana</h2>
+          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+            🎯 Wins de la semana
+            <AyudaContextual
+              titulo="Wins de la semana"
+              ejemplo="Ej. «Entregar el modelo de transporte con los 3 escenarios corridos»."
+            >
+              Los 3 resultados que definiste el lunes en el planeador y que le dan sentido a la semana. Están aquí para
+              contrastarlos con los bloques de hoy: si nada de lo que hiciste empuja un Win, el día se fue en lo urgente.
+              Se marcan como logrados desde <strong>Mi Semana</strong>.
+            </AyudaContextual>
+          </h2>
           <ol className="space-y-2">
             {p.wins.map((w) => (
               <li key={w.posicion} className="flex gap-2 text-sm">
@@ -251,7 +274,15 @@ export function DiaBoard(p: DiaBoardProps) {
         </section>
 
         <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-brand-deep">📐 Capacidad</h2>
+          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+            📐 Capacidad
+            <AyudaContextual titulo="Capacidad de la semana" alineacion="derecha">
+              <strong>Trabajable</strong> son las horas de la semana que quedan libres después de las juntas.{' '}
+              <strong>Carga</strong> es lo que ya te comprometiste a hacer, ajustado por tu factor de realismo. El{' '}
+              <strong>colchón</strong> es la resta. Si sale en negativo, la semana no cabe: hay que mover trabajo a otra
+              semana o soltarlo, no apretarlo.
+            </AyudaContextual>
+          </h2>
           <div className="flex gap-6">
             <Stat n={p.trabajable.toFixed(0)} u="h" l="Trabajable" />
             <Stat n={p.carga.toFixed(0)} u="h" l="Carga" />
@@ -457,10 +488,32 @@ export function DiaBoard(p: DiaBoardProps) {
             </div>
           )}
 
+          {/* El estado vacío es la primera pantalla que ve alguien nuevo: dice qué
+              es un bloque y las tres formas reales de llenar el día, no solo que
+              está vacío. */}
           {p.blocks.length === 0 && (
-            <p className="rounded-lg border border-dashed border-neutral-300 bg-white p-6 text-center text-sm text-neutral-400">
-              Sin bloques este día. Usa <code>/wtw-dia</code> para armarlo.
-            </p>
+            <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-6 text-sm">
+              <p className="font-semibold text-neutral-700">Este día no tiene bloques.</p>
+              <p className="mt-1 leading-relaxed text-neutral-500">
+                Un bloque es un rato reservado para una tarea o una junta — es lo que después cronometras y cierras.
+                Tres formas de llenarlo:
+              </p>
+              <ul className="mt-2 space-y-1 text-neutral-500">
+                <li>
+                  · Arrastra un pendiente de la columna de la derecha hasta aquí, o usa <strong>+ Hoy</strong>.
+                </li>
+                <li>
+                  ·{' '}
+                  <Link href="/semana/nueva" className="font-semibold text-brand-deep underline">
+                    Abre el planeador
+                  </Link>{' '}
+                  y arma la semana completa en los 5 pasos del ritual.
+                </li>
+                <li>
+                  · Desde el chat, <code>/wtw-dia</code> arma el día solo.
+                </li>
+              </ul>
+            </div>
           )}
         </div>
 
@@ -476,8 +529,14 @@ export function DiaBoard(p: DiaBoardProps) {
               }
             }}
           >
-            <h3 className="mb-2 text-sm font-bold text-brand-deep">
+            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
               📥 Pendientes urgentes <span className="text-neutral-400">({p.pendientes.length})</span>
+              <AyudaContextual titulo="Pendientes sin agendar" alineacion="derecha">
+                Todo lo que capturaste en <strong>Actividades</strong> y todavía no tiene día. Arrastra una tarjeta a un
+                día de la barra de arriba para agendarla, o usa <strong>+ Hoy</strong>. Al revés también: arrastrar un
+                bloque ya agendado hasta aquí lo regresa a pendientes sin perderlo. El ★ marca las urgentes, que suben
+                al principio de la lista.
+              </AyudaContextual>
             </h3>
             <p className="mb-2 text-[10px] text-neutral-400">Arrastra un bloque agendado aquí para regresarlo a pendientes.</p>
             <div className="max-h-[32rem] space-y-2 overflow-y-auto">
@@ -543,7 +602,15 @@ export function DiaBoard(p: DiaBoardProps) {
                   </div>
                 </div>
               ))}
-              {p.pendientes.length === 0 && <p className="text-xs text-neutral-400">Sin pendientes sin agendar.</p>}
+              {p.pendientes.length === 0 && (
+                <p className="text-xs leading-relaxed text-neutral-400">
+                  Nada sin agendar. Lo que captures en{' '}
+                  <Link href="/inbox" className="font-semibold text-brand-deep underline">
+                    Actividades
+                  </Link>{' '}
+                  aparece aquí hasta que le das día.
+                </p>
+              )}
             </div>
           </div>
         </div>

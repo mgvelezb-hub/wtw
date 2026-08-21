@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react'
 import Link from 'next/link'
+import { AyudaContextual } from '@/components/ayuda-contextual'
 import { toggleWinAction } from './actions'
 
 type Win = { id: string; posicion: number; titulo: string; dod: string | null; siEntonces: string | null; estatus: string }
@@ -34,7 +35,18 @@ export function SemanaBoard({
     <div className="mx-auto max-w-2xl space-y-6 p-4">
       <section>
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-xs font-semibold uppercase text-neutral-500">Wins de la semana</h2>
+          <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-500">
+            Wins de la semana
+            <AyudaContextual
+              titulo="Wins de la semana"
+              ejemplo="Ej. «Si el cliente mueve la junta del martes, entonces mando el avance por correo ese mismo día»."
+            >
+              Los 3 resultados que definen la semana: si se cumplen, la semana se ganó, aunque no todo lo demás haya
+              salido. Debajo de cada uno aparece su <strong>si-entonces</strong> —el plan que escribiste para el
+              obstáculo que ya sabes que viene—, y está aquí para repasarlo antes de que aparezca, no después. El ✓ marca
+              el Win como logrado.
+            </AyudaContextual>
+          </h2>
           {/* Siempre visible: antes el acceso al planeador solo existía en el
               estado vacío de /semana, y Mi Día crea la semana como cascarón en
               cuanto arrastras una tarea o sincronizas juntas. Resultado: la
@@ -94,7 +106,15 @@ export function SemanaBoard({
       </section>
 
       <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Capacidad</h2>
+        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-500">
+          Capacidad
+          <AyudaContextual titulo="Carga contra lo planeable">
+            <strong>Carga</strong> es la suma de lo que ya está comprometido esta semana.{' '}
+            <strong>Planeable</strong> son las horas que quedan libres después de las juntas, menos el colchón que
+            reservas a propósito para lo que no se puede prever. Si la barra se pone roja, comprometiste más de lo que
+            cabe: la respuesta es mover o soltar trabajo, no exprimir el colchón.
+          </AyudaContextual>
+        </h2>
         <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
           <div className="flex justify-between text-sm text-neutral-700">
             <span>Carga: {cargaHoras.toFixed(1)}h</span>

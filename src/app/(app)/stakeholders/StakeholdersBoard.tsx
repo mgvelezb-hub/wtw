@@ -1,8 +1,15 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { InteraccionTipo, StakeholderPostura } from '@prisma/client'
-import type { MapaStakeholders, StakeholderView } from './service'
+import type { InteraccionTipo, StakeholderPostura, VariableConfianza } from '@prisma/client'
+import type { EtiquetaSalud, MapaStakeholders, StakeholderView, TierSaliencia } from './service'
+import {
+  ETIQUETA_SALUD_LABEL,
+  TIER_LABEL,
+  TIER_NOTA,
+  VARIABLES_CONFIANZA,
+  VARIABLE_CONFIANZA_LABEL,
+} from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import {
   crearStakeholderAction,
@@ -26,6 +33,24 @@ const ESCALA = [
   { valor: 2, label: 'medio' },
   { valor: 3, label: 'alto' },
 ]
+
+// La etiqueta de salud es la única señal semántica de la ficha: verde solo si la
+// relación está al día Y sin incumplimientos pendientes; rojo cuando hay algo roto
+// o la cadencia ya se pasó al doble.
+const SALUD_COLOR: Record<EtiquetaSalud, string> = {
+  sana: 'bg-ok-soft text-ok',
+  enfriandose: 'bg-warn-soft text-warn',
+  fria: 'bg-danger-soft text-danger',
+  en_riesgo: 'bg-danger text-white',
+}
+
+// El tier NO es semáforo — es una clasificación. Pintarlo de rojo diría que ser
+// definitivo es malo, cuando es solo el que más atención exige.
+const TIER_COLOR: Record<TierSaliencia, string> = {
+  definitivo: 'bg-brand-deep text-white',
+  expectante: 'bg-brand-deep/15 text-brand-deep',
+  latente: 'bg-neutral-200 text-neutral-600',
+}
 
 function hoyISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -70,9 +95,24 @@ export function StakeholdersBoard({
           )}
           {mapa.resumen.sinCadencia > 0 && <> · {mapa.resumen.sinCadencia} sin cadencia comprometida</>}
         </p>
+        {(mapa.resumen.frias > 0 || mapa.resumen.enRiesgo > 0) && (
+          <p className="mt-1 text-sm text-neutral-600">
+            {mapa.resumen.frias > 0 && (
+              <span className="mr-2 rounded bg-danger-soft px-1.5 py-0.5 text-xs font-bold text-danger">
+                {mapa.resumen.frias} {mapa.resumen.frias === 1 ? 'fría' : 'frías'}
+              </span>
+            )}
+            {mapa.resumen.enRiesgo > 0 && (
+              <span className="rounded bg-danger px-1.5 py-0.5 text-xs font-bold text-white">
+                {mapa.resumen.enRiesgo} en riesgo
+              </span>
+            )}
+          </p>
+        )}
         <p className="mt-1 text-xs text-neutral-400">
           Proximidad con stakeholders es una de las tres expectativas de Gerente. Registrar el contacto real aquí es lo que
-          la vuelve evidencia y no percepción.
+          la vuelve evidencia y no percepción. La cadencia dice si le hablaste; la salud dice cómo va la relación — se
+          puede estar al día en contactos y en riesgo por un compromiso roto.
         </p>
       </header>
 
@@ -351,6 +391,8 @@ function Ficha({
   const [tipo, setTipo] = useState<InteraccionTipo>('junta')
   const [nota, setNota] = useState('')
   const [competencyId, setCompetencyId] = useState('')
+  const [variable, setVariable] = useState<VariableConfianza | ''>('')
+  const [incumplimiento, setIncumplimiento] = useState(false)
   const [confirmarBorrado, setConfirmarBorrado] = useState(false)
 
   return (
@@ -361,6 +403,15 @@ function Ficha({
         <strong className="text-sm text-neutral-900">{s.nombre}</strong>
         {s.puesto && <span className="text-xs text-neutral-500">{s.puesto}</span>}
         <span className={`rounded px-1.5 text-[10px] font-bold uppercase ${POSTURA_COLOR[s.postura]}`}>{s.postura}</span>
+        <span
+          className={`rounded px-1.5 text-[10px] font-bold uppercase ${TIER_COLOR[s.salud.tier]}`}
+          title={TIER_NOTA[s.salud.tier]}
+        >
+          {TIER_LABEL[s.salud.tier]} {s.salud.atributos}/3
+        </span>
+        <span className={`rounded px-1.5 text-[10px] font-bold uppercase ${SALUD_COLOR[s.salud.etiqueta]}`}>
+          {s.salud.score} · {ETIQUETA_SALUD_LABEL[s.salud.etiqueta]}
+        </span>
         <span className="text-xs text-neutral-400">
           poder {ESCALA[s.poder - 1]?.label} · interés {ESCALA[s.interes - 1]?.label}
         </span>
@@ -370,7 +421,10 @@ function Ficha({
           ) : (
             <>
               hace {s.diasSinContacto}d
-              {s.cadenciaDias !== null && <span className="text-neutral-400"> / cada {s.cadenciaDias}d</span>}
+              <span className="text-neutral-400">
+                {' '}
+                / cada {s.salud.cadenciaEsperada}d{s.cadenciaDias === null && ' (por tier)'}
+              </span>
             </>
           )}
           <span className="ml-1 text-neutral-300">{abierto ? '▲' : '▼'}</span>
@@ -382,6 +436,12 @@ function Ficha({
           <span className="text-neutral-400">Necesita:</span> {s.queNecesita}
         </p>
       )}
+
+      {/* La acción concreta, no el diagnóstico: un marcador que solo dice "fría" es
+          otra métrica más que mirar. */}
+      <p className="mt-1 text-xs text-neutral-600">
+        <span className="text-neutral-400">Siguiente:</span> {s.salud.siguienteAccion}
+      </p>
 
       {abierto && (
         <div className="mt-3 space-y-3 border-t border-neutral-100 pt-3">
@@ -415,6 +475,42 @@ function Ficha({
                 className="min-w-40 flex-1 rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
               />
             </div>
+            {/* Qué movió el contacto, en las cuatro variables de Maister. El default
+                es "solo contacto": no todo lo que se registra construye confianza, y
+                marcar todo como si construyera vacía el marcador. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={variable}
+                onChange={(e) => setVariable(e.target.value as VariableConfianza | '')}
+                aria-label={`Variable de confianza del contacto con ${s.nombre}`}
+                className={`flex-1 rounded border px-1 py-0.5 text-xs ${
+                  variable ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-neutral-300 bg-white text-neutral-500'
+                }`}
+              >
+                <option value="">Solo contacto — no construyó confianza</option>
+                {VARIABLES_CONFIANZA.map((v) => (
+                  <option key={v} value={v}>
+                    {VARIABLE_CONFIANZA_LABEL[v]}
+                  </option>
+                ))}
+              </select>
+
+              {/* Discreto a propósito: registrar un incumplimiento cuesta 3x en el
+                  marcador, así que tiene que ser deliberado y nunca un clic de paso. */}
+              <button
+                type="button"
+                aria-pressed={incumplimiento}
+                onClick={() => setIncumplimiento((v) => !v)}
+                className={`rounded-full border px-2 py-0.5 text-xs ${
+                  incumplimiento
+                    ? 'border-danger bg-danger font-bold text-white'
+                    : 'border-neutral-300 bg-white text-neutral-500 hover:border-danger/50 hover:text-danger'
+                }`}
+              >
+                {incumplimiento ? '✓ fue un incumplimiento' : 'fue un incumplimiento'}
+              </button>
+            </div>
+
             {competencias.length > 0 && (
               <select
                 value={competencyId}
@@ -443,9 +539,13 @@ function Ficha({
                     tipo,
                     nota: nota || undefined,
                     competencyId: competencyId || undefined,
+                    variableConfianza: variable || null,
+                    esIncumplimiento: incumplimiento,
                   })
                   setNota('')
                   setCompetencyId('')
+                  setVariable('')
+                  setIncumplimiento(false)
                 })
               }
               className="rounded-full bg-brand-deep px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
@@ -459,6 +559,16 @@ function Ficha({
               {s.interacciones.map((i) => (
                 <li key={i.id} className="text-xs text-neutral-600">
                   <span className="font-mono text-neutral-400">{i.fecha}</span> · {i.tipo}
+                  {i.variableConfianza && (
+                    <span className="ml-1 rounded bg-brand-strong/10 px-1 text-[10px] text-brand-deep">
+                      {VARIABLE_CONFIANZA_LABEL[i.variableConfianza]}
+                    </span>
+                  )}
+                  {i.esIncumplimiento && (
+                    <span className="ml-1 rounded bg-danger-soft px-1 text-[10px] font-bold text-danger">
+                      incumplimiento
+                    </span>
+                  )}
                   {i.nota && <> — {i.nota}</>}
                 </li>
               ))}
@@ -498,6 +608,31 @@ function Ficha({
                 ))}
               </select>
             </label>
+            {/* Los otros dos atributos de saliencia. Cambiarlos mueve el tier y con
+                él la cadencia esperada, así que viven junto a poder e interés y no
+                escondidos en otra pantalla. */}
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={s.legitimidad}
+                disabled={pending}
+                onChange={(e) => onAccion(() => actualizarStakeholderAction(s.id, { legitimidad: e.target.checked }))}
+                aria-label={`Legitimidad de ${s.nombre}`}
+                className="accent-brand-deep"
+              />
+              Legitimidad
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="checkbox"
+                checked={s.urgencia}
+                disabled={pending}
+                onChange={(e) => onAccion(() => actualizarStakeholderAction(s.id, { urgencia: e.target.checked }))}
+                aria-label={`Urgencia de ${s.nombre}`}
+                className="accent-brand-deep"
+              />
+              Urgencia
+            </label>
             <label className="flex items-center gap-1">
               Postura
               <select
@@ -522,6 +657,9 @@ function Ficha({
                 type="number"
                 min={1}
                 defaultValue={s.cadenciaDias ?? ''}
+                // Vacío no es "sin cadencia": es la cadencia que dicta el tier. El
+                // placeholder la muestra para que no parezca que no hay ninguna.
+                placeholder={String(s.salud.cadenciaEsperada)}
                 disabled={pending}
                 onBlur={(e) =>
                   onAccion(() =>

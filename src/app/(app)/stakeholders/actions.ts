@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import type { InteraccionTipo, StakeholderPostura } from '@prisma/client'
+import type { InteraccionTipo, StakeholderPostura, VariableConfianza } from '@prisma/client'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
@@ -71,6 +71,8 @@ export async function actualizarStakeholderAction(
     projectId?: string | null
     poder?: number
     interes?: number
+    legitimidad?: boolean
+    urgencia?: boolean
     postura?: StakeholderPostura
     queNecesita?: string
     cadenciaDias?: number | null
@@ -95,6 +97,8 @@ export async function actualizarStakeholderAction(
       ...(cambio.projectId !== undefined ? { projectId: cambio.projectId || null } : {}),
       ...(cambio.poder !== undefined ? { poder: rango(cambio.poder) } : {}),
       ...(cambio.interes !== undefined ? { interes: rango(cambio.interes) } : {}),
+      ...(cambio.legitimidad !== undefined ? { legitimidad: cambio.legitimidad } : {}),
+      ...(cambio.urgencia !== undefined ? { urgencia: cambio.urgencia } : {}),
       ...(cambio.postura !== undefined ? { postura: cambio.postura } : {}),
       ...(cambio.queNecesita !== undefined ? { queNecesita: cambio.queNecesita.trim() || null } : {}),
       ...(cambio.cadenciaDias !== undefined ? { cadenciaDias: cambio.cadenciaDias } : {}),
@@ -119,6 +123,13 @@ export async function registrarInteraccionAction(input: {
   tipo: InteraccionTipo
   nota?: string
   competencyId?: string
+  // Qué variable de la Trust Equation movió el contacto. Null explícito = hubo
+  // contacto y no construyó nada: cuenta para la cadencia, no para la confianza.
+  variableConfianza?: VariableConfianza | null
+  // Un compromiso roto con esta persona. Pesa 3x en el marcador de salud, así que
+  // registrarlo tiene consecuencia real — por eso va como toggle deliberado y no
+  // como un tipo más del selector, donde se elegiría por accidente.
+  esIncumplimiento?: boolean
 }): Promise<void> {
   const session = await verifySession()
   if (!session) throw new Error('no autenticado')
@@ -137,6 +148,8 @@ export async function registrarInteraccionAction(input: {
       fecha: new Date(input.fecha),
       tipo: input.tipo,
       nota,
+      variableConfianza: input.variableConfianza ?? null,
+      esIncumplimiento: input.esIncumplimiento ?? false,
     },
   })
 

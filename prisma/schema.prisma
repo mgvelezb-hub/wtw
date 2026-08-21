@@ -132,26 +132,26 @@ enum ArtifactEstado {
 
 // ── Capa 1: Ejecución personal ─────────────────────────
 model User {
-  id              String          @id @default(cuid())
-  email           String          @unique
+  id              String              @id @default(cuid())
+  email           String              @unique
   nombre          String
   passwordHash    String
-  apiTokenHash    String?         @unique // sha256 del PAT
-  horarioInicio   String          @default("09:00")
-  horarioFin      String          @default("18:00")
-  comidaInicio    String          @default("14:00")
-  comidaFin       String          @default("15:00")
-  bufferPct       Int             @default(25)
-  factorManual    Decimal?        @db.Decimal(4, 2) // override; el auto se calcula de TimeEntries
+  apiTokenHash    String?             @unique // sha256 del PAT
+  horarioInicio   String              @default("09:00")
+  horarioFin      String              @default("18:00")
+  comidaInicio    String              @default("14:00")
+  comidaFin       String              @default("15:00")
+  bufferPct       Int                 @default(25)
+  factorManual    Decimal?            @db.Decimal(4, 2) // override; el auto se calcula de TimeEntries
   icsUrl          String?
-  timezone        String          @default("America/Mexico_City")
+  timezone        String              @default("America/Mexico_City")
   nivelActualId   String?
   nivelObjetivoId String?
   managerId       String?
-  nivelActual     Level?          @relation("actual", fields: [nivelActualId], references: [id])
-  nivelObjetivo   Level?          @relation("objetivo", fields: [nivelObjetivoId], references: [id])
-  manager         User?           @relation("management", fields: [managerId], references: [id])
-  reports         User[]          @relation("management")
+  nivelActual     Level?              @relation("actual", fields: [nivelActualId], references: [id])
+  nivelObjetivo   Level?              @relation("objetivo", fields: [nivelObjetivoId], references: [id])
+  manager         User?               @relation("management", fields: [managerId], references: [id])
+  reports         User[]              @relation("management")
   weeks           Week[]
   tasks           Task[]
   timeEntries     TimeEntry[]
@@ -165,8 +165,8 @@ model User {
   stakeholders    Stakeholder[]
   aprendizaje     LearningProgress[]
   cierres         DayReconciliation[]
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model Week {
@@ -259,20 +259,20 @@ model DodItem {
 }
 
 model Block {
-  id      String    @id @default(cuid())
-  weekId  String
-  week    Week      @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  taskId  String?
-  task    Task?     @relation(fields: [taskId], references: [id])
-  fecha   DateTime  @db.Date
-  inicio  String // "09:00" | "flex"
-  fin     String
-  tipo    BlockType
-  titulo  String // denormalizado para juntas/breaks sin task
-  planMin Int
-  done    Boolean   @default(false) // para junta/hito/descanso
-  orden   Int       @default(0)
-  minutas Minuta[]
+  id        String    @id @default(cuid())
+  weekId    String
+  week      Week      @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?     @relation(fields: [taskId], references: [id])
+  fecha     DateTime  @db.Date
+  inicio    String // "09:00" | "flex"
+  fin       String
+  tipo      BlockType
+  titulo    String // denormalizado para juntas/breaks sin task
+  planMin   Int
+  done      Boolean   @default(false) // para junta/hito/descanso
+  orden     Int       @default(0)
+  minutas   Minuta[]
   // Sin estos sellos no había forma de saber qué bloque se movió ni cuándo, y por
   // eso el día 13-ago-2026 quedó irrecuperable tras pasar sus pendientes: los
   // registros son los MISMOS, solo con otra fecha.
@@ -280,8 +280,8 @@ model Block {
   // `updatedAt` lleva `@default(now())` —a diferencia del resto de los modelos—
   // porque esta columna se agrega a una tabla que YA tiene filas en producción:
   // un NOT NULL sin default no puede rellenarlas y la migración fallaría.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 }
 
 model TimeEntry {
@@ -371,28 +371,47 @@ model Project {
 }
 
 model Deliverable {
-  id                String            @id @default(cuid())
+  id                String              @id @default(cuid())
   projectId         String
-  project           Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project           Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
   numeroSow         String?
   nombre            String
   hipotesis         String? // answer-first: respuesta esperada
-  fechaInicio       DateTime?         @db.Date // para la curva de avance proyectado
-  fechaComprometida DateTime?         @db.Date // baseline SOW — inmutable
-  fechaProyectada   DateTime?         @db.Date // forecast vivo
-  avancePct         Int               @default(0) // declarado, no derivado (práctica PMO)
-  presupuestoHoras  Decimal?          @db.Decimal(7, 2)
-  estatus           DeliverableStatus @default(borrador)
-  alcance           Alcance           @default(sow)
+  fechaInicio       DateTime?           @db.Date // para la curva de avance proyectado
+  fechaComprometida DateTime?           @db.Date // baseline SOW — inmutable
+  fechaProyectada   DateTime?           @db.Date // forecast vivo
+  avancePct         Int                 @default(0) // declarado, no derivado (práctica PMO)
+  presupuestoHoras  Decimal?            @db.Decimal(7, 2)
+  estatus           DeliverableStatus   @default(borrador)
+  alcance           Alcance             @default(sow)
   cartaUrl          String?
   // Un entregable PRESENTADO en persona es evidencia de "Quien presenta" y de "La
   // mano del Rey"; uno enviado por correo no es evidencia de ninguno de los dos.
-  presentado        Boolean           @default(false)
+  presentado        Boolean             @default(false)
   presentadoA       String? // quien estuvo en la sala
   tasks             Task[]
   evidences         Evidence[]
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  impactos          ImpactoEntregable[]
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+}
+
+// Mini-BRM por entregable: el antes/después medible que justifica la renovación
+// con el cliente y, a la vez, es evidencia de Client Leadership para el
+// promotion case. Cuelga de Deliverable (cascade), que cuelga de Project
+// (cascade); Project→User NO cascadea a nivel DB, pero tests/helpers/cleanup.ts
+// ya borra Deliverable explícitamente antes de Project — el cascade de FK en
+// Postgres se dispara con ese delete y arrastra ImpactoEntregable sin que
+// cleanup.ts necesite tocarlo.
+model ImpactoEntregable {
+  id            String      @id @default(cuid())
+  deliverableId String
+  deliverable   Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  fecha         DateTime    @default(now())
+  baseline      String // el punto de partida medible ("fill rate 71%")
+  delta         String // el cambio logrado ("→ 78.4%, +$12 MM anualizados")
+  validadoPor   String? // quién del lado cliente lo validó
+  nota          String?
 }
 
 model Issue {
@@ -485,42 +504,58 @@ model LearningProgress {
 // stakeholders— dependen de esto. Hoy los stakeholders de Liverpool viven como
 // texto libre dentro de títulos de tareas y en Minuta.asistentes.
 model Stakeholder {
-  id             String                    @id @default(cuid())
-  userId         String
-  user           User                      @relation(fields: [userId], references: [id])
-  projectId      String?
-  project        Project?                  @relation(fields: [projectId], references: [id])
-  nombre         String
-  puesto         String?
+  id            String                   @id @default(cuid())
+  userId        String
+  user          User                     @relation(fields: [userId], references: [id])
+  projectId     String?
+  project       Project?                 @relation(fields: [projectId], references: [id])
+  nombre        String
+  puesto        String?
   // Poder e interés en escala 1-3. Sirven para la matriz clásica de influencia:
   // poder alto + interés alto = gestión cercana; poder alto + interés bajo = el
   // que te hunde el proyecto sin avisar.
-  poder          Int                       @default(2)
-  interes        Int                       @default(2)
-  postura        StakeholderPostura        @default(neutral)
-  queNecesita    String? // qué necesita ESTA persona para considerar el proyecto un éxito
+  poder         Int                      @default(2)
+  interes       Int                      @default(2)
+  // Los otros dos atributos del modelo de saliencia (Mitchell/Agle/Wood, 1997). El
+  // poder ya vivía aquí en escala 1-3; legitimidad y urgencia son binarios porque
+  // eso es lo que son en el modelo: el reclamo es legítimo o no lo es. Los tres
+  // juntos dan el tipo de stakeholder (definitivo / expectante / latente), y ese
+  // tipo —no el gusto de cada quien— es lo que fija cada cuánto hay que hablarle.
+  legitimidad   Boolean                  @default(false)
+  urgencia      Boolean                  @default(false)
+  postura       StakeholderPostura       @default(neutral)
+  queNecesita   String? // qué necesita ESTA persona para considerar el proyecto un éxito
   // Cada cuántos días debería haber contacto. Null = sin cadencia comprometida.
-  cadenciaDias   Int?
-  notas          String?
-  interacciones  StakeholderInteraccion[]
-  desvios        Desvio[]
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  cadenciaDias  Int?
+  notas         String?
+  interacciones StakeholderInteraccion[]
+  desvios       Desvio[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
 
   @@unique([userId, nombre])
   @@index([userId, projectId])
 }
 
 model StakeholderInteraccion {
-  id            String                @id @default(cuid())
-  stakeholderId String
-  stakeholder   Stakeholder           @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
-  fecha         DateTime              @db.Date
-  tipo          InteraccionTipo
-  nota          String?
+  id                String             @id @default(cuid())
+  stakeholderId     String
+  stakeholder       Stakeholder        @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  fecha             DateTime           @db.Date
+  tipo              InteraccionTipo
+  nota              String?
+  // Cuál de las cuatro variables de la Trust Equation (Maister) movió este
+  // contacto. Null = hubo contacto pero no construyó confianza: cumple la cadencia
+  // y nada más. Distinguirlo importa porque "le hablé" y "avancé la relación" son
+  // cosas distintas y solo la segunda se acumula.
+  variableConfianza VariableConfianza?
+  // Un compromiso roto CON esta persona. Se guarda en la interacción y no en el
+  // stakeholder porque tiene fecha: es un evento, no un atributo. Pesa 3x lo que
+  // suma un contacto positivo — la asimetría documentada de la confianza.
+  esIncumplimiento  Boolean            @default(false)
   // Si la interacción salió de una junta ya registrada, se liga en vez de duplicar.
-  minutaId      String?
-  createdAt     DateTime              @default(now())
+  minutaId          String?
+  createdAt         DateTime           @default(now())
 
   @@index([stakeholderId, fecha])
 }
@@ -538,6 +573,18 @@ enum InteraccionTipo {
   correo
   informal
   presentacion
+}
+
+// Las cuatro variables de la Trust Equation de Maister:
+// confianza = (credibilidad + confiabilidad + intimidad) / auto-orientación.
+// La cuarta va como `bajaAutoOrientacion` —en positivo— porque un enum no puede
+// tener un denominador: lo que se registra es el contacto donde el interés propio
+// se puso en segundo lugar, que es lo que baja el divisor.
+enum VariableConfianza {
+  credibilidad
+  confiabilidad
+  intimidad
+  bajaAutoOrientacion
 }
 
 // Riesgos del pre-mortem (paso 5 del planeador). Antes se generaban y se tiraban:
@@ -558,7 +605,7 @@ model WeekRisk {
 }
 
 model Competency {
-  id        String         @id @default(cuid())
+  id        String             @id @default(cuid())
   tipo      CompetencyType
   grupo     String? // nombre del rol VP ("La mano del Rey"...) — null para individuales
   texto     String // el reactivo
@@ -665,11 +712,11 @@ model Artifact {
 // una causa "todo salió bien".
 
 model DayReconciliation {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  fecha     DateTime @db.Date
-  nota      String?
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  fecha           DateTime  @db.Date
+  nota            String?
   // Snapshot tomado al pasar los pendientes al día siguiente. Es necesario porque
   // mover un bloque le cambia `fecha` EN EL MISMO registro, y el cálculo de lo
   // planeado lee bloques por fecha: sin esto, cerrar el día borra la evidencia de
@@ -681,9 +728,9 @@ model DayReconciliation {
   // "¿qué pasó el lunes?" sin depender de la memoria.
   movidos         Int?
   movidosA        DateTime? @db.Date
-  desvios   Desvio[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  desvios         Desvio[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@unique([userId, fecha])
   @@index([userId, fecha])

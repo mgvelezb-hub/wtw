@@ -5,6 +5,8 @@ import Link from 'next/link'
 import type { DesvioCausa } from '@prisma/client'
 import type { CierreDia, PatronDesvios } from './service'
 import { CAUSAS, CAUSA_LABEL, CAUSA_QUE_SIGNIFICA } from './service'
+import { AyudaContextual } from '@/components/ayuda-contextual'
+import { TourPrimeraVez } from '@/components/tour-primera-vez'
 import {
   guardarCierreAction,
   borrarCierreAction,
@@ -100,9 +102,20 @@ export function CierreBoard({
   return (
     <div className="space-y-5">
       <header>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-lg font-bold text-neutral-900">Cierre del día</h1>
-          <nav className="flex items-center gap-1 text-xs">
+          <TourPrimeraVez
+            ruta="/cierre"
+            bullets={[
+              'Son 60 segundos al final del día, no un reporte. Confirmas qué se hizo, qué no, y a dónde se fue el tiempo que el cronómetro no alcanzó a registrar.',
+              <>
+                No reemplaza al cronómetro: lo <strong>audita</strong>. Lo que de verdad captura es <em>por qué</em> se
+                rompió el plan — esa mitad de la información no existe en ninguna otra pantalla.
+              </>,
+              'Lo que quedó sin terminar se pasa desde aquí al siguiente día hábil, con un clic y sin volver a escribirlo.',
+            ]}
+          />
+          <nav className="ml-auto flex items-center gap-1 text-xs">
             <Link href={`/cierre?dia=${diaAnterior}`} className="rounded border border-neutral-300 px-2 py-1 text-neutral-600">
               ←
             </Link>
@@ -391,7 +404,18 @@ export function CierreBoard({
       )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Qué causa domina — últimos 14 días</h2>
+        <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+          Qué causa domina — últimos 14 días
+          <AyudaContextual
+            titulo="La compuerta de 14 días"
+            ejemplo="Ej. si domina «Cambio de prioridad del cliente», el problema no es cómo estimas: es cómo se está acordando el alcance."
+          >
+            Cada desvío que registras arriba se acumula en una ventana de 14 días. No es un marcador: es la única salida
+            de la compuerta. Como cada causa tiene un dueño distinto —el cliente, el código o tu disciplina—, la que
+            domina decide en qué trabajar después. Con pocos días cerrados no hay muestra que leer, así que la primera
+            lectura útil llega a las dos semanas de cerrar el día.
+          </AyudaContextual>
+        </h2>
         <p className="mt-1 text-xs text-neutral-500">
           La compuerta no evalúa si el factor de realismo sobrevive: sobrevive, es el objetivo. Evalúa qué causa domina,
           porque cada una lleva a un trabajo distinto.

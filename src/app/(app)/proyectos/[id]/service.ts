@@ -5,7 +5,13 @@ type Semaforo = 'a_tiempo' | 'atrasado'
 export async function getProyectoDetalle(userId: string, projectId: string) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    include: { deliverables: { orderBy: { createdAt: 'asc' } }, issues: { where: { estatus: 'abierto' } } },
+    include: {
+      deliverables: {
+        orderBy: { createdAt: 'asc' },
+        include: { impactos: { orderBy: { fecha: 'desc' } } },
+      },
+      issues: { where: { estatus: 'abierto' } },
+    },
   })
   if (!project || project.userId !== userId) return null
 
@@ -19,6 +25,14 @@ export async function getProyectoDetalle(userId: string, projectId: string) {
       presentado: d.presentado,
       presentadoA: d.presentadoA,
       semaforo,
+      impactos: d.impactos.map((i) => ({
+        id: i.id,
+        fecha: i.fecha.toISOString().slice(0, 10),
+        baseline: i.baseline,
+        delta: i.delta,
+        validadoPor: i.validadoPor,
+        nota: i.nota,
+      })),
     }
   })
 
@@ -73,4 +87,33 @@ export async function marcarPresentado(
       },
     })
   }
+}
+
+// Mini-BRM por entregable: el antes/después medible que arma la renovación con
+// el cliente y, a la vez, es evidencia de Client Leadership para el promotion
+// case. Doble uso, un solo registro.
+export async function registrarImpacto(
+  userId: string,
+  deliverableId: string,
+  data: { baseline: string; delta: string; validadoPor?: string; nota?: string },
+): Promise<void> {
+  const entregable = await prisma.deliverable.findFirst({
+    where: { id: deliverableId, project: { userId } },
+    select: { id: true },
+  })
+  if (!entregable) throw new Error('entregable no encontrado')
+
+  const baseline = data.baseline.trim()
+  const delta = data.delta.trim()
+  if (!baseline || !delta) throw new Error('baseline y delta son requeridos')
+
+  await prisma.impactoEntregable.create({
+    data: {
+      deliverableId,
+      baseline,
+      delta,
+      validadoPor: data.validadoPor?.trim() || null,
+      nota: data.nota?.trim() || null,
+    },
+  })
 }

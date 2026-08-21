@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import type { TipoTrabajo } from '@prisma/client'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
+import { TourPrimeraVez } from '@/components/tour-primera-vez'
 import { captureAction, discardAction } from './actions'
 
 type InboxItem = {
@@ -99,7 +100,19 @@ export function InboxBoard({
 
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4">
-      <h1 className="text-lg font-bold text-brand-deep">📥 Actividades</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-lg font-bold text-brand-deep">📥 Actividades</h1>
+        <TourPrimeraVez
+          ruta="/inbox"
+          bullets={[
+            'Captura aquí lo que va llegando suelto — correos, encargos de junta, ideas. No decides cuándo lo haces: eso pasa después, al agendarlo en Mi Día o al planear la semana.',
+            <>
+              El <strong>tipo de trabajo</strong> alimenta tu factor de realismo por clase: con 3 tareas medidas de la
+              misma clase, la app empieza a corregirte el estimado en vez de dejarte repetir el error.
+            </>,
+          ]}
+        />
+      </div>
 
       <form
         onSubmit={(e) => {
@@ -283,7 +296,18 @@ export function InboxBoard({
             </div>
           </li>
         ))}
-        {tasks.length === 0 && <p className="text-sm text-neutral-400">Sin actividades pendientes — todo triageado.</p>}
+        {/* El estado vacío enseña, no informa: "sin actividades" es cierto y no
+            sirve de nada la primera vez que alguien abre la pantalla. */}
+        {tasks.length === 0 && (
+          <li className="rounded-lg border border-dashed border-neutral-300 bg-white p-4 text-sm">
+            <p className="font-semibold text-neutral-700">Nada pendiente por triagear.</p>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+              Aquí se acumula lo que aparece entre juntas y correos, antes de decidir qué día lo haces. Captúralo arriba
+              con una descripción; si ya lo sabes, agrega el tipo de trabajo y los minutos que crees que toma. Lo que
+              guardes aparece en <strong>Mi Día</strong>, en la columna de pendientes, listo para arrastrarlo a un día.
+            </p>
+          </li>
+        )}
       </ul>
     </div>
   )
