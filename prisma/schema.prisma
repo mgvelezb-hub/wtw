@@ -132,41 +132,42 @@ enum ArtifactEstado {
 
 // ── Capa 1: Ejecución personal ─────────────────────────
 model User {
-  id              String              @id @default(cuid())
-  email           String              @unique
-  nombre          String
-  passwordHash    String
-  apiTokenHash    String?             @unique // sha256 del PAT
-  horarioInicio   String              @default("09:00")
-  horarioFin      String              @default("18:00")
-  comidaInicio    String              @default("14:00")
-  comidaFin       String              @default("15:00")
-  bufferPct       Int                 @default(25)
-  factorManual    Decimal?            @db.Decimal(4, 2) // override; el auto se calcula de TimeEntries
-  icsUrl          String?
-  timezone        String              @default("America/Mexico_City")
-  nivelActualId   String?
-  nivelObjetivoId String?
-  managerId       String?
-  nivelActual     Level?              @relation("actual", fields: [nivelActualId], references: [id])
-  nivelObjetivo   Level?              @relation("objetivo", fields: [nivelObjetivoId], references: [id])
-  manager         User?               @relation("management", fields: [managerId], references: [id])
-  reports         User[]              @relation("management")
-  weeks           Week[]
-  tasks           Task[]
-  timeEntries     TimeEntry[]
-  calendarEvents  CalendarEvent[]
-  projects        Project[]
-  evidences       Evidence[]
-  dayOverrides    DayOverride[]
-  allocations     Allocation[]
-  minutas         Minuta[]
-  artifacts       Artifact[]
-  stakeholders    Stakeholder[]
-  aprendizaje     LearningProgress[]
-  cierres         DayReconciliation[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  nombre               String
+  passwordHash         String
+  apiTokenHash         String?               @unique // sha256 del PAT
+  horarioInicio        String                @default("09:00")
+  horarioFin           String                @default("18:00")
+  comidaInicio         String                @default("14:00")
+  comidaFin            String                @default("15:00")
+  bufferPct            Int                   @default(25)
+  factorManual         Decimal?              @db.Decimal(4, 2) // override; el auto se calcula de TimeEntries
+  icsUrl               String?
+  timezone             String                @default("America/Mexico_City")
+  nivelActualId        String?
+  nivelObjetivoId      String?
+  managerId            String?
+  nivelActual          Level?                @relation("actual", fields: [nivelActualId], references: [id])
+  nivelObjetivo        Level?                @relation("objetivo", fields: [nivelObjetivoId], references: [id])
+  manager              User?                 @relation("management", fields: [managerId], references: [id])
+  reports              User[]                @relation("management")
+  weeks                Week[]
+  tasks                Task[]
+  timeEntries          TimeEntry[]
+  calendarEvents       CalendarEvent[]
+  projects             Project[]
+  evidences            Evidence[]
+  dayOverrides         DayOverride[]
+  allocations          Allocation[]
+  minutas              Minuta[]
+  artifacts            Artifact[]
+  stakeholders         Stakeholder[]
+  aprendizaje          LearningProgress[]
+  cierres              DayReconciliation[]
+  propuestasLiteratura PropuestaLiteratura[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model Week {
@@ -797,4 +798,25 @@ model AiCall {
   createdAt    DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Log de propuestas desde literatura o experiencias en otros proyectos —
+// reactivo 11 de Gerente ("propone soluciones a partir de literatura o
+// experiencias en otros proyectos"). Es el criterio más fácil de perder en el
+// ruido: la idea se lee un martes, se propone en una junta tres semanas
+// después y nadie la conecta con la fuente. El log es vivo — se registra la
+// idea al momento y se completa qué pasó cuando se sabe, que suele ser
+// semanas después. Sin cascada desde User: entrada obligatoria en
+// tests/helpers/cleanup.ts (regla 7 de CLAUDE.md).
+model PropuestaLiteratura {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  insight      String // la idea o patrón
+  fuente       String // libro, paper, u otro proyecto donde lo viste
+  dondePropuse String? // proyecto/junta donde lo propusiste
+  queParo      String? // qué pasó: se adoptó, se descartó, en evaluación
+  fecha        DateTime @default(now())
+
+  @@index([userId, fecha])
 }

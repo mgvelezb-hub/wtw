@@ -49,6 +49,7 @@ export async function teardown() {
       // Sin cascada desde User: si faltan, el user.deleteMany de abajo truena por FK.
       await prisma.learningProgress.deleteMany({ where: { userId: u.id } })
       await prisma.stakeholder.deleteMany({ where: { userId: u.id } })
+      await prisma.propuestaLiteratura.deleteMany({ where: { userId: u.id } })
       await prisma.project.deleteMany({ where: { userId: u.id } })
     }
     await prisma.user.deleteMany({ where: { email: { endsWith: '@vp.mx' } } })
