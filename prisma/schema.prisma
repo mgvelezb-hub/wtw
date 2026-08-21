@@ -192,14 +192,20 @@ model Week {
 }
 
 model Win {
-  id       String    @id @default(cuid())
-  weekId   String
-  week     Week      @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  posicion Int // 1-3
-  titulo   String
-  dod      String?
-  estatus  WinStatus @default(pendiente)
-  tasks    Task[]
+  id         String    @id @default(cuid())
+  weekId     String
+  week       Week      @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  posicion   Int // 1-3
+  titulo     String
+  dod        String?
+  // Plan de implementación del Win: "Si <obstáculo>, entonces <acción>". Se
+  // define en el paso 2 del planeador y se REPASA en /semana — el efecto del
+  // si-entonces viene de tenerlo ensayado ANTES de que llegue el obstáculo, no
+  // de haberlo escrito una vez. Nullable: los Wins que ya existen, y los que
+  // entran por POST /weeks o por la skill, no lo traen.
+  siEntonces String?
+  estatus    WinStatus @default(pendiente)
+  tasks      Task[]
 
   @@unique([weekId, posicion])
 }

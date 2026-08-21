@@ -46,6 +46,38 @@ async function llamarJSON<T>(feature: string, system: string, contenido: string)
   return { ok: true, datos }
 }
 
+function decimas(min: number): number {
+  return Math.round((min / 60) * 10) / 10
+}
+
+// Los desvíos y el veredicto del pre-mortem entran al prompt COMO NÚMEROS YA
+// RESUELTOS, igual que el resto del recap: el modelo no suma minutos ni decide
+// qué causa domina — eso lo calculó el servidor con la misma función que
+// alimenta /cierre, y aquí solo se transcribe.
+function desviosATexto(d: RecapAnterior['desvios']): string {
+  if (d.diasReconciliados === 0) {
+    return 'Desvíos: ningún día de esa semana se reconcilió. La causa de la brecha NO está medida — dilo así, no la infieras.'
+  }
+  if (d.totalMin === 0) {
+    return `Desvíos: ${d.diasReconciliados} día(s) reconciliados, sin desvíos registrados — el plan no se rompió por ninguna causa clasificada.`
+  }
+  const detalle = d.porCausa.map((c) => `${c.label} ${decimas(c.minutos)}h (${c.pct}%, le toca a ${c.aQuienToca})`).join(' | ')
+  return [
+    `Desvíos (${d.diasReconciliados} día(s) reconciliados, ${decimas(d.totalMin)}h explicadas): ${detalle}`,
+    d.dominante ? `Causa dominante: ${d.dominante.label} — le toca a ${d.dominante.aQuienToca}.` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+}
+
+function premortemATexto(p: RecapAnterior['premortem']): string {
+  if (p.predichos === 0) return 'Pre-mortem: no se hizo la semana pasada.'
+  if (p.cerrados === 0) {
+    return `Pre-mortem: ${p.predichos} riesgo(s) predichos, ninguno evaluado al cerrar. Sin veredicto — NO concluyas si la predicción acertó.`
+  }
+  return `Pre-mortem: ${p.predichos} riesgo(s) predichos, ${p.cerrados} evaluados, ${p.ocurrieron} ocurrieron, ${p.defensasSirvieron} defensa(s) sirvieron.`
+}
+
 function recapATexto(a: RecapAnterior): string {
   return [
     `Semana: ${a.isoWeek}`,
@@ -58,6 +90,8 @@ function recapATexto(a: RecapAnterior): string {
     `Tareas: ${a.tareasHechas} de ${a.tareasPlaneadas} terminadas`,
     `Wins: ${a.wins.map((w) => `${w.posicion}. "${w.titulo}" — ${w.estatus} (${w.tareasHechas}/${w.tareasTotal} tareas)`).join(' | ') || 'ninguno'}`,
     a.tareasSinTerminar.length > 0 ? `Sin terminar: ${a.tareasSinTerminar.join('; ')}` : '',
+    desviosATexto(a.desvios),
+    premortemATexto(a.premortem),
   ]
     .filter(Boolean)
     .join('\n')
@@ -77,7 +111,7 @@ export async function recapAction(): Promise<ResultadoIA<string>> {
 
 // --- Paso 2: sugerir Wins ---------------------------------------------------
 
-export type WinSugerido = { titulo: string; dod?: string; porque?: string }
+export type WinSugerido = { titulo: string; dod?: string; siEntonces?: string; porque?: string }
 
 export async function sugerirWinsAction(): Promise<ResultadoIA<WinSugerido[]>> {
   const session = await verifySession()
@@ -98,7 +132,16 @@ export async function sugerirWinsAction(): Promise<ResultadoIA<WinSugerido[]>> {
   const r = await llamarJSON<WinSugerido[]>('planear_wins', SUGERIR_WINS, contenido)
   if (!r.ok) return r
   if (!Array.isArray(r.datos)) return { ok: false, error: 'La IA no devolvió una lista de Wins.' }
-  return { ok: true, datos: r.datos.filter((w) => typeof w?.titulo === 'string' && w.titulo.trim() !== '').slice(0, 3) }
+  return {
+    ok: true,
+    datos: r.datos
+      .filter((w) => typeof w?.titulo === 'string' && w.titulo.trim() !== '')
+      .slice(0, 3)
+      // El si-entonces se sanea aquí y no en el cliente: si el modelo lo omite o
+      // lo manda vacío, el campo llega vacío y Mau lo escribe — es su plan, la
+      // sugerencia solo le ahorra la hoja en blanco.
+      .map((w) => ({ ...w, siEntonces: typeof w.siEntonces === 'string' ? w.siEntonces.trim() : undefined })),
+  }
 }
 
 // --- Paso 3: estimar duraciones --------------------------------------------

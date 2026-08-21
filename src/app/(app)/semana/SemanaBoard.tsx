@@ -4,7 +4,7 @@ import { useTransition } from 'react'
 import Link from 'next/link'
 import { toggleWinAction } from './actions'
 
-type Win = { id: string; posicion: number; titulo: string; dod: string | null; estatus: string }
+type Win = { id: string; posicion: number; titulo: string; dod: string | null; siEntonces: string | null; estatus: string }
 type Block = { id: string; fecha: Date; inicio: string; fin: string; tipo: string; titulo: string; planMin: number }
 
 export function SemanaBoard({
@@ -64,12 +64,22 @@ export function SemanaBoard({
         )}
         <div className="space-y-2">
           {wins.map((w) => (
-            <div key={w.id} className="flex items-start justify-between rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-              <div>
+            <div key={w.id} className="flex items-start justify-between gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
+              <div className="min-w-0">
                 <p className={`font-medium ${w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-900'}`}>
                   {w.posicion}. {w.titulo}
                 </p>
                 {w.dod && <p className="text-xs text-neutral-500">DoD: {w.dod}</p>}
+                {/* El si-entonces se REPASA aquí, no solo se escribió una vez en
+                    el planeador: el plan sirve cuando ya está en la cabeza antes
+                    de que aparezca el obstáculo, y esta es la pantalla que Mau
+                    abre durante la semana. Se oculta en los Wins ya logrados —
+                    el plan de implementación de algo cumplido es ruido. */}
+                {w.siEntonces && w.estatus !== 'logrado' && (
+                  <p className="mt-1 rounded border border-brand/30 bg-brand/5 px-2 py-1 text-xs text-brand-deep">
+                    {w.siEntonces}
+                  </p>
+                )}
               </div>
               <button
                 disabled={pending}

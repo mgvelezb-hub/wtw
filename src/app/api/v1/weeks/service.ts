@@ -2,7 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { weekRange } from '@/lib/dates'
 import type { Alcance, BlockType } from '@prisma/client'
 
-type WinInput = { posicion: number; titulo: string; dod?: string }
+// `siEntonces` es opcional en el contrato: POST /weeks y la skill /wtw-semana
+// crean Wins sin él y tienen que seguir funcionando. El paso 2 del planeador sí
+// lo pide, porque es el único momento en que se puede exigir.
+type WinInput = { posicion: number; titulo: string; dod?: string; siEntonces?: string }
 
 type TaskInput = {
   ref: string
@@ -182,7 +185,7 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
     const winByPosicion = new Map<number, string>()
     for (const w of payload.wins) {
       const win = await tx.win.create({
-        data: { weekId: week.id, posicion: w.posicion, titulo: w.titulo, dod: w.dod },
+        data: { weekId: week.id, posicion: w.posicion, titulo: w.titulo, dod: w.dod, siEntonces: w.siEntonces },
       })
       winByPosicion.set(w.posicion, win.id)
     }

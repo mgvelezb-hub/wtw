@@ -3,9 +3,9 @@
 import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { ContextoPlaneacion } from './service'
+import type { ContextoPlaneacion, RecapAnterior } from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
-import { balance, type Balance } from './service'
+import { balance, validarCarga, type Balance } from './service'
 import { crearSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
 import { medidaDe, refDeMedida } from './medidas'
@@ -37,7 +37,12 @@ type Item = {
   competenciaId?: string
 }
 
-type WinDraft = { titulo: string; dod: string }
+// `siEntonces` y `leverage` son nuevos: un draft guardado antes de este cambio
+// no los trae, y `normalizar()` los rellena en vez de bumpear DRAFT_KEY, que
+// borraría el ritual en curso de quien esté planeando.
+// `leverage` arranca en null —no en false— porque "todavía no lo pensé" y "no
+// apalanca" son respuestas distintas, y solo la segunda merece el aviso.
+type WinDraft = { titulo: string; dod: string; siEntonces: string; leverage: boolean | null }
 // `medida` es opcional: un draft guardado antes de este cambio no la trae, y
 // bumpear DRAFT_KEY para "arreglarlo" borraría el ritual en curso de quien esté
 // planeando. `medidaDe()` la deriva de la prosa cuando falta.
@@ -46,11 +51,16 @@ type Riesgo = { riesgo: string; defensa: string; medida?: { titulo: string; esti
 type Draft = {
   paso: number
   reflexion: string
+  // Cuarta pregunta del AAR. Se guarda pegada al recap (ver `componerReflexion`
+  // en service.ts): es la única de las cuatro que produce una decisión.
+  queCambias: string
   wins: WinDraft[]
   items: Item[]
   riesgos: Riesgo[]
   desbloqueador: string
 }
+
+const WIN_VACIO: WinDraft = { titulo: '', dod: '', siEntonces: '', leverage: null }
 
 function horas(min: number): string {
   if (min <= 0) return '0h'
@@ -69,7 +79,7 @@ function leerDraft(ctx: ContextoPlaneacion): Draft {
     const guardado = localStorage.getItem(DRAFT_KEY)
     if (guardado) {
       const parsed = JSON.parse(guardado) as Draft
-      if (Array.isArray(parsed?.items) && Array.isArray(parsed?.wins)) return parsed
+      if (Array.isArray(parsed?.items) && Array.isArray(parsed?.wins)) return normalizar(parsed)
     }
   } catch {
     // draft corrupto: se arranca limpio en vez de tirar el ritual completo
@@ -77,15 +87,23 @@ function leerDraft(ctx: ContextoPlaneacion): Draft {
   return draftInicial(ctx)
 }
 
+// Rellena lo que un draft viejo no traía. Sin esto, `w.siEntonces` llega
+// `undefined` a un <input> controlado y React lo vuelve no-controlado a media
+// escritura.
+function normalizar(d: Draft): Draft {
+  return {
+    ...d,
+    queCambias: d.queCambias ?? '',
+    wins: d.wins.map((w) => ({ ...WIN_VACIO, ...w })),
+  }
+}
+
 function draftInicial(ctx: ContextoPlaneacion): Draft {
   return {
     paso: 0,
     reflexion: '',
-    wins: [
-      { titulo: '', dod: '' },
-      { titulo: '', dod: '' },
-      { titulo: '', dod: '' },
-    ],
+    queCambias: '',
+    wins: [WIN_VACIO, WIN_VACIO, WIN_VACIO],
     items: ctx.backlog.map((t) => ({
       ref: t.id,
       id: t.id,
@@ -110,6 +128,10 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   const [draft, setDraft] = useState<Draft>(() => leerDraft(ctx))
   const [error, setError] = useState<string | null>(null)
   const [cargandoIA, setCargandoIA] = useState<string | null>(null)
+  // Recuerda que el aviso de si-entonces ya se dio: el segundo clic en Siguiente
+  // avanza. Vive en estado y no en el draft porque es una interacción, no parte
+  // del plan.
+  const [avisoWins, setAvisoWins] = useState(false)
   const [pending, startTransition] = useTransition()
 
   // Escribir a localStorage sí es trabajo de efecto: sincroniza estado de React
@@ -192,9 +214,19 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
 
   const incluidas = draft.items.filter((it) => it.incluida)
   const winsLlenos = draft.wins.filter((w) => w.titulo.trim() !== '')
-  const cargaAjustada = Math.round(incluidas.reduce((s, it) => s + it.estimadoMin, 0) * ctx.factor)
+  // Las tareas sin estimar se guardan con 30 min (ver el payload de abajo), así
+  // que la carga se calcula con ese mismo mínimo: contarlas como cero mostraba
+  // una carga más chica que la que iba a quedar escrita, y ahora que la carga
+  // decide si la semana se puede cerrar, esa diferencia bloquearía en el
+  // servidor algo que la pantalla declaró que cabía.
+  const cargaAjustada = Math.round(incluidas.reduce((s, it) => s + (it.estimadoMin > 0 ? it.estimadoMin : 30), 0) * ctx.factor)
   const bal = balance(cargaAjustada, ctx.capacidad)
+  const carga = validarCarga(cargaAjustada, ctx.capacidad)
   const sinEstimar = incluidas.filter((it) => it.estimadoMin <= 0)
+  // Wins con título pero sin plan si-entonces. La validación es suave: avisa una
+  // vez y deja pasar al segundo intento. La IA propone, el humano dispone — un
+  // bloqueo duro aquí convertiría el ritual en un formulario.
+  const winsSinPlan = winsLlenos.filter((w) => w.siEntonces.trim() === '')
 
   if (ctx.yaPlaneada) {
     return (
@@ -249,7 +281,9 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
           <PasoReflejar
             ctx={ctx}
             reflexion={draft.reflexion}
+            queCambias={draft.queCambias}
             onChange={(reflexion) => set({ reflexion })}
+            onQueCambias={(queCambias) => set({ queCambias })}
             cargando={cargandoIA === 'recap'}
             onIA={() =>
               conIA('recap', async () => {
@@ -264,14 +298,20 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         {draft.paso === 1 && (
           <PasoWins
             wins={draft.wins}
+            aviso={avisoWins && winsSinPlan.length > 0}
             onChange={(wins) => set({ wins })}
             cargando={cargandoIA === 'wins'}
             onIA={() =>
               conIA('wins', async () => {
                 const r = await sugerirWinsAction()
                 if (!r.ok) return setError(r.error)
-                const sugeridos = r.datos.map((w) => ({ titulo: w.titulo, dod: w.dod ?? '' }))
-                while (sugeridos.length < 3) sugeridos.push({ titulo: '', dod: '' })
+                const sugeridos: WinDraft[] = r.datos.map((w) => ({
+                  ...WIN_VACIO,
+                  titulo: w.titulo,
+                  dod: w.dod ?? '',
+                  siEntonces: w.siEntonces ?? '',
+                }))
+                while (sugeridos.length < 3) sugeridos.push(WIN_VACIO)
                 set({ wins: sugeridos })
               })
             }
@@ -381,6 +421,18 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         )}
       </section>
 
+      {/* El bloqueo se explica AQUÍ, junto al botón que deshabilita: un botón
+          apagado sin razón visible es exactamente el bloqueo silencioso que la
+          app no debe hacer. */}
+      {draft.paso === 4 && !carga.ok && (
+        <p className="rounded-lg border border-warn-border bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">
+          {carga.mensaje}{' '}
+          <button onClick={() => set({ paso: 3 })} className="font-bold underline">
+            Ir al paso 4 a recortar
+          </button>
+        </p>
+      )}
+
       <footer className="flex items-center justify-between gap-2">
         <button
           disabled={draft.paso === 0}
@@ -392,19 +444,26 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
 
         <span className="text-xs text-neutral-500">
           {incluidas.length} tareas · {horas(cargaAjustada)} de {horas(bal.planeableMin)}
-          {bal.sobrecargado && <strong className="ml-1 text-danger">se pasa {horas(-bal.colchonMin)}</strong>}
+          {bal.sobrecargado && <strong className="ml-1 text-warn">se pasa {horas(-bal.colchonMin)}</strong>}
         </span>
 
         {draft.paso < 4 ? (
           <button
-            onClick={() => set({ paso: draft.paso + 1 })}
+            onClick={() => {
+              // Paso 2: si algún Win no trae si-entonces, el primer clic avisa y
+              // no avanza; el segundo avanza igual. El plan es de Mau, no del
+              // wizard — pero no se le pasa de largo en silencio.
+              if (draft.paso === 1 && winsSinPlan.length > 0 && !avisoWins) return setAvisoWins(true)
+              setAvisoWins(false)
+              set({ paso: draft.paso + 1 })
+            }}
             className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white"
           >
-            Siguiente →
+            {draft.paso === 1 && winsSinPlan.length > 0 && avisoWins ? 'Avanzar sin si-entonces →' : 'Siguiente →'}
           </button>
         ) : (
           <button
-            disabled={pending || winsLlenos.length === 0 || incluidas.length === 0}
+            disabled={pending || winsLlenos.length === 0 || incluidas.length === 0 || !carga.ok}
             onClick={() => {
               setError(null)
               startTransition(async () => {
@@ -424,9 +483,14 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   localStorage.removeItem(DRAFT_KEY)
                   await crearSemanaAction({
                     reflexion: draft.reflexion || undefined,
+                    queCambias: draft.queCambias || undefined,
                     desbloqueador: draft.desbloqueador || undefined,
                     riesgos: draft.riesgos.length > 0 ? draft.riesgos : undefined,
-                    wins: winsLlenos.map((w) => ({ titulo: w.titulo, dod: w.dod || undefined })),
+                    wins: winsLlenos.map((w) => ({
+                      titulo: w.titulo,
+                      dod: w.dod || undefined,
+                      siEntonces: w.siEntonces.trim() || undefined,
+                    })),
                     tasks,
                   })
                   creada = true
@@ -466,23 +530,33 @@ function BotonIA({ onClick, cargando, texto }: { onClick: () => void; cargando: 
   )
 }
 
+// El paso 1 es un After Action Review, no un tablero de números. Las cuatro
+// preguntas —esperado, ocurrido, brecha, cambio— son lo que carga el efecto: el
+// contraste explícito entre lo que se esperaba y lo que pasó es lo que produce
+// aprendizaje, y sin la cuarta pregunta el ejercicio termina en descripción.
+// Las tres primeras las contesta el servidor con datos objetivos; la cuarta la
+// contesta Mau y es la única que se guarda como decisión.
 function PasoReflejar({
   ctx,
   reflexion,
+  queCambias,
   onChange,
+  onQueCambias,
   onIA,
   cargando,
 }: {
   ctx: ContextoPlaneacion
   reflexion: string
+  queCambias: string
   onChange: (v: string) => void
+  onQueCambias: (v: string) => void
   onIA: () => void
   cargando: boolean
 }): React.ReactElement {
   const a = ctx.anterior
   return (
     <div className="space-y-3">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">1 · Reflejar la semana que terminó</h2>
+      <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">1 · Reflejar: el AAR de la semana que terminó</h2>
 
       {!a ? (
         <p className="text-sm text-neutral-500">No hay semana anterior registrada. Este paso no aplica todavía.</p>
@@ -495,52 +569,168 @@ function PasoReflejar({
           <p className="text-xs text-neutral-500">
             La semana pasada está archivada. Estos números no son un veredicto — son la calibración de esta semana.
           </p>
-          <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-            <Dato etiqueta="Plan" valor={horas(a.planMin)} />
-            <Dato etiqueta="Real" valor={horas(a.realMin)} />
-            <Dato
-              etiqueta="Factor logrado"
-              valor={a.medicionIncompleta ? 'sin medir' : a.factorLogrado !== null ? String(a.factorLogrado) : '—'}
-            />
-            <Dato etiqueta="Tareas" valor={`${a.tareasHechas}/${a.tareasPlaneadas}`} />
-          </dl>
-          {a.medicionIncompleta && (
-            <p className="rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
-              Solo {a.tareasConTiempo} de {a.tareasHechas} tareas terminadas traen cronómetro, así que el factor logrado no dice
-              nada sobre tu velocidad — mide cuánto cronometraste.
-            </p>
-          )}
-          <ul className="space-y-1 text-sm">
-            {a.wins.map((w) => (
-              <li key={w.posicion} className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    w.estatus === 'logrado' ? 'bg-ok text-white' : w.estatus === 'fallido' ? 'bg-danger text-white' : 'bg-neutral-200 text-neutral-700'
-                  }`}
-                >
-                  {ESTATUS_WIN_LABEL[w.estatus] ?? w.estatus}
-                </span>
-                <span className="text-neutral-800">{w.titulo}</span>
-                <span className="text-xs text-neutral-400">
-                  {w.tareasHechas}/{w.tareasTotal}
-                </span>
-              </li>
-            ))}
-          </ul>
+
+          <Pregunta n={1} texto="¿Qué esperabas?">
+            <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <Dato etiqueta="Plan" valor={horas(a.planMin)} />
+              <Dato etiqueta="Tareas planeadas" valor={String(a.tareasPlaneadas)} />
+              <Dato etiqueta="Factor usado" valor={String(a.factorUsado)} />
+            </dl>
+            <ul className="mt-2 space-y-1 text-sm">
+              {a.wins.map((w) => (
+                <li key={w.posicion} className="text-neutral-800">
+                  <span className="text-neutral-400">Win {w.posicion} ·</span> {w.titulo}
+                </li>
+              ))}
+              {a.wins.length === 0 && <li className="text-xs text-neutral-400">Esa semana no comprometió Wins.</li>}
+            </ul>
+          </Pregunta>
+
+          <Pregunta n={2} texto="¿Qué pasó?">
+            <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <Dato etiqueta="Real" valor={horas(a.realMin)} />
+              <Dato etiqueta="Tareas hechas" valor={`${a.tareasHechas}/${a.tareasPlaneadas}`} />
+              <Dato
+                etiqueta="Factor logrado"
+                valor={a.medicionIncompleta ? 'sin medir' : a.factorLogrado !== null ? String(a.factorLogrado) : '—'}
+              />
+            </dl>
+            {a.medicionIncompleta && (
+              <p className="mt-2 rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn">
+                Solo {a.tareasConTiempo} de {a.tareasHechas} tareas terminadas traen cronómetro, así que el factor logrado no dice
+                nada sobre tu velocidad — mide cuánto cronometraste.
+              </p>
+            )}
+            <ul className="mt-2 space-y-1 text-sm">
+              {a.wins.map((w) => (
+                <li key={w.posicion} className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                      w.estatus === 'logrado' ? 'bg-ok text-white' : w.estatus === 'fallido' ? 'bg-danger text-white' : 'bg-neutral-200 text-neutral-700'
+                    }`}
+                  >
+                    {ESTATUS_WIN_LABEL[w.estatus] ?? w.estatus}
+                  </span>
+                  <span className="text-neutral-800">{w.titulo}</span>
+                  <span className="text-xs text-neutral-400">
+                    {w.tareasHechas}/{w.tareasTotal}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {a.tareasSinTerminar.length > 0 && (
+              <p className="mt-2 text-xs text-neutral-500">Quedó abierto: {a.tareasSinTerminar.join(' · ')}</p>
+            )}
+          </Pregunta>
+
+          <Pregunta n={3} texto="¿Por qué la brecha?">
+            <Brecha desvios={a.desvios} premortem={a.premortem} />
+          </Pregunta>
         </>
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <label className="text-xs font-semibold uppercase text-neutral-500">Reflexión</label>
+        <label className="text-xs font-semibold uppercase text-neutral-500">Narrativa del AAR</label>
         {a && <BotonIA onClick={onIA} cargando={cargando} texto="Redactar con IA" />}
       </div>
       <textarea
         value={reflexion}
         onChange={(e) => onChange(e.target.value)}
         rows={4}
-        placeholder="Qué se logró, qué se atoró, dónde se fue el tiempo…"
+        placeholder="Qué esperabas, qué pasó, por qué la brecha…"
         className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
       />
+
+      {/* La cuarta pregunta va con el acento de marca y no dentro del bloque de
+          datos: es la única que produce una decisión, y la única que la IA no
+          contesta. */}
+      <div className="rounded-lg border border-brand/40 bg-brand/5 p-3">
+        <label htmlFor="que-cambias" className="text-xs font-bold uppercase tracking-wide text-brand-deep">
+          4 · ¿Qué cambias esta semana?
+        </label>
+        <p className="mt-0.5 text-xs text-neutral-600">
+          Un cambio, concreto y observable. Sin esto el AAR se queda en descripción y la semana repite la brecha.
+        </p>
+        <input
+          id="que-cambias"
+          value={queCambias}
+          onChange={(e) => onQueCambias(e.target.value)}
+          placeholder="Ej. no agendo juntas antes de las 11 para proteger el bloque de análisis"
+          className="mt-2 w-full rounded border border-brand/40 px-2 py-1.5 text-sm text-neutral-900"
+        />
+      </div>
+    </div>
+  )
+}
+
+function Pregunta({ n, texto, children }: { n: number; texto: string; children: React.ReactNode }): React.ReactElement {
+  return (
+    <section className="rounded-lg border border-neutral-200 p-3">
+      <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">
+        {n} · {texto}
+      </h3>
+      <div className="mt-2">{children}</div>
+    </section>
+  )
+}
+
+function Brecha({
+  desvios,
+  premortem,
+}: {
+  desvios: RecapAnterior['desvios']
+  premortem: RecapAnterior['premortem']
+}): React.ReactElement {
+  return (
+    <div className="space-y-2 text-sm">
+      {desvios.diasReconciliados === 0 ? (
+        // Decirlo explícito importa: sin reconciliación la causa NO está medida,
+        // y la alternativa —inventar una explicación plausible— es justo lo que
+        // el AAR sobre datos objetivos existe para evitar.
+        <p className="text-xs text-neutral-500">
+          Ningún día de esa semana se reconcilió, así que la causa de la brecha no está medida. Cerrar el día en{' '}
+          <span className="font-semibold">/cierre</span> es lo que la vuelve dato.
+        </p>
+      ) : desvios.totalMin === 0 ? (
+        <p className="text-xs text-neutral-500">
+          {desvios.diasReconciliados} día(s) reconciliados y ningún desvío registrado: el plan no se rompió por ninguna causa
+          clasificada.
+        </p>
+      ) : (
+        <>
+          <ul className="space-y-1">
+            {desvios.porCausa.map((c) => (
+              <li key={c.causa} className="flex items-center justify-between gap-2">
+                <span className="text-neutral-800">
+                  {c.label}
+                  <span className="ml-1 text-xs text-neutral-400">le toca a {c.aQuienToca}</span>
+                </span>
+                <span className="shrink-0 font-mono text-xs text-neutral-600">
+                  {horas(c.minutos)} · {c.pct}%
+                </span>
+              </li>
+            ))}
+          </ul>
+          {desvios.dominante && (
+            <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+              Causa dominante: <strong>{desvios.dominante.label}</strong> — le toca a {desvios.dominante.aQuienToca}.
+            </p>
+          )}
+        </>
+      )}
+
+      {premortem.predichos === 0 ? (
+        <p className="text-xs text-neutral-400">Esa semana no hizo pre-mortem, así que no hay predicción que evaluar.</p>
+      ) : premortem.cerrados === 0 ? (
+        <p className="text-xs text-neutral-500">
+          {premortem.predichos} riesgo(s) predichos, ninguno evaluado al cerrar la semana: la predicción quedó sin veredicto.
+        </p>
+      ) : (
+        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+          Pre-mortem: predijiste <strong>{premortem.predichos}</strong>, ocurrieron <strong>{premortem.ocurrieron}</strong> de los{' '}
+          {premortem.cerrados} evaluados, y la defensa sirvió en <strong>{premortem.defensasSirvieron}</strong>.
+        </p>
+      )}
     </div>
   )
 }
@@ -556,11 +746,14 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }): React.R
 
 function PasoWins({
   wins,
+  aviso,
   onChange,
   onIA,
   cargando,
 }: {
   wins: WinDraft[]
+  // true cuando ya se intentó avanzar dejando Wins sin si-entonces.
+  aviso: boolean
   onChange: (w: WinDraft[]) => void
   onIA: () => void
   cargando: boolean
@@ -576,6 +769,13 @@ function PasoWins({
         <BotonIA onClick={onIA} cargando={cargando} texto="Sugerir con IA" />
       </div>
       <p className="text-xs text-neutral-500">Un Win es un resultado, no una actividad. Si no se puede declarar logrado o fallido, no es un Win.</p>
+
+      {aviso && (
+        <p className="rounded-lg border border-warn-border bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">
+          Hay Wins sin plan si-entonces. Un Win con la respuesta ya decidida antes del obstáculo se cumple mucho más seguido que
+          uno con pura intención — escríbelo, o vuelve a dar Siguiente para avanzar sin él.
+        </p>
+      )}
 
       {wins.map((w, i) => (
         <div key={i} className="space-y-1 rounded-lg border border-neutral-200 p-3">
@@ -597,6 +797,55 @@ function PasoWins({
             placeholder="¿Cómo sabrás que está logrado?"
             className="w-full rounded border border-neutral-200 px-2 py-1 text-xs text-neutral-900"
           />
+
+          {/* Solo aparece cuando el Win existe: pedir el plan de un Win vacío es
+              ruido, y son tres cajas por Win. */}
+          {w.titulo.trim() !== '' && (
+            <>
+              <input
+                value={w.siEntonces}
+                aria-label={`Plan si-entonces del Win ${i + 1}`}
+                onChange={(e) => editar(i, { siEntonces: e.target.value })}
+                placeholder="Si [obstáculo], entonces [acción]…"
+                className={`w-full rounded border px-2 py-1 text-xs text-neutral-900 ${
+                  w.siEntonces.trim() === '' && aviso ? 'border-warn-border bg-warn-soft' : 'border-neutral-200'
+                }`}
+              />
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-xs text-neutral-500">¿Esto hace la próxima semana ≥1% más fácil?</span>
+                <button
+                  type="button"
+                  aria-pressed={w.leverage === true}
+                  onClick={() => editar(i, { leverage: w.leverage === true ? null : true })}
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    w.leverage === true ? 'bg-brand-deep text-white' : 'border border-neutral-300 text-neutral-600'
+                  }`}
+                >
+                  Sí
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={w.leverage === false}
+                  onClick={() => editar(i, { leverage: w.leverage === false ? null : false })}
+                  className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                    w.leverage === false ? 'bg-neutral-700 text-white' : 'border border-neutral-300 text-neutral-600'
+                  }`}
+                >
+                  No
+                </button>
+              </div>
+              {/* No se prohíbe: se nombra. Un Win que no deja nada instalado
+                  puede seguir siendo el Win correcto de la semana —un entregable
+                  con fecha lo es— pero conviene haberlo decidido a propósito. */}
+              {w.leverage === false && (
+                <p className="text-xs text-neutral-500">
+                  Considera si es un Win o solo una tarea grande: un Win deja algo instalado —un proceso, una plantilla, una
+                  decisión— que la semana siguiente ya no vuelve a costar.
+                </p>
+              )}
+            </>
+          )}
         </div>
       ))}
     </div>
@@ -786,23 +1035,37 @@ function PasoBloquear({
       </div>
 
       <div
-        className={`rounded-lg px-3 py-2 text-sm font-semibold ${
-          bal.sobrecargado ? 'bg-danger-soft text-danger' : 'bg-brand-soft text-brand-deep'
-        }`}
+        className={`rounded-lg px-3 py-2 text-sm ${bal.sobrecargado ? 'bg-warn-soft text-warn' : 'bg-brand-soft text-brand-deep'}`}
       >
-        {bal.sobrecargado
-          ? `No cabe: ${horas(bal.cargaMin)} de carga contra ${horas(bal.planeableMin)} planeables. Se pasa ${horas(-bal.colchonMin)}.`
-          : `Cabe: ${horas(bal.cargaMin)} de carga, colchón de ${horas(bal.colchonMin)}.`}
+        {bal.sobrecargado ? (
+          <>
+            <span className="font-semibold">
+              No cabe: {horas(bal.cargaMin)} de carga contra {horas(bal.planeableMin)} planeables. Hay que mover{' '}
+              {horas(-bal.colchonMin)}.
+            </span>{' '}
+            {/* Lo planeable ya trae descontado el buffer de Settings; el mensaje
+                dice POR QUÉ ese límite existe en vez de solo señalar el exceso. */}
+            El plan al 100% degrada la capacidad de la semana siguiente — recorta {horas(-bal.colchonMin)} o desmarca esas tareas
+            en el paso 3 para dejarlas en backlog.
+          </>
+        ) : (
+          <span className="font-semibold">
+            Cabe: {horas(bal.cargaMin)} de carga, colchón de {horas(bal.colchonMin)}.
+          </span>
+        )}
       </div>
 
       <dl className="grid grid-cols-5 gap-1 text-center">
         {capacidad.dias.map((d) => {
           const asignado = items.filter((it) => it.fecha === d.fecha).reduce((s, it) => s + Math.round(it.estimadoMin * factor), 0)
           const libre = Math.round(d.horasLibres * 60)
+          // Un día sobreasignado es una advertencia, no algo destructivo ni
+          // atrasado: ámbar, que es lo que la gramática de color reserva para
+          // advertencias.
           return (
-            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-danger-soft' : 'bg-neutral-50'}`}>
+            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-warn-soft' : 'bg-neutral-50'}`}>
               <dt className="text-[10px] font-bold uppercase text-neutral-500">{d.fecha.slice(5)}</dt>
-              <dd className={`font-mono text-xs font-semibold ${asignado > libre ? 'text-danger' : 'text-neutral-900'}`}>
+              <dd className={`font-mono text-xs font-semibold ${asignado > libre ? 'text-warn' : 'text-neutral-900'}`}>
                 {horas(asignado)}
                 <span className="text-neutral-400">/{horas(libre)}</span>
               </dd>
@@ -951,13 +1214,17 @@ function PasoPreemptar({
       {agregadas.length > 0 && (
         <div
           className={`rounded-lg px-2 py-1.5 text-xs ${
-            bal.sobrecargado ? 'bg-danger-soft text-danger' : 'bg-brand-soft text-brand-deep'
+            bal.sobrecargado ? 'bg-warn-soft text-warn' : 'bg-brand-soft text-brand-deep'
           }`}
         >
           {bal.sobrecargado ? (
             <>
-              Con las medidas dentro te pasas <strong>{horas(-bal.colchonMin)}</strong> de lo planeable. Quita una medida, o
-              vuelve al <button onClick={() => onIrAlPaso(3)} className="underline">paso 4</button> y saca otra tarea.
+              Con las medidas dentro te pasas <strong>{horas(-bal.colchonMin)}</strong> de lo planeable, y la semana no se puede
+              cerrar así. Quita una medida, o vuelve al{' '}
+              <button onClick={() => onIrAlPaso(3)} className="underline">
+                paso 4
+              </button>{' '}
+              y saca otra tarea.
             </>
           ) : (
             <>

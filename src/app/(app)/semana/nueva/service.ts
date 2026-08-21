@@ -1,7 +1,9 @@
+import type { DesvioCausa } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isoWeekOf, weekRange } from '@/lib/dates'
 import { capacityForWeek, type CapacidadSemana } from '@/app/api/v1/capacity/service'
 import { competenciasParaPlaneacion, type CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
+import { getPatronDesvios } from '@/app/(app)/cierre/service'
 
 // Contexto que alimenta los 5 pasos del ritual. Todo se calcula aquí, en el
 // servidor: la IA solo redacta y sugiere sobre estos números ya cerrados. Ver
@@ -13,6 +15,32 @@ export type WinAnterior = {
   estatus: string
   tareasTotal: number
   tareasHechas: number
+}
+
+// Desvíos de la semana que terminó, ya agregados por causa. Es la respuesta a
+// "¿por qué la brecha?" del AAR: sin esto el paso 1 muestra que el plan se
+// rompió pero no POR QUÉ, y cada causa lleva a un trabajo distinto (cliente,
+// código, disciplina). Se lee del mismo cálculo que alimenta /cierre — una sola
+// definición de "causa dominante" en toda la app.
+export type DesviosSemana = {
+  diasReconciliados: number
+  totalMin: number
+  // Solo las causas con minutos: una lista con tres ceros no informa nada.
+  porCausa: Array<{ causa: DesvioCausa; label: string; minutos: number; pct: number; aQuienToca: string }>
+  dominante: { causa: DesvioCausa; label: string; minutos: number; pct: number; aQuienToca: string } | null
+}
+
+// Veredicto del pre-mortem de la semana pasada: cuántos riesgos se predijeron,
+// cuántos ocurrieron y en cuántos la defensa sirvió. Es lo que convierte el
+// pre-mortem en una predicción calibrable en vez de un ritual de escritura.
+// `cerrados` distingue "no ocurrió" de "la semana no se cerró": WeekRisk.ocurrio
+// es null mientras nadie lo evalúa, y contar ese null como "no ocurrió" inflaría
+// la puntería.
+export type VeredictoPremortem = {
+  predichos: number
+  cerrados: number
+  ocurrieron: number
+  defensasSirvieron: number
 }
 
 export type RecapAnterior = {
@@ -30,6 +58,10 @@ export type RecapAnterior = {
   medicionIncompleta: boolean
   tareasSinTerminar: string[]
   wins: WinAnterior[]
+  // Los dos insumos que vuelven el paso 1 un AAR y no un tablero de números:
+  // qué rompió el plan, y si lo que se predijo que lo rompería fue lo que pasó.
+  desvios: DesviosSemana
+  premortem: VeredictoPremortem
 }
 
 export type PendienteBacklog = {
@@ -75,15 +107,47 @@ function minutosReales(entries: Array<{ seconds: number }>): number {
   return Math.round(entries.reduce((s, e) => s + e.seconds, 0) / 60)
 }
 
+function iso(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+// Los desvíos del rango de la semana, ya clasificados por causa. Se delega en
+// `getPatronDesvios` en vez de reescribir la agregación: /cierre y el AAR tienen
+// que decir la MISMA causa dominante, o el paso 1 contradice al panel de 14 días.
+async function desviosDe(userId: string, isoWeek: string): Promise<DesviosSemana> {
+  const { inicio, fin } = weekRange(isoWeek)
+  const patron = await getPatronDesvios(userId, iso(inicio), iso(fin))
+  const conMinutos = patron.porCausa.filter((c) => c.minutos > 0)
+  return {
+    diasReconciliados: patron.diasReconciliados,
+    totalMin: patron.totalMin,
+    porCausa: conMinutos,
+    dominante: patron.dominante ? (conMinutos.find((c) => c.causa === patron.dominante) ?? null) : null,
+  }
+}
+
+function veredictoDe(riesgos: Array<{ ocurrio: boolean | null; defensaFunciono: boolean | null }>): VeredictoPremortem {
+  const cerrados = riesgos.filter((r) => r.ocurrio !== null)
+  return {
+    predichos: riesgos.length,
+    cerrados: cerrados.length,
+    ocurrieron: cerrados.filter((r) => r.ocurrio === true).length,
+    defensasSirvieron: cerrados.filter((r) => r.defensaFunciono === true).length,
+  }
+}
+
 async function recapDe(userId: string, isoWeek: string): Promise<RecapAnterior | null> {
   const week = await prisma.week.findUnique({
     where: { userId_isoWeek: { userId, isoWeek } },
     include: {
       wins: { orderBy: { posicion: 'asc' }, include: { tasks: { select: { estatus: true } } } },
       tasks: { select: { titulo: true, estatus: true, ajustadoMin: true, estimadoMin: true, timeEntries: { select: { seconds: true } } } },
+      riesgos: { orderBy: { orden: 'asc' }, select: { ocurrio: true, defensaFunciono: true } },
     },
   })
   if (!week) return null
+
+  const desvios = await desviosDe(userId, isoWeek)
 
   const planMin = week.tasks.reduce((s, t) => s + (t.ajustadoMin ?? t.estimadoMin ?? 0), 0)
   const realMin = week.tasks.reduce((s, t) => s + minutosReales(t.timeEntries), 0)
@@ -118,6 +182,8 @@ async function recapDe(userId: string, isoWeek: string): Promise<RecapAnterior |
       tareasTotal: w.tasks.length,
       tareasHechas: w.tasks.filter((t) => t.estatus === 'done').length,
     })),
+    desvios,
+    premortem: veredictoDe(week.riesgos),
   }
 }
 
@@ -187,5 +253,82 @@ export function balance(cargaAjustadaMin: number, capacidad: CapacidadSemana): B
     planeableMin,
     colchonMin: planeableMin - cargaAjustadaMin,
     sobrecargado: cargaAjustadaMin > planeableMin,
+  }
+}
+
+// ── El buffer deja de ser decorativo ────────────────────────────────────────
+//
+// `trabajablePlaneable` ya es (trabajable − buffer%): la resta del buffer ocurre
+// en capacityForWeek. Lo que faltaba era la CONSECUENCIA — hasta ahora el
+// planeador pintaba la sobrecarga en rojo y de todas formas dejaba crear la
+// semana, así que el buffer era una cifra en Settings, no una restricción.
+//
+// La regla: la carga aceptada no puede exceder lo planeable. No es prudencia
+// genérica; una semana planeada al 100% no deja margen para lo no previsto y el
+// desbordamiento se paga en la semana siguiente (Sonnentag: la recuperación es
+// condición del desempeño sostenido, no su recompensa).
+export type ValidacionCarga = {
+  ok: boolean
+  cargaMin: number
+  planeableMin: number
+  excedenteMin: number
+  mensaje: string | null
+}
+
+function horasTexto(min: number): string {
+  const h = min / 60
+  return `${Number.isInteger(h) ? h : h.toFixed(1)}h`
+}
+
+export function validarCarga(cargaAjustadaMin: number, capacidad: CapacidadSemana): ValidacionCarga {
+  const bal = balance(cargaAjustadaMin, capacidad)
+  const excedenteMin = Math.max(0, bal.cargaMin - bal.planeableMin)
+  return {
+    ok: excedenteMin === 0,
+    cargaMin: bal.cargaMin,
+    planeableMin: bal.planeableMin,
+    excedenteMin,
+    // Tono de calibración, no de regaño: dice qué pasa y cuánto hay que mover.
+    mensaje: mensajeDeCarga(excedenteMin, bal.planeableMin),
+  }
+}
+
+function mensajeDeCarga(excedenteMin: number, planeableMin: number): string | null {
+  if (excedenteMin === 0) return null
+  // Sin tiempo planeable, "recorta 12h" es un callejón sin salida: no hay
+  // recorte que alcance porque el problema no es la carga, es el calendario.
+  // Decir qué palanca sí existe es la diferencia entre una compuerta y un muro.
+  if (planeableMin <= 0) {
+    return 'Esta semana no tiene tiempo planeable: el calendario la ocupa completa. Libera juntas, o ajusta tu jornada y tu buffer en Settings antes de planear.'
+  }
+  return `El plan al 100% degrada la capacidad de la semana siguiente — recorta ${horasTexto(excedenteMin)} o muévelas a backlog.`
+}
+
+// ── "¿Qué cambias esta semana?" ─────────────────────────────────────────────
+//
+// La cuarta pregunta del AAR es la única que produce una decisión, y por eso se
+// guarda. Va dentro de `Week.reflexion` con una marca en vez de en una columna
+// nueva: el recap ya vive ahí, es el mismo texto de la misma semana, y una
+// columna extra obligaría a mantener dos campos sincronizados para leerlos
+// siempre juntos.
+export const MARCA_CAMBIO = 'Qué cambio esta semana:'
+
+export function componerReflexion(recap: string, queCambias: string): string | undefined {
+  const base = recap.trim()
+  const cambio = queCambias.trim()
+  if (cambio === '') return base === '' ? undefined : base
+  const linea = `${MARCA_CAMBIO} ${cambio}`
+  return base === '' ? linea : `${base}\n\n${linea}`
+}
+
+// Inverso de `componerReflexion`, para que reabrir el planeador (o leer la
+// semana desde otra vista) no tenga que parsear a ojo.
+export function separarReflexion(texto: string | null | undefined): { recap: string; queCambias: string } {
+  if (!texto) return { recap: '', queCambias: '' }
+  const i = texto.lastIndexOf(MARCA_CAMBIO)
+  if (i === -1) return { recap: texto.trim(), queCambias: '' }
+  return {
+    recap: texto.slice(0, i).trim(),
+    queCambias: texto.slice(i + MARCA_CAMBIO.length).trim(),
   }
 }

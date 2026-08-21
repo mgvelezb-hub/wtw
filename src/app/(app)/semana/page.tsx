@@ -27,7 +27,16 @@ export default async function SemanaPage() {
   return (
     <main className="min-h-dvh bg-neutral-50">
       <SemanaBoard
-        wins={view.week.wins}
+        // Objeto plano y no la fila de Prisma: el board solo usa estos campos, y
+        // mandar el modelo completo cruza el límite RSC con columnas que no ocupa.
+        wins={view.week.wins.map((w) => ({
+          id: w.id,
+          posicion: w.posicion,
+          titulo: w.titulo,
+          dod: w.dod,
+          siEntonces: w.siEntonces,
+          estatus: w.estatus,
+        }))}
         blocks={view.week.blocks}
         cargaHoras={view.cargaHoras}
         trabajableTotal={view.capacidad.trabajableTotal}

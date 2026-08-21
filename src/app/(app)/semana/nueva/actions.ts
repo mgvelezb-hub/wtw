@@ -3,9 +3,11 @@
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createWeekPayload } from '@/app/api/v1/weeks/service'
+import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { isoWeekOf } from '@/lib/dates'
+import { componerReflexion, validarCarga } from './service'
 
-export type NuevaSemanaWin = { titulo: string; dod?: string }
+export type NuevaSemanaWin = { titulo: string; dod?: string; siEntonces?: string }
 
 // Una tarea del ritual puede venir del backlog (ya existe: `id`) o haberse
 // capturado en el paso 3 (nueva: sin `id`). Se resuelven por caminos distintos
@@ -28,6 +30,10 @@ export type NuevaSemanaTask = {
 
 export type CrearSemanaInput = {
   reflexion?: string
+  // La cuarta pregunta del AAR del paso 1. Llega aparte del recap y se une a él
+  // aquí (`componerReflexion`): el cliente no decide el formato de lo que se
+  // guarda.
+  queCambias?: string
   desbloqueador?: string
   riesgos?: Array<{ riesgo: string; defensa: string }>
   wins: NuevaSemanaWin[]
@@ -41,6 +47,16 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } })
   const factorUsado = user.factorManual ? Number(user.factorManual) : 1.4
   const ajustado = (min: number) => Math.round(min * factorUsado)
+
+  const isoWeek = isoWeekOf(new Date())
+
+  // El tope de carga se revalida en el servidor y no solo en el wizard: el botón
+  // deshabilitado es una cortesía de UI, la restricción es esta. Se calcula con
+  // el MISMO factor con el que se van a guardar los ajustadoMin, para que lo que
+  // se valida sea exactamente lo que se escribe.
+  const cargaAjustadaMin = input.tasks.reduce((s, t) => s + ajustado(t.estimadoMin > 0 ? t.estimadoMin : 30), 0)
+  const carga = validarCarga(cargaAjustadaMin, await capacityForWeek(session.userId, isoWeek))
+  if (!carga.ok) throw new Error(carga.mensaje!)
 
   const nuevas = input.tasks.filter((t) => !t.id)
   const delBacklog = input.tasks.filter((t) => t.id)
@@ -58,16 +74,16 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
     t.competenciaId && validas.has(t.competenciaId) ? [t.competenciaId] : undefined
 
   await createWeekPayload(session.userId, {
-    isoWeek: isoWeekOf(new Date()),
+    isoWeek,
     factorUsado,
-    reflexion: input.reflexion,
+    reflexion: componerReflexion(input.reflexion ?? '', input.queCambias ?? ''),
     desbloqueador: input.desbloqueador,
     riesgos: input.riesgos,
     // El planeador sí reutiliza el cascarón que Mi Día haya creado — de otro modo
     // planear el lunes después de abrir Mi Día es imposible. La guarda de "ya
     // tiene plan" sigue protegiendo contra duplicar una semana real.
     reutilizarVacia: true,
-    wins: input.wins.map((w, i) => ({ posicion: i + 1, titulo: w.titulo, dod: w.dod })),
+    wins: input.wins.map((w, i) => ({ posicion: i + 1, titulo: w.titulo, dod: w.dod, siEntonces: w.siEntonces })),
     tasks: nuevas.map((t) => ({
       ref: t.ref,
       titulo: t.titulo,

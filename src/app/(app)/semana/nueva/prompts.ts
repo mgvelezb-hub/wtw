@@ -6,12 +6,25 @@ const VOZ = `Escribes para Mau, consultor de operaciones y transporte que trabaj
 Tono directo, en español de México, sin florituras ni motivación de coach.
 Nunca inventes datos que no estén en el contexto que te dan.`
 
+// El paso 1 es un After Action Review, no un resumen. La diferencia está en la
+// estructura: un AAR contrasta lo esperado contra lo ocurrido y NOMBRA la causa
+// de la brecha; un resumen solo narra. Esa estructura es la que carga el efecto,
+// y solo funciona sobre datos objetivos — por eso los desvíos y el veredicto del
+// pre-mortem llegan ya resueltos por el servidor, como el resto de los números
+// de este archivo: el modelo no calcula, redacta.
 export const RECAP = `${VOZ}
 
-Te doy los números de la semana que terminó. Redacta un recap de 3 a 4 frases que
-responda: qué se logró, qué se atoró, y dónde se fue el tiempo respecto al plan.
+Te doy los números de la semana que terminó, ya calculados. Redacta un After
+Action Review de 4 a 5 frases que responda, EN ESTE ORDEN:
+1. Qué se esperaba: el plan y los Wins comprometidos.
+2. Qué pasó: lo medido y lo que quedó abierto.
+3. Por qué la brecha: la causa dominante de los desvíos, y el veredicto del
+   pre-mortem si lo hubo.
 
-La semana que terminó ya está archivada: el recap la lee para calibrar la que
+La cuarta pregunta del AAR —qué cambia esta semana— la contesta Mau a mano. NO la
+respondas ni sugieras qué hacer.
+
+La semana que terminó ya está archivada: el AAR la lee para calibrar la que
 sigue, no para juzgarla. Trátala como el registro de un experimento, no como una
 racha rota ni un examen reprobado.
 
@@ -21,6 +34,11 @@ Reglas:
 - Si hay Wins fallidos, nómbralos con el mismo tono que el resto del dato — no
   los suavices, pero tampoco los conviertas en un reproche. "No se logró X" es
   un dato de calibración; "fallaste en X" no lo es.
+- La causa de la brecha sale de los desvíos que te doy. Si no hay desvíos
+  registrados, dilo así —"la semana no se reconcilió, así que la causa no está
+  medida"— en vez de inventar una explicación plausible.
+- Si te doy el veredicto del pre-mortem, di si lo que se predijo fue lo que pasó.
+  Acertar y fallar la predicción informan igual.
 - Nada de recomendaciones para la semana que entra — eso es otro paso.
 - Solo prosa, sin encabezados ni listas.`
 
@@ -35,8 +53,18 @@ cercanos. Propón exactamente 3 candidatos, priorizando:
 2. Compromisos con deadline dentro de la semana
 3. Lo que desatora más trabajo aguas abajo
 
+Cada candidato lleva un plan si-entonces: el obstáculo concreto que más
+probablemente lo descarrile, y la acción específica que Mau ejecuta cuando
+aparezca. Formato exacto: "Si <obstáculo>, entonces <acción>".
+- El obstáculo es una situación reconocible en el momento ("si el cliente manda
+  data el jueves"), no un estado de ánimo genérico ("si me desmotivo").
+- La acción es ejecutable sin decidir nada más ("entonces reagendo el análisis al
+  viernes 9am y aviso"), no una intención ("entonces me esfuerzo más").
+Es una propuesta: Mau la edita. Por eso tiene que ser concreta y falsable, no
+segura y vacía.
+
 Responde SOLO un array JSON, sin markdown ni explicación:
-[{"titulo":"...","dod":"cómo sabrás que está logrado, en una frase","porque":"una frase"}]`
+[{"titulo":"...","dod":"cómo sabrás que está logrado, en una frase","siEntonces":"Si ..., entonces ...","porque":"una frase"}]`
 
 export const ESTIMAR = `${VOZ}
 
