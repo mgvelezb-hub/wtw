@@ -3,6 +3,7 @@ import { getProyectoDetalle } from './service'
 import { listMinutasAction, listStatusArtifactsAction } from './status-actions'
 import { MinutasSection } from './MinutasSection'
 import { StatusEquipoSection } from './StatusEquipoSection'
+import { EntregablesSection } from './EntregablesSection'
 
 export default async function ProyectoDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await verifySession()
@@ -32,26 +33,7 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
           {detalle.project.cliente && <p className="text-sm text-neutral-500">{detalle.project.cliente}</p>}
         </div>
 
-        <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Entregables</h2>
-          <div className="space-y-2">
-            {detalle.entregables.map((e) => (
-              <div key={e.id} className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-neutral-900">{e.nombre}</span>
-                  <span className={e.semaforo === 'atrasado' ? 'text-red-600' : 'text-green-600'}>
-                    {e.semaforo === 'atrasado' ? '🔴 Atrasado' : '🟢 A tiempo'}
-                  </span>
-                </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                  <div className="h-full bg-[#0A7C82]" style={{ width: `${e.avancePct}%` }} />
-                </div>
-                <p className="mt-1 text-xs text-neutral-500">{e.avancePct}% avance</p>
-              </div>
-            ))}
-            {detalle.entregables.length === 0 && <p className="text-sm text-neutral-400">Sin entregables registrados.</p>}
-          </div>
-        </section>
+        <EntregablesSection entregables={detalle.entregables} projectId={id} />
 
         <section>
           <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Pendientes abiertos</h2>
