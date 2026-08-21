@@ -19,6 +19,43 @@ const ETIQUETA_ESTADO: Record<string, string> = {
   descartado: 'descartado',
 }
 
+// Sección colapsable reusable — misma pieza que en DesarrolloBoard.tsx. Se
+// duplica en vez de importarse entre archivos hermanos para no crear un
+// acoplamiento nuevo entre los dos componentes de la página.
+function Seccion({
+  titulo,
+  resumen,
+  defaultAbierto,
+  children,
+}: {
+  titulo: string
+  resumen?: string
+  defaultAbierto: boolean
+  children: React.ReactNode
+}): React.ReactElement {
+  const [abierto, setAbierto] = useState(defaultAbierto)
+
+  return (
+    <section className="rounded-xl border border-neutral-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left"
+      >
+        <span className="min-w-0">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">{titulo}</h2>
+          {resumen && <p className="mt-0.5 truncate text-xs text-neutral-500">{resumen}</p>}
+        </span>
+        <span className={`shrink-0 text-neutral-400 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden>
+          ▾
+        </span>
+      </button>
+      {abierto && <div className="space-y-4 px-4 pb-4">{children}</div>}
+    </section>
+  )
+}
+
 function Recurso({
   r,
   pending,
@@ -166,20 +203,20 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
   const { resumen } = catalogo
 
   return (
-    <div className="space-y-4">
+    <Seccion
+      titulo="Material de desarrollo"
+      resumen={`${resumen.total} recursos · ${resumen.hechos} hechos · ${resumen.enCurso} en curso · ${resumen.practicados} prácticas registradas`}
+      defaultAbierto={false}
+    >
+      <p className="-mt-2 text-xs text-neutral-500">
+        Esto es el 10% del 70-20-10: existe para que la práctica sea deliberada, no para leerse completo.
+      </p>
+
       {error && (
         <p role="alert" className="rounded-lg border border-danger bg-red-50 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
-
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Material de desarrollo</h2>
-        <p className="mt-1 text-xs text-neutral-500">
-          {resumen.total} recursos · {resumen.hechos} hechos · {resumen.enCurso} en curso · {resumen.practicados} prácticas
-          registradas. Esto es el 10% del 70-20-10: existe para que la práctica sea deliberada, no para leerse completo.
-        </p>
-      </section>
 
       {catalogo.practicas.length > 0 && (
         <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
@@ -269,6 +306,6 @@ export function CatalogoSection({ catalogo }: { catalogo: CatalogoDesarrollo }):
           </div>
         )}
       </section>
-    </div>
+    </Seccion>
   )
 }

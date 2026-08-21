@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { DesarrolloView, CompetenciaOpcion, HistorialRiesgos } from './service'
+import type { DesarrolloView, CompetenciaOpcion, HistorialRiesgos, CompetenciaCobertura } from './service'
 import { registrarEvidenciaAction, cerrarRiesgoAction, reabrirRiesgoAction } from './actions'
 
 type BitacoraSerializada = {
@@ -16,6 +16,111 @@ function horas(min: number): string {
   const m = min % 60
   if (h === 0) return `${m}m`
   return m === 0 ? `${h}h` : `${h}h ${m}m`
+}
+
+// Sección colapsable reusable — la página es larga porque el tablero educa a
+// propósito (cada bloque explica su función), no porque haya que amontonarlo
+// todo visible a la vez. El header siempre resume lo suficiente para decidir
+// si vale la pena abrir.
+function Seccion({
+  titulo,
+  resumen,
+  contador,
+  defaultAbierto,
+  variant = 'default',
+  children,
+}: {
+  titulo: string
+  resumen?: string
+  contador?: number
+  defaultAbierto: boolean
+  variant?: 'default' | 'brand' | 'warn'
+  children: React.ReactNode
+}): React.ReactElement {
+  const [abierto, setAbierto] = useState(defaultAbierto)
+
+  const wrapperClase =
+    variant === 'brand'
+      ? 'rounded-xl border-2 border-brand-deep bg-white shadow-sm'
+      : variant === 'warn'
+        ? 'rounded-xl border border-warn-border bg-warn-soft'
+        : 'rounded-xl border border-neutral-200 bg-white shadow-sm'
+
+  const tituloClase =
+    variant === 'warn'
+      ? 'text-xs font-bold uppercase tracking-wide text-warn'
+      : 'text-xs font-bold uppercase tracking-wide text-brand-deep'
+
+  const resumenClase = variant === 'warn' ? 'mt-0.5 truncate text-xs text-warn' : 'mt-0.5 truncate text-xs text-neutral-500'
+
+  return (
+    <section className={wrapperClase}>
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left"
+      >
+        <span className="min-w-0">
+          <h2 className={tituloClase}>{titulo}</h2>
+          {resumen && <p className={resumenClase}>{resumen}</p>}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {contador !== undefined && (
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-bold text-neutral-500">
+              {contador}
+            </span>
+          )}
+          <span className={`text-neutral-400 transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden>
+            ▾
+          </span>
+        </span>
+      </button>
+      {abierto && <div className="px-4 pb-4">{children}</div>}
+    </section>
+  )
+}
+
+// Sub-acordeón para agrupar los huecos por rubro dentro de la sección de
+// Huecos — evita la lista plana de 41 reactivos amarillos amontonados.
+function SubSeccionRubro({
+  rubro,
+  competencias,
+}: {
+  rubro: string
+  competencias: CompetenciaCobertura[]
+}): React.ReactElement {
+  const [abierto, setAbierto] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-warn-border/60 bg-white/60">
+      <button
+        type="button"
+        onClick={() => setAbierto((v) => !v)}
+        aria-expanded={abierto}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+      >
+        <span className="text-xs font-semibold text-warn">{rubro}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full bg-warn-soft px-1.5 py-0.5 font-mono text-[10px] font-bold text-warn">
+            ({competencias.length})
+          </span>
+          <span className={`text-warn transition-transform ${abierto ? 'rotate-180' : ''}`} aria-hidden>
+            ▾
+          </span>
+        </span>
+      </button>
+      {abierto && (
+        <ul className="space-y-1 px-3 pb-2">
+          {competencias.map((c) => (
+            <li key={c.id} className="text-sm text-warn">
+              {c.texto}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 export function DesarrolloBoard({
@@ -37,6 +142,23 @@ export function DesarrolloBoard({
   const [pending, startTransition] = useTransition()
 
   const pct = view.totalReactivos > 0 ? Math.round((view.totalConEvidencia / view.totalReactivos) * 100) : 0
+
+  const objConEvidencia = view.objetivo ? view.objetivo.reactivos.filter((r) => r.evidenciaCount > 0).length : 0
+
+  // Huecos agrupados por rubro — la usuaria pidió "difícil entender su función",
+  // y una lista plana de 41 amarillos era justo eso. GRUPO_INDIVIDUAL vive en
+  // service.ts pero huecos ya trae `grupo: string | null`, así que el fallback
+  // visual replica el que usaba la lista plana original.
+  const huecosPorRubro = new Map<string, CompetenciaCobertura[]>()
+  for (const c of view.huecos) {
+    const clave = c.grupo ?? 'Individual'
+    const lista = huecosPorRubro.get(clave)
+    if (lista) {
+      lista.push(c)
+    } else {
+      huecosPorRubro.set(clave, [c])
+    }
+  }
 
   function accionRiesgo(fn: () => Promise<void>): void {
     setError(null)
@@ -86,11 +208,13 @@ export function DesarrolloBoard({
       </header>
 
       {view.objetivo && view.objetivo.reactivos.length > 0 && (
-        <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">
-            Reactivos de {view.objetivo.nombre} — instrumento de VP
-          </h2>
-          <p className="mt-1 text-xs text-neutral-500">
+        <Seccion
+          titulo={`Reactivos de ${view.objetivo.nombre} — instrumento de VP`}
+          resumen={`${objConEvidencia}/${view.objetivo.reactivos.length} con evidencia · la medición que decide la promoción`}
+          defaultAbierto
+          variant="brand"
+        >
+          <p className="text-xs text-neutral-500">
             Esta es la medición que decide la promoción. Se evalúa en escala de 4: Sobresaliente, Satisfactorio, Se perciben
             brechas, No aplica.
           </p>
@@ -117,19 +241,16 @@ export function DesarrolloBoard({
               </li>
             ))}
           </ul>
-        </section>
+        </Seccion>
       )}
 
       {view.objetivo && view.objetivo.reactivos.length === 0 && (
-        <section className="rounded-xl border border-warn-border bg-warn-soft p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-warn">
-            {view.objetivo.nombre} — sin reactivos cargados
-          </h2>
-          <p className="mt-1 text-xs text-warn">
+        <Seccion titulo={`${view.objetivo.nombre} — sin reactivos cargados`} defaultAbierto variant="warn">
+          <p className="text-xs text-warn">
             El documento de VP no publica los reactivos de este nivel. En cuanto existan, se cargan en
             <code className="ml-1">prisma/seed-data/reactivos-nivel.ts</code>.
           </p>
-        </section>
+        </Seccion>
       )}
 
       <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
@@ -206,23 +327,22 @@ export function DesarrolloBoard({
       </section>
 
       {view.huecos.length > 0 && (
-        <section className="rounded-xl border border-warn-border bg-warn-soft p-4">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-warn">
-            Huecos — {view.huecos.length} reactivos sin evidencia
-          </h2>
-          <p className="mt-1 text-xs text-warn">Esta es la lista de trabajo real, no la de competencias que ya dominas.</p>
-          <ul className="mt-2 space-y-1">
-            {view.huecos.map((c) => (
-              <li key={c.id} className="text-sm text-warn">
-                <span className="font-semibold">{c.grupo ?? 'Individual'}</span> · {c.texto}
-              </li>
+        <Seccion
+          titulo={`Huecos — ${view.huecos.length} reactivos sin evidencia`}
+          contador={view.huecos.length}
+          variant="warn"
+          defaultAbierto={false}
+        >
+          <p className="text-xs text-warn">Esta es la lista de trabajo real, no la de competencias que ya dominas.</p>
+          <div className="mt-2 space-y-2">
+            {[...huecosPorRubro.entries()].map(([rubro, competencias]) => (
+              <SubSeccionRubro key={rubro} rubro={rubro} competencias={competencias} />
             ))}
-          </ul>
-        </section>
+          </div>
+        </Seccion>
       )}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-brand-deep">Cobertura por grupo</h2>
+      <Seccion titulo="Cobertura por grupo" defaultAbierto>
         <ul className="space-y-2">
           {view.grupos.map((g) => {
             const gpct = g.total > 0 ? Math.round((g.conEvidencia / g.total) * 100) : 0
@@ -244,17 +364,20 @@ export function DesarrolloBoard({
             )
           })}
         </ul>
-      </section>
+      </Seccion>
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Pre-mortem — capacidad predictiva</h2>
+      <Seccion
+        titulo="Pre-mortem — capacidad predictiva"
+        resumen={`${riesgos.total} predichos · ${riesgos.cerrados} cerrados`}
+        defaultAbierto={false}
+      >
         {riesgos.total === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500">
             Sin riesgos registrados todavía. El paso 5 del planeador semanal los genera; se cierran al cerrar la semana.
           </p>
         ) : (
           <>
-            <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <dl className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded bg-neutral-50 px-2 py-1">
                 <dt className="text-[10px] font-bold uppercase text-neutral-500">Predichos</dt>
                 <dd className="font-mono text-sm font-semibold text-neutral-900">{riesgos.total}</dd>
@@ -336,17 +459,25 @@ export function DesarrolloBoard({
             )}
           </>
         )}
-      </section>
+      </Seccion>
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Bitácora de delegación</h2>
+      <Seccion
+        titulo="Bitácora de delegación"
+        resumen={
+          bitacora.tareas.length === 0
+            ? undefined
+            : `${bitacora.tareas.length} tareas · ${horas(bitacora.minutosTotales)}${bitacora.desde ? ` desde ${bitacora.desde}` : ''}`
+        }
+        contador={bitacora.tareas.length}
+        defaultAbierto={false}
+      >
         {bitacora.tareas.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500">
+          <p className="text-sm text-neutral-500">
             Nada marcado como delegable. En Mi Día, marca las tareas que hiciste tú pero debió hacer un perfil más junior.
           </p>
         ) : (
           <>
-            <p className="mt-2 text-sm text-neutral-700">
+            <p className="text-sm text-neutral-700">
               <strong className="font-mono">{horas(bitacora.minutosTotales)}</strong> de trabajo delegable
               {bitacora.desde && <span className="text-neutral-500"> desde {bitacora.desde}</span>} ·{' '}
               {bitacora.tareas.length} tareas
@@ -369,7 +500,7 @@ export function DesarrolloBoard({
             </ul>
           </>
         )}
-      </section>
+      </Seccion>
     </div>
   )
 }
