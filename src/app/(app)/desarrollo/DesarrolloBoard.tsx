@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import type {
   DesarrolloView,
   CompetenciaOpcion,
@@ -10,7 +10,10 @@ import type {
   ReactivoPatron,
 } from './service'
 import { registrarEvidenciaAction, cerrarRiesgoAction, reabrirRiesgoAction } from './actions'
+import type { PropuestaView } from './literatura-service'
+import { listarPropuestasAction, registrarPropuestaAction, actualizarPropuestaAction } from './literatura-actions'
 import { AyudaContextual } from '@/components/ayuda-contextual'
+import { CampoEnLinea } from '@/components/inline-controls'
 
 type BitacoraSerializada = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
@@ -258,6 +261,208 @@ function PatronSection({ patron }: { patron: PatronNivel }): React.ReactElement 
         </p>
       )}
     </section>
+  )
+}
+
+// ── Log de propuestas desde literatura (reactivo 11 de Gerente) ────────────
+// Es su propio bloque, self-contenido: trae su lista con `listarPropuestasAction`
+// en useEffect en vez de recibirla como prop de DesarrolloBoard — mismo patrón
+// que MinutaDrawer con `getMinutaExistenteAction`. Así el resto del tablero no
+// se toca para alimentar esta sección.
+
+function PropuestaCard({
+  p,
+  onActualizar,
+  disabled,
+}: {
+  p: PropuestaView
+  onActualizar: (id: string, cambio: { dondePropuse?: string; queParo?: string }) => void
+  disabled: boolean
+}): React.ReactElement {
+  return (
+    <li className="rounded-lg border border-neutral-200 p-3">
+      <p className="text-sm text-neutral-800">{p.insight}</p>
+      <p className="mt-1 text-xs text-neutral-500">
+        Fuente: {p.fuente} · <span className="font-mono">{p.fecha}</span>
+      </p>
+      <p className="mt-1.5 text-xs text-neutral-600">
+        Dónde la propuse: {p.dondePropuse ?? <span className="text-neutral-400">sin registrar</span>}
+        <CampoEnLinea
+          icono="✎"
+          titulo="Editar dónde la propuse"
+          valorInicial={p.dondePropuse ?? ''}
+          placeholder="Proyecto o junta"
+          ancho="w-40"
+          parse={(raw) => raw}
+          disabled={disabled}
+          className="ml-1 text-[11px] font-bold text-brand-deep"
+          onSubmit={(valor) => onActualizar(p.id, { dondePropuse: String(valor) })}
+        />
+      </p>
+      <p className="mt-1 text-xs text-neutral-600">
+        Qué pasó: {p.queParo ?? <span className="text-neutral-400">pendiente de saber</span>}
+        <CampoEnLinea
+          icono="✎"
+          titulo="Completar qué pasó"
+          valorInicial={p.queParo ?? ''}
+          placeholder="Se adoptó / se descartó / en evaluación"
+          ancho="w-48"
+          parse={(raw) => raw}
+          disabled={disabled}
+          className="ml-1 text-[11px] font-bold text-brand-deep"
+          onSubmit={(valor) => onActualizar(p.id, { queParo: String(valor) })}
+        />
+      </p>
+    </li>
+  )
+}
+
+function PropuestasLiteraturaSection(): React.ReactElement {
+  const [propuestas, setPropuestas] = useState<PropuestaView[] | null>(null)
+  const [abierto, setAbierto] = useState(false)
+  const [insight, setInsight] = useState('')
+  const [fuente, setFuente] = useState('')
+  const [dondePropuse, setDondePropuse] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    listarPropuestasAction()
+      .then(setPropuestas)
+      .catch(() => setPropuestas([]))
+  }, [])
+
+  function refrescar(): void {
+    startTransition(async () => {
+      try {
+        setPropuestas(await listarPropuestasAction())
+      } catch {
+        // La lista se queda como estaba — no vale la pena tapar la sección por un refresh fallido.
+      }
+    })
+  }
+
+  function actualizar(id: string, cambio: { dondePropuse?: string; queParo?: string }): void {
+    setError(null)
+    startTransition(async () => {
+      try {
+        await actualizarPropuestaAction(id, cambio)
+        setPropuestas(await listarPropuestasAction())
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se pudo actualizar la propuesta.')
+      }
+    })
+  }
+
+  return (
+    <Seccion
+      titulo="Propuestas desde literatura"
+      resumen="idea → fuente → dónde la propusiste → qué pasó"
+      contador={propuestas?.length ?? 0}
+      defaultAbierto={false}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-neutral-500">
+          Es el criterio más fácil de perder en el ruido — regístralo al momento, no de memoria semanas después.
+        </p>
+        <AyudaContextual
+          titulo="El reactivo 11 se demuestra con este registro"
+          alineacion="derecha"
+          ejemplo="Leíste un patrón en un libro, lo propusiste en el comité de Liverpool, y dos semanas después se adoptó."
+        >
+          El reactivo 11 se demuestra con este registro: idea → fuente → dónde la propusiste → qué pasó. Una
+          propuesta adoptada es evidencia; regístrala también en evidencia con testigo.
+        </AyudaContextual>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-wide text-brand-deep">Registrar propuesta</span>
+        <button
+          type="button"
+          onClick={() => {
+            setAbierto((v) => !v)
+            setError(null)
+          }}
+          className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
+        >
+          {abierto ? 'Cerrar' : '+ Nueva'}
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="mt-2 rounded border border-danger bg-red-50 px-3 py-2 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      {abierto && (
+        <div className="mt-2 space-y-2">
+          <input
+            value={insight}
+            onChange={(e) => setInsight(e.target.value)}
+            placeholder="La idea o patrón…"
+            aria-label="Insight"
+            className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+          />
+          <input
+            value={fuente}
+            onChange={(e) => setFuente(e.target.value)}
+            placeholder="Fuente: libro, paper, u otro proyecto…"
+            aria-label="Fuente"
+            className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+          />
+          <input
+            value={dondePropuse}
+            onChange={(e) => setDondePropuse(e.target.value)}
+            placeholder="¿Dónde la propusiste? (opcional)"
+            aria-label="Dónde la propuse"
+            className="w-full rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+          />
+          <button
+            disabled={pending || insight.trim() === '' || fuente.trim() === ''}
+            onClick={() => {
+              setError(null)
+              startTransition(async () => {
+                try {
+                  await registrarPropuestaAction({ insight, fuente, dondePropuse })
+                  setInsight('')
+                  setFuente('')
+                  setDondePropuse('')
+                  setAbierto(false)
+                  setPropuestas(await listarPropuestasAction())
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'No se pudo registrar.')
+                }
+              })
+            }}
+            className="rounded-full bg-brand-deep px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+          >
+            {pending ? 'Guardando…' : 'Guardar propuesta'}
+          </button>
+        </div>
+      )}
+
+      {propuestas === null ? (
+        <p className="mt-3 text-sm text-neutral-500">Cargando…</p>
+      ) : propuestas.length === 0 ? (
+        <p className="mt-3 text-sm text-neutral-500">
+          Sin propuestas registradas. La próxima vez que una idea de un libro, un curso o de otro proyecto te lleve a
+          proponer algo, regístrala aquí antes de que se pierda en el ruido.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {propuestas.map((p) => (
+            <PropuestaCard key={p.id} p={p} onActualizar={actualizar} disabled={pending} />
+          ))}
+        </ul>
+      )}
+
+      {!abierto && propuestas !== null && propuestas.length > 0 && (
+        <button type="button" onClick={refrescar} className="mt-2 text-[11px] font-bold text-neutral-400 hover:text-brand-deep">
+          refrescar
+        </button>
+      )}
+    </Seccion>
   )
 }
 
