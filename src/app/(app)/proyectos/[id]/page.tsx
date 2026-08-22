@@ -14,8 +14,8 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
 
   if (!detalle) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-neutral-50">
-        <p className="text-sm text-neutral-500">Proyecto no encontrado.</p>
+      <main className="flex min-h-dvh items-center justify-center bg-paper">
+        <p className="text-sm text-muted">Proyecto no encontrado.</p>
       </main>
     )
   }
@@ -26,25 +26,25 @@ export default async function ProyectoDetallePage({ params }: { params: Promise<
   ])
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
-      <div className="mx-auto max-w-2xl space-y-6 p-4">
+    <main className="min-h-dvh bg-paper">
+      <div className="mx-auto max-w-2xl space-y-8 p-4">
         <div>
-          <h1 className="text-lg font-bold text-neutral-900">{detalle.project.nombre}</h1>
-          {detalle.project.cliente && <p className="text-sm text-neutral-500">{detalle.project.cliente}</p>}
+          <h1 className="text-2xl font-semibold text-ink">{detalle.project.nombre}</h1>
+          {detalle.project.cliente && <p className="text-sm text-muted">{detalle.project.cliente}</p>}
         </div>
 
         <EntregablesSection entregables={detalle.entregables} projectId={id} />
 
-        <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Pendientes abiertos</h2>
-          <div className="space-y-2">
+        <section className="hair pt-6">
+          <h2 className="lbl mb-2">Pendientes abiertos</h2>
+          <div className="divide-y divide-hair">
             {detalle.issuesAbiertos.map((i) => (
-              <div key={i.id} className="rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-sm">
-                <span className="mr-2 rounded bg-neutral-100 px-1.5 py-0.5 text-xs uppercase text-neutral-500">{i.tipo}</span>
+              <div key={i.id} className="flex items-start gap-2 py-2 text-sm text-ink">
+                <span className="lbl shrink-0">{i.tipo}</span>
                 {i.descripcion}
               </div>
             ))}
-            {detalle.issuesAbiertos.length === 0 && <p className="text-sm text-neutral-400">Sin pendientes abiertos.</p>}
+            {detalle.issuesAbiertos.length === 0 && <p className="text-sm text-faint">Sin pendientes abiertos.</p>}
           </div>
         </section>
 

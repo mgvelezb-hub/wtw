@@ -30,21 +30,21 @@ export function TrendCard({ title, values, isoWeeks, formatValue, formatDelta, l
   const last = lastKnown(values)
 
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-      <p className="text-xs font-medium uppercase text-neutral-500">{title}</p>
+    <div className="border-t border-hair pt-3">
+      <p className="lbl">{title}</p>
 
       {last === null ? (
-        <p className="mt-2 text-xs text-neutral-400">{emptyMessage}</p>
+        <p className="mt-2 text-xs text-faint">{emptyMessage}</p>
       ) : (
         <div className="mt-1 flex items-end justify-between gap-2">
           <div>
-            <p className="text-lg font-bold text-neutral-900">{lastValueLabel ?? formatValue(last.value)}</p>
+            <p className="num text-lg font-semibold text-ink">{lastValueLabel ?? formatValue(last.value)}</p>
             {(() => {
               const prev = lastKnown(values.slice(0, last.index))
-              if (!prev) return <p className="text-xs text-neutral-400">Primera semana con dato</p>
+              if (!prev) return <p className="text-xs text-faint">Primera semana con dato</p>
               const delta = last.value - prev.value
               return (
-                <p className="text-xs text-neutral-500">
+                <p className="num text-xs text-muted">
                   {formatDelta(delta)} vs {shortWeekLabel(isoWeeks[prev.index])}
                 </p>
               )

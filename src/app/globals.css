@@ -13,8 +13,23 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-plex-mono), "SF Mono", Menlo, monospace;
+}
+
+/* Superficies y neutros del lenguaje "instrumento" (rediseño 2026-08-22).
+   Un solo juego de neutros con sesgo teal, en vez de neutral-* de Tailwind:
+   - paper: el fondo de la app (el crema que ya existía como literal).
+   - surface: superficies blancas (columnas, filas destacadas).
+   - ink / muted / faint: texto principal / secundario / terciario.
+   - hair: la línea de 1px que separa en lugar de las cajas con sombra. */
+@theme {
+  --color-paper: #f4efe3;
+  --color-surface: #ffffff;
+  --color-ink: #1a2323;
+  --color-muted: #5c6b6a;
+  --color-faint: #9fb0ae;
+  --color-hair: #dce4e2;
 }
 
 /* Gramática de color — un color, un significado. Tokens Tailwind v4 (@theme
@@ -43,7 +58,26 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Utilidades del lenguaje instrumento. `.num` va en TODO número que se lee en
+   columna o se compara (horas, factores, contadores): Plex Mono tabular. `.lbl`
+   es la etiqueta de sección en mayúsculas chicas que sustituye a los h2 en
+   negritas; `.hair` la línea que sustituye al borde de card. */
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+@utility lbl {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+@utility hair {
+  border-top: 1px solid var(--color-hair);
 }
 
 /* Los controles de formulario no heredan color de forma confiable en todos los

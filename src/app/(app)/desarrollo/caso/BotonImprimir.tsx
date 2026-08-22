@@ -8,7 +8,7 @@ export function BotonImprimir(): React.ReactElement {
     <button
       type="button"
       onClick={() => window.print()}
-      className="print:hidden fixed bottom-4 right-4 z-10 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-brand-strong"
+      className="print:hidden fixed bottom-4 right-4 z-10 rounded-lg bg-brand px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-brand-strong"
     >
       Imprimir / guardar PDF
     </button>

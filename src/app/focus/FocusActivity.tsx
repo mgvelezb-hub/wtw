@@ -45,9 +45,9 @@ export function FocusActivity({
           {activity.proyecto.nombre}
         </span>
       )}
-      <h1 className="mt-3 font-serif text-5xl font-light text-[#ededed]">{activity.titulo}</h1>
+      <h1 className="mt-3 text-5xl font-light text-[#ededed]">{activity.titulo}</h1>
 
-      <p className={`mt-6 font-mono text-8xl font-bold tabular-nums ${over ? 'text-warn-strong' : 'text-white'}`}>
+      <p className={`mt-6 num text-8xl font-bold ${over ? 'text-warn-strong' : 'text-white'}`}>
         {over ? '+' : ''}
         {fmt(display)}
       </p>

@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } })
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <SettingsForm
         user={{
           horarioInicio: user.horarioInicio,

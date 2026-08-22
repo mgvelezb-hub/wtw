@@ -83,15 +83,15 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
   }
 
   return (
-    <div className="mt-2 rounded-md border border-brand-deep bg-white p-2">
+    <div className="mt-2 rounded-lg border border-brand-deep bg-surface p-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase text-brand-deep">Clasificar con IA</p>
-        <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-neutral-400">
+        <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-faint">
           cerrar
         </button>
       </div>
 
-      <p className="mt-1 text-[11px] text-neutral-500">
+      <p className="mt-1 text-[11px] text-muted">
         {tieneNotas
           ? 'Esta minuta ya tiene texto crudo guardado. Puedes clasificarlo tal cual, o pegar más abajo.'
           : 'Pega el texto de la junta, o déjalo vacío para clasificar las notas ya capturadas.'}
@@ -103,11 +103,11 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
         rows={4}
         aria-label="Texto crudo de la junta"
         placeholder="Pega aquí el bloque de la junta…"
-        className="mt-1.5 w-full rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-900"
+        className="mt-1.5 w-full rounded border border-hair px-2 py-1 text-xs text-ink"
       />
 
       {error && (
-        <p role="alert" className="mt-1.5 rounded border border-danger bg-red-50 px-2 py-1 text-[11px] text-danger">
+        <p role="alert" className="mt-1.5 rounded border border-danger bg-danger-soft px-2 py-1 text-[11px] text-danger">
           {error}
         </p>
       )}
@@ -142,13 +142,13 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
                   }}
                 />
                 <span className="min-w-0">
-                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+                  <span className="rounded-full bg-hair px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted">
                     {TIPO_LABEL[p.tipo]}
                   </span>
-                  <span className="ml-1 text-neutral-800">{p.texto}</span>
-                  {p.responsable && <span className="ml-1 text-neutral-500">— {p.responsable}</span>}
+                  <span className="ml-1 text-ink">{p.texto}</span>
+                  {p.responsable && <span className="ml-1 text-muted">— {p.responsable}</span>}
                   {p.fechaCompromiso && (
-                    <span className="ml-1 rounded bg-neutral-100 px-1 text-[10px] font-bold text-neutral-600">
+                    <span className="num ml-1 rounded bg-hair px-1 text-[10px] font-bold text-muted">
                       {p.fechaCompromiso}
                     </span>
                   )}
@@ -167,7 +167,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
             <button
               disabled={pending}
               onClick={() => setPropuestos(null)}
-              className="rounded border border-neutral-300 px-3 py-1.5 text-xs font-bold text-neutral-600"
+              className="rounded border border-hair px-3 py-1.5 text-xs font-bold text-muted"
             >
               Descartar
             </button>

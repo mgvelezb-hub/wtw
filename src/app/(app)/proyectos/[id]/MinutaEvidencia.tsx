@@ -78,7 +78,7 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
     return (
       <button
         onClick={() => setAbierto(true)}
-        className="mt-1 ml-1.5 rounded-full border border-neutral-300 px-2.5 py-0.5 text-[11px] font-bold text-neutral-500 hover:border-brand-deep hover:text-brand-deep"
+        className="mt-1 ml-1.5 rounded-full border border-hair px-2.5 py-0.5 text-[11px] font-bold text-muted hover:border-brand-deep hover:text-brand-deep"
       >
         ✨ ¿Evidencia?
       </button>
@@ -86,10 +86,10 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
   }
 
   return (
-    <div className="mt-2 rounded-md border border-neutral-300 bg-white p-2">
+    <div className="mt-2 rounded-lg border border-hair bg-surface p-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase text-brand-deep">Evidencia de desarrollo</p>
-        <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-neutral-400">
+        <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-faint">
           cerrar
         </button>
       </div>
@@ -97,16 +97,16 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
       {error && (
         <div
           role="alert"
-          className="mt-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] text-amber-800"
+          className="mt-1.5 rounded-md border border-warn-border bg-warn-soft px-2 py-1 text-[11px] text-warn"
         >
           {error}
         </div>
       )}
-      {vacio && <p className="mt-1.5 rounded bg-neutral-100 px-2 py-1 text-[11px] text-neutral-600">{vacio}</p>}
+      {vacio && <p className="mt-1.5 rounded bg-hair px-2 py-1 text-[11px] text-muted">{vacio}</p>}
 
       {sugerencias === null ? (
         <>
-          <p className="mt-1 text-[11px] text-neutral-500">
+          <p className="mt-1 text-[11px] text-muted">
             Busca en esta junta episodios que demuestren un reactivo de tu nivel objetivo o de los roles VP. Nada se
             registra sin que lo confirmes.
           </p>
@@ -121,21 +121,21 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
       ) : (
         <ul className="mt-2 space-y-2">
           {sugerencias.map((s, i) => (
-            <li key={s.competencyId} className="rounded border border-neutral-200 p-2">
+            <li key={s.competencyId} className="rounded border border-hair p-2">
               <div className="flex flex-wrap items-center gap-1">
                 <span className="rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-deep">
                   {s.competenciaBloque}
                 </span>
-                <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold text-neutral-500">
+                <span className="rounded-full bg-hair px-1.5 py-0.5 text-[10px] font-bold text-muted">
                   {CONFIANZA_LABEL[s.confianza]}
                 </span>
               </div>
-              <p className="mt-1 text-[11px] leading-snug text-neutral-600">{s.competenciaTexto}</p>
+              <p className="mt-1 text-[11px] leading-snug text-muted">{s.competenciaTexto}</p>
 
               {estados[i] === 'guardada' ? (
-                <p className="mt-1.5 text-xs font-bold text-brand-deep">✓ Registrada en /desarrollo</p>
+                <p className="mt-1.5 text-xs font-bold text-ok">✓ Registrada en /desarrollo</p>
               ) : estados[i] === 'descartada' ? (
-                <p className="mt-1.5 text-xs text-neutral-400">Descartada.</p>
+                <p className="mt-1.5 text-xs text-faint">Descartada.</p>
               ) : (
                 <>
                   <textarea
@@ -143,9 +143,9 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
                     onChange={(e) => editarNota(i, e.target.value)}
                     rows={2}
                     aria-label={`Nota de la evidencia ${i + 1}`}
-                    className="mt-1.5 w-full rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-900"
+                    className="mt-1.5 w-full rounded border border-hair px-2 py-1 text-xs text-ink"
                   />
-                  <p className="mt-0.5 text-[10px] text-neutral-400">
+                  <p className="mt-0.5 text-[10px] text-faint">
                     Se guarda citando esta minuta, para poder verificarla después.
                   </p>
                   <div className="mt-1.5 flex gap-1.5">
@@ -159,7 +159,7 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
                     <button
                       disabled={pending}
                       onClick={() => marcar(i, 'descartada')}
-                      className="rounded border border-neutral-300 px-3 py-1.5 text-xs font-bold text-neutral-600"
+                      className="rounded border border-hair px-3 py-1.5 text-xs font-bold text-muted"
                     >
                       Descartar
                     </button>

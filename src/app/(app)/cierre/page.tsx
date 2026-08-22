@@ -23,7 +23,7 @@ export default async function CierrePage({ searchParams }: { searchParams: Promi
   ])
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-2xl p-4">
         <CierreBoard
           cierre={cierre}

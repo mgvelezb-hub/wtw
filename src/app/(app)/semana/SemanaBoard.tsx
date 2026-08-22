@@ -1,23 +1,475 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition, type CSSProperties, type DragEvent } from 'react'
 import Link from 'next/link'
 import { AyudaContextual } from '@/components/ayuda-contextual'
-import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
-import { toggleWinAction } from './actions'
+import { TrendCard } from '@/app/(app)/historico/TrendCard'
+import {
+  MIN_ALTO_BLOQUE_PX,
+  PX_POR_HORA,
+  PX_POR_MIN,
+  horaDesdeOffset,
+} from './lienzo'
+import type { LienzoBloque, LienzoSemana } from './service'
+import {
+  agendarTareaAction,
+  capturarEnBandejaAction,
+  desagendarBloqueAction,
+  moverBloqueAction,
+  toggleWinAction,
+} from './actions'
 
-type Win = { id: string; posicion: number; titulo: string; dod: string | null; siEntonces: string | null; estatus: string }
-type Block = { id: string; fecha: Date; inicio: string; fin: string; tipo: string; titulo: string; planMin: number }
+// Colores del lienzo que NO son tokens de Tailwind porque se componen en línea
+// (el color del proyecto viene de la base, no de la hoja de estilos) — mismo
+// patrón que `pillStyle` en DiaBoard: relleno del color al ~12% y el color
+// saturado solo en el borde izquierdo de 3px.
+const BRAND = '#0a7c82'
+const GRIS_EXTERNA = '#9fb0ae'
+const FONDO_EXTERNA = '#e3e9e8'
+const LINEA_HORA = '#eef2f1'
+
+function horas(min: number): string {
+  const h = Math.floor(min / 60)
+  const m = Math.round(min % 60)
+  return m === 0 ? `${h}h` : h === 0 ? `${m}m` : `${h}:${String(m).padStart(2, '0')}`
+}
+
+function colorDe(b: LienzoBloque): string {
+  if (b.externa) return GRIS_EXTERNA
+  return b.proyecto?.color ?? BRAND
+}
+
+function estiloBloque(b: LienzoBloque, destacado: boolean): CSSProperties {
+  const color = colorDe(b)
+  return {
+    top: (b.topMin ?? 0) * PX_POR_MIN,
+    height: Math.max(MIN_ALTO_BLOQUE_PX, b.durMin * PX_POR_MIN),
+    backgroundColor: b.externa ? FONDO_EXTERNA : `${color}1f`,
+    borderLeftColor: color,
+    boxShadow: destacado ? `0 0 0 2px ${BRAND} inset` : undefined,
+  }
+}
+
+const FONDO_COLUMNA = `repeating-linear-gradient(to bottom, transparent 0 ${PX_POR_HORA - 1}px, ${LINEA_HORA} ${
+  PX_POR_HORA - 1
+}px ${PX_POR_HORA}px)`
+
+// ── El board ─────────────────────────────────────────────────────────────────
+
+export function SemanaBoard({ v }: { v: LienzoSemana }) {
+  const [pending, startTransition] = useTransition()
+  // Regla 1: nada de `new Date()` como valor inicial. Arranca en null (el
+  // servidor y el primer paint coinciden) y se llena al montar.
+  const [ahoraMin, setAhoraMin] = useState<number | null>(null)
+  const [zonaActiva, setZonaActiva] = useState<string | null>(null)
+  const [captura, setCaptura] = useState('')
+  const [tendenciasAbiertas, setTendenciasAbiertas] = useState(false)
+
+  useEffect(() => {
+    function tick() {
+      const d = new Date()
+      setAhoraMin(d.getHours() * 60 + d.getMinutes())
+    }
+    tick()
+    const id = setInterval(tick, 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const altoGrid = v.horas.length * PX_POR_HORA
+  const enGrid = useMemo(() => v.bloques.filter((b) => b.ubicacion === 'grid'), [v.bloques])
+  const enFlex = useMemo(() => v.bloques.filter((b) => b.ubicacion === 'flex'), [v.bloques])
+
+  // El bloque que importa AHORA: el que está corriendo, y si no hay ninguno, el
+  // siguiente de hoy. Es la única marca de "atención" del lienzo — el resto de
+  // la semana se lee, no se persigue.
+  const destacadoId = useMemo(() => {
+    if (ahoraMin === null) return null
+    const hoy = v.dias.find((d) => d.esHoy)
+    if (!hoy) return null
+    const rel = ahoraMin - v.jornadaInicioMin
+    const delDia = enGrid
+      .filter((b) => b.fecha === hoy.fecha && !b.done)
+      .sort((a, b) => (a.topMin ?? 0) - (b.topMin ?? 0))
+    const enCurso = delDia.find((b) => rel >= (b.topMin ?? 0) && rel < (b.topMin ?? 0) + b.durMin)
+    if (enCurso) return enCurso.id
+    return delDia.find((b) => (b.topMin ?? 0) > rel)?.id ?? null
+  }, [ahoraMin, enGrid, v.dias, v.jornadaInicioMin])
+
+  const proyectos = useMemo(() => {
+    const mapa = new Map<string, string>()
+    for (const b of v.bloques) if (b.proyecto) mapa.set(b.proyecto.nombre, b.proyecto.color)
+    return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [v.bloques])
+
+  const excedido = v.cargaHoras > v.trabajablePlaneable
+  const pctCarga = v.trabajablePlaneable > 0 ? Math.min(100, (v.cargaHoras / v.trabajablePlaneable) * 100) : 0
+
+  // ── Drop ───────────────────────────────────────────────────────────────────
+  // Un solo despachador: el payload dice QUÉ se arrastra (`block:` / `pend:`,
+  // el mismo vocabulario que Mi Día) y la zona dice A DÓNDE cae. `hhmm` es null
+  // cuando se soltó en un lugar sin hora (cabecera del día o franja Flex).
+  function soltar(e: DragEvent<HTMLElement>, fecha: string, hhmm: string | null) {
+    const data = e.dataTransfer.getData('text/plain')
+    if (!data) return
+    e.preventDefault()
+    setZonaActiva(null)
+    if (data.startsWith('block:')) {
+      startTransition(() => void moverBloqueAction(data.slice(6), fecha, hhmm))
+    } else if (data.startsWith('pend:')) {
+      startTransition(() => void agendarTareaAction(data.slice(5), fecha, hhmm))
+    }
+  }
+
+  function soltarEnBandeja(e: DragEvent<HTMLElement>) {
+    const data = e.dataTransfer.getData('text/plain')
+    if (!data.startsWith('block:')) return
+    e.preventDefault()
+    setZonaActiva(null)
+    startTransition(() => void desagendarBloqueAction(data.slice(6)))
+  }
+
+  function permitir(e: DragEvent<HTMLElement>, zona: string) {
+    e.preventDefault()
+    if (zonaActiva !== zona) setZonaActiva(zona)
+  }
+
+  function capturar() {
+    const titulo = captura.trim()
+    if (!titulo) return
+    setCaptura('')
+    startTransition(() => void capturarEnBandejaAction(titulo))
+  }
+
+  const columnas = 'grid-cols-[48px_repeat(5,minmax(0,1fr))]'
+
+  return (
+    <div className={`flex min-h-dvh flex-col bg-paper xl:flex-row ${pending ? 'opacity-90' : ''}`}>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* ── Barra superior ─────────────────────────────────────────────── */}
+        <div className="flex h-12 shrink-0 flex-wrap items-center gap-3 border-b border-hair bg-surface px-4 sm:px-6">
+          <div className="flex overflow-hidden rounded-md border border-hair text-xs font-semibold">
+            <Link href={`/dia?dia=${v.diaSeleccionado}`} className="px-3 py-1.5 text-muted hover:text-brand">
+              Día
+            </Link>
+            <span className="bg-brand-deep px-3 py-1.5 text-white">Semana</span>
+          </div>
+          <span className="font-semibold text-ink">Semana {v.numeroSemana}</span>
+          <span className="num text-xs text-muted">{v.rango}</span>
+          <span className="flex-1" />
+          <span className="text-xs text-muted">
+            Carga{' '}
+            <b className={`num ${excedido ? 'text-danger' : 'text-ink'}`}>{v.cargaHoras.toFixed(1)}h</b> de{' '}
+            <b className="num text-ink">{v.trabajablePlaneable.toFixed(1)}h</b> planeables{' '}
+            <span className="text-faint">
+              ({v.trabajableTotal.toFixed(0)}h trabajables − {v.bufferPct}% colchón)
+            </span>
+          </span>
+          <AyudaContextual titulo="Carga contra lo planeable" alineacion="derecha">
+            <strong>Carga</strong> es la suma de lo que ya está comprometido esta semana.{' '}
+            <strong>Planeable</strong> son las horas que quedan libres después de las juntas, menos el colchón que
+            reservas a propósito para lo que no se puede prever. Si la barra se pone roja, comprometiste más de lo que
+            cabe: la respuesta es mover o soltar trabajo, no exprimir el colchón.
+          </AyudaContextual>
+          <div className="h-1 w-[140px] overflow-hidden rounded-full bg-hair">
+            <div
+              className={`h-full ${excedido ? 'bg-danger' : 'bg-brand'}`}
+              style={{ width: `${excedido ? 100 : pctCarga}%` }}
+            />
+          </div>
+          <ChipSobrecarga sobrecarga={v.sobrecarga} />
+          <Link
+            href="/semana/nueva"
+            className="rounded-md border border-hair px-3 py-1.5 text-xs font-semibold text-brand hover:border-brand"
+          >
+            Abrir el planeador
+          </Link>
+        </div>
+
+        {/* ── Lienzo ──────────────────────────────────────────────────────── */}
+        <div className="min-w-0 flex-1 overflow-x-auto p-4 pr-0">
+          <div className="min-w-[720px]">
+            {/* Cabecera de días: nombre, número y el meter de carga del día.
+                También es zona de drop "a este día, sin hora". */}
+            <div className={`mb-1.5 grid ${columnas}`}>
+              <div />
+              {v.dias.map((d) => (
+                <div
+                  key={d.fecha}
+                  onDragOver={(e) => permitir(e, `head:${d.fecha}`)}
+                  onDragLeave={() => setZonaActiva(null)}
+                  onDrop={(e) => soltar(e, d.fecha, null)}
+                  className={`rounded-md px-2 py-0.5 ${zonaActiva === `head:${d.fecha}` ? 'bg-brand-soft' : ''}`}
+                >
+                  <div className="flex items-baseline gap-1.5">
+                    <span className={`font-semibold ${d.esHoy ? 'text-brand-deep' : 'text-ink'}`}>{d.abr}</span>
+                    <span className={`num text-[11px] ${d.esHoy ? 'text-brand-deep' : 'text-faint'}`}>
+                      {d.num}
+                      {d.esHoy ? ' · hoy' : ''}
+                    </span>
+                    <span className="num ml-auto text-[10px] text-faint">{horas(d.planeadoMin)}</span>
+                  </div>
+                  <div className="mt-1.5 h-[3px] overflow-hidden rounded-full bg-hair">
+                    <div
+                      className={`h-full ${d.pct > 100 ? 'bg-danger' : 'bg-brand'}`}
+                      style={{ width: `${Math.min(100, d.pct)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Grid de horas */}
+            <div
+              className={`grid ${columnas} overflow-hidden rounded-tl-[10px] border border-hair bg-surface`}
+              style={{ height: altoGrid }}
+            >
+              <div className="flex flex-col border-r border-hair">
+                {v.horas.map((h) => (
+                  <div
+                    key={h}
+                    className="num border-b px-1.5 py-1 text-[10px] text-faint"
+                    style={{ height: PX_POR_HORA, borderColor: LINEA_HORA }}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+
+              {v.dias.map((d) => (
+                <div
+                  key={d.fecha}
+                  onDragOver={(e) => permitir(e, `col:${d.fecha}`)}
+                  onDragLeave={() => setZonaActiva(null)}
+                  onDrop={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    soltar(e, d.fecha, horaDesdeOffset(e.clientY - rect.top, v.jornadaInicioMin, v.jornadaFinMin))
+                  }}
+                  className={`relative border-r last:border-r-0 ${
+                    zonaActiva === `col:${d.fecha}` ? 'ring-1 ring-inset ring-brand' : ''
+                  }`}
+                  style={{
+                    borderColor: LINEA_HORA,
+                    background: d.esHoy ? `#f8fbfa ${FONDO_COLUMNA}` : FONDO_COLUMNA,
+                  }}
+                >
+                  {enGrid
+                    .filter((b) => b.fecha === d.fecha)
+                    .map((b) => (
+                      <BloqueEnGrid key={b.id} b={b} destacado={b.id === destacadoId} />
+                    ))}
+
+                  {/* Línea de la hora actual — solo en la columna de hoy y solo
+                      después de montar (regla 1). */}
+                  {d.esHoy &&
+                    ahoraMin !== null &&
+                    ahoraMin >= v.jornadaInicioMin &&
+                    ahoraMin <= v.jornadaFinMin && (
+                      <div
+                        className="pointer-events-none absolute inset-x-0 border-t-2 border-danger"
+                        style={{ top: (ahoraMin - v.jornadaInicioMin) * PX_POR_MIN }}
+                      >
+                        <span className="num absolute right-1 -top-2 bg-surface px-0.5 text-[9px] text-danger">
+                          {String(Math.floor(ahoraMin / 60)).padStart(2, '0')}:
+                          {String(ahoraMin % 60).padStart(2, '0')}
+                        </span>
+                      </div>
+                    )}
+                </div>
+              ))}
+            </div>
+
+            {/* Franja Flex: lo que tiene día pero no hora. Soltar aquí agenda al
+                día sin comprometer una hora — que es exactamente lo que un
+                bloque flex significa. */}
+            <div className={`grid ${columnas} border-x border-b border-hair bg-surface`}>
+              <div className="lbl flex items-start justify-end border-r border-hair px-1.5 py-2 text-[9px]">Flex</div>
+              {v.dias.map((d) => {
+                const chips = enFlex.filter((b) => b.fecha === d.fecha)
+                return (
+                  <div
+                    key={d.fecha}
+                    onDragOver={(e) => permitir(e, `flex:${d.fecha}`)}
+                    onDragLeave={() => setZonaActiva(null)}
+                    onDrop={(e) => soltar(e, d.fecha, null)}
+                    className={`min-h-[38px] space-y-1 border-r p-1 last:border-r-0 ${
+                      zonaActiva === `flex:${d.fecha}` ? 'bg-brand-soft' : ''
+                    }`}
+                    style={{ borderColor: LINEA_HORA }}
+                  >
+                    {chips.map((b) => (
+                      <div
+                        key={b.id}
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
+                        className="cursor-grab truncate rounded border-l-[3px] px-1.5 py-1 text-[11px] text-ink active:cursor-grabbing"
+                        style={{
+                          backgroundColor: `${colorDe(b)}1f`,
+                          borderLeftColor: colorDe(b),
+                        }}
+                        title={`${b.titulo} · ${horas(b.planMin)}`}
+                      >
+                        {b.titulo}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Fuera de jornada */}
+            {v.fueraDeJornada.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 pl-12 text-xs text-warn">
+                <span className="lbl text-warn">Fuera de jornada</span>
+                {v.fueraDeJornada.map((f) => (
+                  <span key={f.blockId}>
+                    {f.abr} <span className="num">{f.rango}</span> · {f.titulo}
+                  </span>
+                ))}
+                {v.fueraPct !== null && (
+                  <span className="text-faint">
+                    · <span className="num">{v.fueraPct}%</span> de tus minutos de 14 días cayeron aquí
+                  </span>
+                )}
+              </div>
+            )}
+
+            <Tendencias
+              tendencias={v.tendencias}
+              abiertas={tendenciasAbiertas}
+              onToggle={() => setTendenciasAbiertas((x) => !x)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bandeja ───────────────────────────────────────────────────────── */}
+      <aside
+        onDragOver={(e) => permitir(e, 'bandeja')}
+        onDragLeave={() => setZonaActiva(null)}
+        onDrop={soltarEnBandeja}
+        className={`flex w-full shrink-0 flex-col gap-5 border-hair bg-surface p-5 xl:w-[300px] xl:border-l ${
+          zonaActiva === 'bandeja' ? 'ring-1 ring-inset ring-brand' : ''
+        }`}
+      >
+        <section className="flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between">
+            <span className="lbl">
+              Bandeja <span className="num">({v.bandeja.length})</span>
+            </span>
+            <span className="text-[11px] text-faint">arrastra al lienzo</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            {v.bandeja.length === 0 && <p className="text-xs text-faint">Nada suelto. La semana está capturada.</p>}
+            {v.bandeja.map((t) => (
+              <div
+                key={t.id}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${t.id}`)}
+                className="flex cursor-grab items-start gap-2.5 rounded-lg border border-dashed border-hair px-3 py-2.5 text-[13px] active:cursor-grabbing"
+              >
+                <span className="text-sm leading-none text-faint">⋮⋮</span>
+                <span className="min-w-0 flex-1">
+                  {t.urgente && <span className="text-danger">★ </span>}
+                  {t.titulo}
+                  <br />
+                  <span className="num text-[11px] text-muted">
+                    {t.estimadoMin != null ? horas(t.estimadoMin) : '—'}
+                    {t.proyecto ? ` · ${t.proyecto}` : ''}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <input
+            value={captura}
+            onChange={(e) => setCaptura(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') capturar()
+            }}
+            onBlur={capturar}
+            placeholder="+ Capturar algo suelto…"
+            aria-label="Capturar algo suelto"
+            className="rounded-lg border border-hair px-3 py-2 text-xs text-ink outline-none focus:border-brand"
+          />
+        </section>
+
+        <section className="flex flex-col gap-2.5">
+          <span className="lbl">Wins</span>
+          {v.wins.length === 0 ? (
+            <p className="text-xs text-warn">
+              Sin Wins esta semana. El{' '}
+              <Link href="/semana/nueva" className="underline">
+                planeador
+              </Link>{' '}
+              los define en el paso 2.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2 text-[12.5px]">
+              {v.wins.map((w) => (
+                <div key={w.id} className="grid grid-cols-[16px_1fr_auto] gap-1.5">
+                  <span className="num text-faint">{w.posicion}</span>
+                  <span className={w.estatus === 'logrado' ? 'text-faint line-through' : 'text-ink'}>
+                    {w.titulo}
+                    {w.sinBloques && w.estatus !== 'logrado' && (
+                      <span className="text-[11px] text-warn"> · sin bloques</span>
+                    )}
+                    {/* El si-entonces se REPASA aquí: sirve por estar ensayado
+                        antes de que llegue el obstáculo, no por haberse escrito
+                        una vez en el planeador. */}
+                    {w.siEntonces && w.estatus !== 'logrado' && (
+                      <span className="mt-1 block text-[11px] text-brand-deep">{w.siEntonces}</span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => startTransition(() => void toggleWinAction(w.id))}
+                    aria-label={w.estatus === 'logrado' ? 'Desmarcar win' : 'Marcar win como logrado'}
+                    className="h-5 w-5 shrink-0 rounded text-xs text-muted hover:bg-brand-soft"
+                  >
+                    {w.estatus === 'logrado' ? '↺' : '✓'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-auto flex flex-col gap-1.5 border-t border-hair pt-4 text-xs text-muted">
+          <span className="lbl">Leyenda</span>
+          {proyectos.map(([nombre, color]) => (
+            <span key={nombre} className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-[3px] border-l-[3px]"
+                style={{ backgroundColor: `${color}1f`, borderLeftColor: color }}
+              />
+              {nombre}
+            </span>
+          ))}
+          {v.bloques.some((b) => b.externa) && (
+            <span className="flex items-center gap-2">
+              <span
+                className="h-2.5 w-2.5 rounded-[3px] border-l-[3px]"
+                style={{ backgroundColor: FONDO_EXTERNA, borderLeftColor: GRIS_EXTERNA }}
+              />
+              Junta de Outlook
+            </span>
+          )}
+        </section>
+      </aside>
+    </div>
+  )
+}
 
 // Calm tech: en verde no se muestra nada. En ámbar/rojo, un chip junto a la
-// barra de capacidad con las señales activas y la única recomendación
-// accionable.
-function ChipSobrecarga({ sobrecarga }: { sobrecarga: ResultadoSobrecarga }) {
+// barra de carga con las señales activas y su explicación — el semáforo no se
+// anuncia solo, se explica solo.
+function ChipSobrecarga({ sobrecarga }: { sobrecarga: LienzoSemana['sobrecarga'] }) {
   if (sobrecarga.nivel === 'verde') return null
   const esRojo = sobrecarga.nivel === 'rojo'
   return (
     <span
-      className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
+      className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-bold ${
         esRojo ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn'
       }`}
     >
@@ -27,163 +479,114 @@ function ChipSobrecarga({ sobrecarga }: { sobrecarga: ResultadoSobrecarga }) {
         alineacion="derecha"
         ejemplo="Antes de aceptar algo nuevo, corre /wtw-comprometer — o recorta en el planeador."
       >
-        {sobrecarga.senales
-          .filter((s) => s.activa)
-          .map((s) => s.detalle)
-          .join(' ')}
+        {sobrecarga.senales.join(' ')}
       </AyudaContextual>
     </span>
   )
 }
 
-export function SemanaBoard({
-  wins,
-  blocks,
-  cargaHoras,
-  trabajableTotal,
-  trabajablePlaneable,
-  sobrecarga,
+// ── Piezas ───────────────────────────────────────────────────────────────────
+
+function BloqueEnGrid({ b, destacado }: { b: LienzoBloque; destacado: boolean }) {
+  // Solo caben dos renglones a partir de ~45 min; abajo de eso el rango horario
+  // desplazaría al título, que es lo único que de verdad hay que leer.
+  const cabeRango = b.durMin >= 45
+  return (
+    <div
+      draggable={!b.externa}
+      onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
+      style={estiloBloque(b, destacado)}
+      title={`${b.inicio}–${b.fin} · ${b.titulo}`}
+      className={`absolute inset-x-1 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
+        b.externa ? 'cursor-default text-muted' : 'cursor-grab text-ink active:cursor-grabbing'
+      } ${b.done ? 'opacity-50 line-through' : ''}`}
+    >
+      {b.externa && (
+        <span className="block text-[10px] font-bold tracking-[0.06em]">OUTLOOK</span>
+      )}
+      <span className={destacado ? 'font-semibold' : ''}>{b.titulo}</span>
+      {cabeRango && (
+        <span className="num mt-0.5 block text-[10px] text-muted">
+          {b.inicio} – {b.fin}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function formatDelta(delta: number, decimals: number, suffix = ''): string {
+  const signo = delta > 0 ? '+' : delta < 0 ? '' : '±'
+  return `${signo}${delta.toFixed(decimals)}${suffix}`
+}
+
+// R4: el histórico deja de ser una ruta a la que hay que acordarse de ir y pasa
+// a ser el pie del lienzo — colapsado, porque la tendencia se consulta cuando
+// se cierra la semana, no cada vez que se abre. /historico sigue existiendo.
+function Tendencias({
+  tendencias,
+  abiertas,
+  onToggle,
 }: {
-  wins: Win[]
-  blocks: Block[]
-  cargaHoras: number
-  trabajableTotal: number
-  trabajablePlaneable: number
-  sobrecarga: ResultadoSobrecarga
+  tendencias: LienzoSemana['tendencias']
+  abiertas: boolean
+  onToggle: () => void
 }) {
-  const [pending, startTransition] = useTransition()
-
-  const porDia = blocks.reduce<Record<string, Block[]>>((acc, b) => {
-    const key = new Date(b.fecha).toISOString().slice(0, 10)
-    ;(acc[key] ??= []).push(b)
-    return acc
-  }, {})
-
-  const pct = trabajableTotal > 0 ? Math.min(100, (cargaHoras / trabajableTotal) * 100) : 0
+  const cronologico = [...tendencias].reverse()
+  const ultima = cronologico[cronologico.length - 1]
+  const isoWeeks = cronologico.map((h) => h.isoWeek)
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4">
-      <section>
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-500">
-            Wins de la semana
-            <AyudaContextual
-              titulo="Wins de la semana"
-              ejemplo="Ej. «Si el cliente mueve la junta del martes, entonces mando el avance por correo ese mismo día»."
-            >
-              Los 3 resultados que definen la semana: si se cumplen, la semana se ganó, aunque no todo lo demás haya
-              salido. Debajo de cada uno aparece su <strong>si-entonces</strong> —el plan que escribiste para el
-              obstáculo que ya sabes que viene—, y está aquí para repasarlo antes de que aparezca, no después. El ✓ marca
-              el Win como logrado.
-            </AyudaContextual>
-          </h2>
-          {/* Siempre visible: antes el acceso al planeador solo existía en el
-              estado vacío de /semana, y Mi Día crea la semana como cascarón en
-              cuanto arrastras una tarea o sincronizas juntas. Resultado: la
-              semana existía, el botón desaparecía, y no había forma de definir
-              los Wins ni de llegar al ritual. */}
-          <Link
-            href="/semana/nueva"
-            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
-          >
-            {wins.length === 0 ? 'Planear la semana' : 'Abrir el planeador'}
-          </Link>
-        </div>
-        {wins.length === 0 && (
-          <div className="mb-2 rounded-lg border border-warn-border bg-warn-soft p-3">
-            <p className="text-sm font-semibold text-warn">Esta semana no tiene Wins definidos</p>
-            <p className="mt-1 text-xs text-warn">
-              Sin Wins, las actividades no se pueden priorizar contra un resultado. El planeador te lleva por los 5 pasos del
-              ritual: reflejar, definir Wins, vaciar y dimensionar, bloquear y pre-emptar.
-            </p>
-            <Link
-              href="/semana/nueva"
-              className="mt-2 inline-block rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white"
-            >
-              Planear la semana →
-            </Link>
-          </div>
+    <section className="hair mt-3 py-2 pr-4">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={abiertas}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        <span className="lbl">Tendencias</span>
+        {ultima ? (
+          <span className="num text-xs text-muted">
+            factor {ultima.factorUsado.toFixed(2)} · wins {ultima.winsLogrados}/{ultima.winsTotal} · horas{' '}
+            {ultima.minutosMedidos !== null ? `${(ultima.minutosMedidos / 60).toFixed(1)}h` : '—'}
+          </span>
+        ) : (
+          <span className="text-xs text-faint">sin semanas cerradas todavía</span>
         )}
-        <div className="space-y-2">
-          {wins.map((w) => (
-            <div key={w.id} className="flex items-start justify-between gap-2 rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-              <div className="min-w-0">
-                <p className={`font-medium ${w.estatus === 'logrado' ? 'text-neutral-400 line-through' : 'text-neutral-900'}`}>
-                  {w.posicion}. {w.titulo}
-                </p>
-                {w.dod && <p className="text-xs text-neutral-500">DoD: {w.dod}</p>}
-                {/* El si-entonces se REPASA aquí, no solo se escribió una vez en
-                    el planeador: el plan sirve cuando ya está en la cabeza antes
-                    de que aparezca el obstáculo, y esta es la pantalla que Mau
-                    abre durante la semana. Se oculta en los Wins ya logrados —
-                    el plan de implementación de algo cumplido es ruido. */}
-                {w.siEntonces && w.estatus !== 'logrado' && (
-                  <p className="mt-1 rounded border border-brand/30 bg-brand/5 px-2 py-1 text-xs text-brand-deep">
-                    {w.siEntonces}
-                  </p>
-                )}
-              </div>
-              <button
-                disabled={pending}
-                onClick={() => startTransition(() => void toggleWinAction(w.id))}
-                className="shrink-0 rounded-md bg-neutral-100 px-3 py-1.5 text-sm font-medium hover:bg-neutral-200"
-              >
-                {w.estatus === 'logrado' ? '↺' : '✓'}
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
+        <span className="ml-auto text-xs text-faint">{abiertas ? '▾' : '▸'}</span>
+      </button>
 
-      <section>
-        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase text-neutral-500">
-          Capacidad
-          <AyudaContextual titulo="Carga contra lo planeable">
-            <strong>Carga</strong> es la suma de lo que ya está comprometido esta semana.{' '}
-            <strong>Planeable</strong> son las horas que quedan libres después de las juntas, menos el colchón que
-            reservas a propósito para lo que no se puede prever. Si la barra se pone roja, comprometiste más de lo que
-            cabe: la respuesta es mover o soltar trabajo, no exprimir el colchón.
-          </AyudaContextual>
-        </h2>
-        {sobrecarga.nivel !== 'verde' && (
-          <div className="mb-2">
-            <ChipSobrecarga sobrecarga={sobrecarga} />
-          </div>
-        )}
-        <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
-          <div className="flex justify-between text-sm text-neutral-700">
-            <span>Carga: {cargaHoras.toFixed(1)}h</span>
-            <span>Planeable: {trabajablePlaneable.toFixed(1)}h</span>
-          </div>
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className={`h-full ${cargaHoras > trabajablePlaneable ? 'bg-danger' : 'bg-brand'}`}
-              style={{ width: `${pct}%` }}
+      {abiertas &&
+        (cronologico.length < 2 ? (
+          <p className="mt-2 text-xs text-faint">Con 2+ semanas cerradas aparecen las tendencias.</p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <TrendCard
+              title="Factor de realismo por semana"
+              values={cronologico.map((h) => h.factorUsado)}
+              isoWeeks={isoWeeks}
+              formatValue={(x) => x.toFixed(2)}
+              formatDelta={(d) => formatDelta(d, 2)}
+              emptyMessage="Sin factor registrado."
+            />
+            <TrendCard
+              title="Wins logrados por semana"
+              values={cronologico.map((h) => h.winsLogrados)}
+              isoWeeks={isoWeeks}
+              formatValue={(x) => `${x}`}
+              formatDelta={(d) => formatDelta(d, 0)}
+              lastValueLabel={`${ultima.winsLogrados}/${ultima.winsTotal}`}
+              emptyMessage="Sin wins registrados."
+            />
+            <TrendCard
+              title="Horas medidas por semana"
+              values={cronologico.map((h) => h.minutosMedidos)}
+              isoWeeks={isoWeeks}
+              formatValue={(x) => `${(x / 60).toFixed(1)}h`}
+              formatDelta={(d) => formatDelta(d / 60, 1, 'h')}
+              emptyMessage="Sin registros de tiempo todavía."
             />
           </div>
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Bloques por día</h2>
-        <div className="space-y-3">
-          {Object.entries(porDia).map(([fecha, dayBlocks]) => (
-            <div key={fecha}>
-              <p className="mb-1 text-xs font-semibold text-neutral-600">{fecha}</p>
-              <div className="space-y-1">
-                {dayBlocks.map((b) => (
-                  <div key={b.id} className="flex justify-between rounded-md bg-white px-3 py-1.5 text-sm shadow-sm">
-                    <span className="text-neutral-500">
-                      {b.inicio}–{b.fin}
-                    </span>
-                    <span className="text-neutral-900">{b.titulo}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
+        ))}
+    </section>
   )
 }

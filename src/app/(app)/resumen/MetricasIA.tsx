@@ -19,7 +19,7 @@ function etiquetaDe(feature: string): string {
 }
 
 function pctClase(pct: number | null): string {
-  if (pct === null) return 'text-neutral-400'
+  if (pct === null) return 'text-faint'
   if (pct >= 70) return 'text-ok'
   if (pct >= 40) return 'text-warn'
   return 'text-danger'
@@ -29,43 +29,43 @@ export function MetricasIA({ metricas }: { metricas: Record<string, MetricaFeatu
   const filas = Object.entries(metricas)
 
   return (
-    <section className="mt-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Cómo está funcionando la IA</h2>
-      <p className="mt-1 text-[11px] text-neutral-500">
+    <section className="hair mt-4 pt-4">
+      <h2 className="lbl">Cómo está funcionando la IA</h2>
+      <p className="mt-1 text-[11px] text-muted">
         Un % alto de edición en una feature = su prompt necesita trabajo. Esto decide qué IA se queda.
       </p>
 
       {filas.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-400">Sin llamadas aún.</p>
+        <p className="mt-3 text-sm text-faint">Sin llamadas aún.</p>
       ) : (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="text-[10px] uppercase tracking-wide text-neutral-400">
-                <th className="pb-1 pr-2 font-semibold">Feature</th>
-                <th className="pb-1 pr-2 text-right font-semibold tabular-nums">Llamadas</th>
-                <th className="pb-1 pr-2 text-right font-semibold tabular-nums">% aceptado sin editar</th>
-                <th className="pb-1 text-right font-semibold tabular-nums">Editados</th>
+              <tr>
+                <th className="lbl pb-1 pr-2">Feature</th>
+                <th className="lbl pb-1 pr-2 text-right">Llamadas</th>
+                <th className="lbl pb-1 pr-2 text-right">% aceptado sin editar</th>
+                <th className="lbl pb-1 text-right">Editados</th>
               </tr>
             </thead>
             <tbody>
               {filas.map(([feature, m]) => (
-                <tr key={feature} className="border-t border-neutral-100">
-                  <td className="py-1.5 pr-2 text-neutral-800">{etiquetaDe(feature)}</td>
-                  <td className="py-1.5 pr-2 text-right tabular-nums text-neutral-800">{m.llamadas}</td>
+                <tr key={feature} className="hair">
+                  <td className="py-1.5 pr-2 text-ink">{etiquetaDe(feature)}</td>
+                  <td className="num py-1.5 pr-2 text-right text-ink">{m.llamadas}</td>
                   {m.artifacts === null ? (
-                    <td className="py-1.5 pr-2 text-right tabular-nums text-neutral-400" colSpan={2}>
+                    <td className="py-1.5 pr-2 text-right text-faint" colSpan={2}>
                       sin artifacts
                     </td>
                   ) : (
                     <>
-                      <td className={`py-1.5 pr-2 text-right tabular-nums font-semibold ${pctClase(m.artifacts.pctAceptacion)}`}>
+                      <td className={`num py-1.5 pr-2 text-right font-semibold ${pctClase(m.artifacts.pctAceptacion)}`}>
                         {m.artifacts.pctAceptacion === null ? 'sin revisar' : `${m.artifacts.pctAceptacion}%`}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums text-neutral-800">
+                      <td className="num py-1.5 text-right text-ink">
                         {m.artifacts.editados}
                         {m.artifacts.pendientes > 0 && (
-                          <span className="ml-1 text-[10px] text-neutral-400">(+{m.artifacts.pendientes} sin revisar)</span>
+                          <span className="num ml-1 text-[10px] text-faint">(+{m.artifacts.pendientes} sin revisar)</span>
                         )}
                       </td>
                     </>

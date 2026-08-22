@@ -1,48 +1,37 @@
 import Link from 'next/link'
 import { verifySession } from '@/lib/auth'
-import { isoWeekOf } from '@/lib/dates'
-import { getWeekView } from './service'
+import { isoWeekOf, todayStr } from '@/lib/dates'
+import { getLienzoSemana } from './service'
 import { SemanaBoard } from './SemanaBoard'
 
 export default async function SemanaPage() {
   const session = await verifySession()
   if (!session) return null
 
-  const view = await getWeekView(session.userId, isoWeekOf(new Date()))
+  const hoy = todayStr()
+  // `getLienzoSemana` ya devuelve objetos planos y serializables (regla 2): la
+  // página no toca filas de Prisma ni las pasa al board.
+  const lienzo = await getLienzoSemana(session.userId, isoWeekOf(new Date(hoy)), hoy)
 
-  if (!view) {
+  if (!lienzo) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-neutral-50 px-4 text-center">
-        <p className="text-sm text-neutral-500">No hay semana activa todavía.</p>
-        <Link href="/semana/nueva" className="rounded-full bg-brand-deep px-5 py-2.5 text-sm font-bold text-white">
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-paper px-4 text-center">
+        <p className="lbl">Semana sin planear</p>
+        <p className="text-sm text-muted">No hay semana activa todavía.</p>
+        <Link href="/semana/nueva" className="rounded-md bg-brand-deep px-5 py-2.5 text-sm font-bold text-white">
           Planear la semana
         </Link>
-        <p className="text-xs text-neutral-400">
-          El ritual completo, en 5 pasos. También sigue disponible <code>/wtw-semana</code> desde el chat.
+        <p className="text-xs text-faint">
+          El ritual completo, en 5 pasos. También sigue disponible <code className="num">/wtw-semana</code> desde el
+          chat.
         </p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
-      <SemanaBoard
-        // Objeto plano y no la fila de Prisma: el board solo usa estos campos, y
-        // mandar el modelo completo cruza el límite RSC con columnas que no ocupa.
-        wins={view.week.wins.map((w) => ({
-          id: w.id,
-          posicion: w.posicion,
-          titulo: w.titulo,
-          dod: w.dod,
-          siEntonces: w.siEntonces,
-          estatus: w.estatus,
-        }))}
-        blocks={view.week.blocks}
-        cargaHoras={view.cargaHoras}
-        trabajableTotal={view.capacidad.trabajableTotal}
-        trabajablePlaneable={view.capacidad.trabajablePlaneable}
-        sobrecarga={view.sobrecarga}
-      />
+    <main className="min-h-dvh bg-paper">
+      <SemanaBoard v={lienzo} />
     </main>
   )
 }

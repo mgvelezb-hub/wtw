@@ -126,10 +126,10 @@ export function StatusEquipoSection({
   }
 
   return (
-    <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Status para equipo</h2>
+    <section className="hair pt-6">
+      <h2 className="lbl mb-2">Status para equipo</h2>
 
-      <div className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
+      <div className="rounded-lg border border-hair bg-surface p-3">
         <button
           type="button"
           onClick={alGenerar}
@@ -139,13 +139,13 @@ export function StatusEquipoSection({
           {pending && !activo ? 'Generando…' : 'Generar status'}
         </button>
         {pending && (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-muted">
             Puede tardar unos segundos — el modelo está redactando el borrador.
           </p>
         )}
 
         {error && (
-          <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-800">
+          <div className="mt-3 rounded-md border border-warn-border bg-warn-soft p-2 text-sm text-warn">
             {error}
           </div>
         )}
@@ -156,7 +156,7 @@ export function StatusEquipoSection({
               value={texto}
               onChange={(e) => setTexto(e.target.value)}
               rows={14}
-              className="w-full rounded-md border border-neutral-200 p-2 font-mono text-xs text-neutral-800"
+              className="w-full rounded-md border border-hair p-2 font-mono text-xs text-ink"
             />
 
             <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +172,7 @@ export function StatusEquipoSection({
                 type="button"
                 onClick={alGuardarBorrador}
                 disabled={pending}
-                className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 disabled:opacity-50"
+                className="rounded-md border border-hair bg-surface px-3 py-1.5 text-sm font-medium text-brand-deep disabled:opacity-50"
               >
                 Guardar borrador editado
               </button>
@@ -182,12 +182,12 @@ export function StatusEquipoSection({
               <button
                 type="button"
                 onClick={() => setMostrarInsumos((v) => !v)}
-                className="text-xs font-semibold text-neutral-500 underline"
+                className="text-xs font-semibold text-muted underline"
               >
                 {mostrarInsumos ? 'Ocultar insumos usados' : 'Ver insumos usados'}
               </button>
               {mostrarInsumos && (
-                <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-neutral-50 p-2 text-[10px] text-neutral-600">
+                <pre className="mt-2 max-h-64 overflow-auto rounded-md bg-paper p-2 text-[10px] text-muted">
                   {JSON.stringify(activo.insumos, null, 2)}
                 </pre>
               )}
@@ -197,37 +197,39 @@ export function StatusEquipoSection({
       </div>
 
       {artifacts.length > 0 && (
-        <div className="mt-3 space-y-2">
-          <h3 className="text-xs font-semibold uppercase text-neutral-400">Historial</h3>
-          {artifacts.map((a) => {
-            const expandido = expandidos.has(a.id)
-            const textoCompleto = a.final ?? a.borrador
-            return (
-              <div key={a.id} className="rounded-lg border border-neutral-200 bg-white p-3 text-sm shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => alternarExpandido(a.id)}
-                  className="flex w-full items-start justify-between gap-2 text-left"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-neutral-500">{new Date(a.createdAt).toLocaleDateString('es-MX')}</span>
-                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-neutral-500">
-                        {ESTADO_LABEL[a.estado]}
-                      </span>
+        <div className="mt-4">
+          <h3 className="lbl mb-1">Historial</h3>
+          <div className="divide-y divide-hair">
+            {artifacts.map((a) => {
+              const expandido = expandidos.has(a.id)
+              const textoCompleto = a.final ?? a.borrador
+              return (
+                <div key={a.id} className="py-3 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => alternarExpandido(a.id)}
+                    className="flex w-full items-start justify-between gap-2 text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="num text-xs text-muted">{new Date(a.createdAt).toLocaleDateString('es-MX')}</span>
+                        <span className="rounded-full bg-hair px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">
+                          {ESTADO_LABEL[a.estado]}
+                        </span>
+                      </div>
+                      {!expandido && (
+                        <p className="mt-1 truncate text-muted">{primerasLineas(textoCompleto, 2)}</p>
+                      )}
                     </div>
-                    {!expandido && (
-                      <p className="mt-1 truncate text-neutral-600">{primerasLineas(textoCompleto, 2)}</p>
-                    )}
-                  </div>
-                  <span className="shrink-0 text-neutral-400">{expandido ? '▲' : '▼'}</span>
-                </button>
-                {expandido && (
-                  <pre className="mt-2 whitespace-pre-wrap text-xs text-neutral-800">{textoCompleto}</pre>
-                )}
-              </div>
-            )
-          })}
+                    <span className="shrink-0 text-faint">{expandido ? '▲' : '▼'}</span>
+                  </button>
+                  {expandido && (
+                    <pre className="mt-2 whitespace-pre-wrap text-xs text-ink">{textoCompleto}</pre>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </section>

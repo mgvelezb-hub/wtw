@@ -81,7 +81,7 @@ function Btn({
       aria-pressed={!!activo}
       onClick={onClick}
       className={`rounded px-2 py-1 text-xs font-semibold leading-none ${
-        activo ? 'bg-brand-deep text-white' : 'text-neutral-700 hover:bg-neutral-200'
+        activo ? 'bg-brand-deep text-white' : 'text-ink hover:bg-hair'
       }`}
     >
       {children}
@@ -91,7 +91,7 @@ function Btn({
 
 function Toolbar({ editor }: { editor: Editor }) {
   return (
-    <div className="flex flex-wrap items-center gap-0.5 rounded-t-md border border-b-0 border-neutral-300 bg-neutral-50 px-1.5 py-1">
+    <div className="flex flex-wrap items-center gap-0.5 rounded-t-md border border-b-0 border-hair bg-paper px-1.5 py-1">
       <Btn titulo="Negrita" activo={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()}>
         <span className="font-bold">B</span>
       </Btn>
@@ -106,7 +106,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         <span className="underline">U</span>
       </Btn>
 
-      <span className="mx-1 h-4 w-px bg-neutral-300" />
+      <span className="mx-1 h-4 w-px bg-hair" />
 
       <Btn
         titulo="Lista con viñetas"
@@ -123,14 +123,14 @@ function Toolbar({ editor }: { editor: Editor }) {
         1. Lista
       </Btn>
 
-      <span className="mx-1 h-4 w-px bg-neutral-300" />
+      <span className="mx-1 h-4 w-px bg-hair" />
 
       <select
         title="Tamaño de fuente"
         aria-label="Tamaño de fuente"
         value={(editor.getAttributes('textStyle').fontSize as string) || '14px'}
         onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
-        className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs"
+        className="rounded border border-hair bg-surface px-1 py-0.5 text-xs"
       >
         {TAMANOS.map((t) => (
           <option key={t.valor} value={t.valor}>
@@ -144,7 +144,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         aria-label="Color de texto"
         value={(editor.getAttributes('textStyle').color as string) || '#171717'}
         onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-        className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs"
+        className="rounded border border-hair bg-surface px-1 py-0.5 text-xs"
       >
         {COLORES.map((c) => (
           <option key={c.valor} value={c.valor}>
@@ -153,7 +153,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         ))}
       </select>
 
-      <span className="mx-1 h-4 w-px bg-neutral-300" />
+      <span className="mx-1 h-4 w-px bg-hair" />
 
       <Btn
         titulo="Insertar tabla 3×3 con encabezado"
@@ -196,7 +196,7 @@ export function MinutaEditor({
       attributes: {
         // El ancho lo fija el drawer: el editor crece hacia abajo, nunca a los lados.
         class:
-          'min-h-[4.5rem] max-h-80 w-full overflow-y-auto rounded-b-md border border-neutral-300 px-2 py-1.5 text-sm focus:outline-none',
+          'min-h-[4.5rem] max-h-80 w-full overflow-y-auto rounded-b-md border border-hair px-2 py-1.5 text-sm focus:outline-none',
       },
     },
     onUpdate: ({ editor }) => {

@@ -101,7 +101,7 @@ export function InboxBoard({
   return (
     <div className="mx-auto max-w-lg space-y-4 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-lg font-bold text-brand-deep">📥 Actividades</h1>
+        <h1 className="text-2xl font-semibold text-ink">📥 Actividades</h1>
         <TourPrimeraVez
           ruta="/inbox"
           bullets={[
@@ -119,7 +119,7 @@ export function InboxBoard({
           e.preventDefault()
           submit()
         }}
-        className="space-y-3 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+        className="space-y-3 rounded-lg border border-hair bg-surface p-4"
       >
         <input
           type="text"
@@ -127,7 +127,7 @@ export function InboxBoard({
           onChange={(e) => setTitulo(e.target.value)}
           placeholder="Descripción de la tarea…"
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+          className="w-full rounded-md border border-hair px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
         />
 
         <div className="grid grid-cols-2 gap-2">
@@ -139,7 +139,7 @@ export function InboxBoard({
             }}
             disabled={pending}
             aria-label="Herramienta"
-            className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
+            className="rounded-md border border-hair px-2 py-2 text-sm text-ink"
           >
             <option value="">Herramienta…</option>
             {herramientas.map((h) => (
@@ -154,7 +154,7 @@ export function InboxBoard({
             onChange={(e) => setProjectId(e.target.value)}
             disabled={pending}
             aria-label="Proyecto"
-            className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
+            className="rounded-md border border-hair px-2 py-2 text-sm text-ink"
           >
             <option value="">Sin proyecto</option>
             {proyectos.map((p) => (
@@ -172,7 +172,7 @@ export function InboxBoard({
             }}
             disabled={pending}
             aria-label="Tipo de trabajo"
-            className="rounded-md border border-neutral-300 px-2 py-2 text-sm text-neutral-700"
+            className="rounded-md border border-hair px-2 py-2 text-sm text-ink"
           >
             <option value="">Tipo de trabajo…</option>
             {TIPOS_TRABAJO.map((t) => (
@@ -184,7 +184,7 @@ export function InboxBoard({
         </div>
 
         {projectId && (
-          <label className="flex items-center gap-2 text-xs font-medium text-neutral-600">
+          <label className="flex items-center gap-2 text-xs font-medium text-muted">
             <input type="checkbox" checked={aliado} onChange={(e) => setAliado(e.target.checked)} disabled={pending} />
             Es trabajo adicional fuera del alcance (aliado)
           </label>
@@ -203,13 +203,14 @@ export function InboxBoard({
             placeholder="Estimado en minutos…"
             disabled={pending}
             aria-label="Estimado en minutos"
-            className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            className="num w-full rounded-md border border-hair px-3 py-2 text-sm text-ink"
           />
 
           {ajuste && (
-            <p className="mt-1 text-xs text-neutral-500">
-              Ajustado con tu histórico en <strong>{ajuste.etiqueta}</strong> (×{ajuste.factor.toFixed(1)}) ·{' '}
-              <button type="button" onClick={deshacer} disabled={pending} className="underline hover:text-neutral-800">
+            <p className="mt-1 text-xs text-muted">
+              Ajustado con tu histórico en <strong>{ajuste.etiqueta}</strong>{' '}
+              (<span className="num">×{ajuste.factor.toFixed(1)}</span>) ·{' '}
+              <button type="button" onClick={deshacer} disabled={pending} className="underline hover:text-ink">
                 deshacer
               </button>
             </p>
@@ -217,8 +218,9 @@ export function InboxBoard({
 
           {!ajuste && tipoTrabajo && sugerenciaClase && (
             <p className="mt-1 text-xs text-brand-strong">
-              Tu histórico en <strong>{TIPO_TRABAJO_LABEL[tipoTrabajo]}</strong>: ×{sugerenciaClase.factor.toFixed(1)}{' '}
-              → ~{sugerenciaClase.minutos} min.{' '}
+              Tu histórico en <strong>{TIPO_TRABAJO_LABEL[tipoTrabajo]}</strong>:{' '}
+              <span className="num">×{sugerenciaClase.factor.toFixed(1)}</span> → ~
+              <span className="num">{sugerenciaClase.minutos}</span> min.{' '}
               <button
                 type="button"
                 disabled={pending}
@@ -237,8 +239,9 @@ export function InboxBoard({
               herramienta solo aparece cuando no hay factor de clase. */}
           {!ajuste && !sugerenciaClase && sugerenciaHerramienta && (
             <p className="mt-1 text-xs text-brand-strong">
-              Tu histórico en <strong>{herramienta}</strong>: ×{sugerenciaHerramienta.factor.toFixed(1)} → ~
-              {sugerenciaHerramienta.minutos} min.{' '}
+              Tu histórico en <strong>{herramienta}</strong>:{' '}
+              <span className="num">×{sugerenciaHerramienta.factor.toFixed(1)}</span> → ~
+              <span className="num">{sugerenciaHerramienta.minutos}</span> min.{' '}
               <button
                 type="button"
                 disabled={pending}
@@ -253,9 +256,9 @@ export function InboxBoard({
           {/* Sin muestras suficientes no se sugiere, pero sí se dice por qué: el
               silencio se leería como "aquí no te desvías", que es lo contrario. */}
           {!ajuste && tipoTrabajo && claseStats?.factor === null && claseStats.muestras > 0 && (
-            <p className="mt-1 text-xs text-neutral-400">
-              {claseStats.muestras} de 3 tareas de {TIPO_TRABAJO_LABEL[tipoTrabajo]} medidas — aún sin histórico
-              suficiente para sugerir.
+            <p className="mt-1 text-xs text-faint">
+              <span className="num">{claseStats.muestras} de 3</span> tareas de {TIPO_TRABAJO_LABEL[tipoTrabajo]} medidas
+              — aún sin histórico suficiente para sugerir.
             </p>
           )}
         </div>
@@ -269,39 +272,41 @@ export function InboxBoard({
         </button>
       </form>
 
-      <ul className="space-y-2">
+      <ul>
         {tasks.map((t) => (
-          <li key={t.id} className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
+          <li key={t.id} className="hair py-3">
             <div className="flex items-start justify-between gap-2">
-              <span className="text-sm font-medium text-neutral-900">{t.titulo}</span>
+              <span className="text-sm font-medium text-ink">{t.titulo}</span>
               <button
                 disabled={pending}
                 onClick={() => startTransition(() => void discardAction(t.id))}
-                className="shrink-0 text-xs font-medium text-neutral-400 hover:text-red-600"
+                className="shrink-0 text-xs font-medium text-faint hover:text-danger"
               >
                 Descartar
               </button>
             </div>
-            <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-neutral-500">
+            <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-muted">
               {t.herramienta && (
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium">{t.herramienta}</span>
+                <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand-deep">{t.herramienta}</span>
               )}
               {t.tipoTrabajo && (
                 <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand-deep">
                   {TIPO_TRABAJO_LABEL[t.tipoTrabajo]}
                 </span>
               )}
-              {t.proyecto && <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium">{t.proyecto}</span>}
-              {t.estimadoMin != null && <span>{t.estimadoMin} min</span>}
+              {t.proyecto && (
+                <span className="rounded bg-brand-soft px-1.5 py-0.5 font-medium text-brand-deep">{t.proyecto}</span>
+              )}
+              {t.estimadoMin != null && <span className="num">{t.estimadoMin} min</span>}
             </div>
           </li>
         ))}
         {/* El estado vacío enseña, no informa: "sin actividades" es cierto y no
             sirve de nada la primera vez que alguien abre la pantalla. */}
         {tasks.length === 0 && (
-          <li className="rounded-lg border border-dashed border-neutral-300 bg-white p-4 text-sm">
-            <p className="font-semibold text-neutral-700">Nada pendiente por triagear.</p>
-            <p className="mt-1 text-xs leading-relaxed text-neutral-500">
+          <li className="rounded-lg border border-dashed border-hair bg-surface p-4 text-sm">
+            <p className="font-semibold text-muted">Nada pendiente por triagear.</p>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
               Aquí se acumula lo que aparece entre juntas y correos, antes de decidir qué día lo haces. Captúralo arriba
               con una descripción; si ya lo sabes, agrega el tipo de trabajo y los minutos que crees que toma. Lo que
               guardes aparece en <strong>Mi Día</strong>, en la columna de pendientes, listo para arrastrarlo a un día.

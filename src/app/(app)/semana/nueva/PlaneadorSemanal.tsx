@@ -235,7 +235,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         <p className="mt-2 text-sm text-warn">
           Para replanear, primero cierra o borra la semana actual. Así no se duplican tareas ni bloques.
         </p>
-        <Link href="/semana" className="mt-4 inline-block rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white">
+        <Link href="/semana" className="mt-4 inline-block rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white">
           Ver mi semana
         </Link>
       </div>
@@ -246,7 +246,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
     <div className="space-y-4">
       <header>
         <h1 className="text-lg font-bold text-brand-deep">Planear la semana {ctx.isoWeek}</h1>
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           Factor de realismo {ctx.factor} · {horas(Math.round(ctx.capacidad.trabajablePlaneable * 60))} planeables
         </p>
       </header>
@@ -261,7 +261,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   ? 'bg-brand-deep text-white'
                   : i < draft.paso
                     ? 'bg-brand-soft text-brand-deep'
-                    : 'bg-neutral-100 text-neutral-500'
+                    : 'bg-paper text-muted'
               }`}
             >
               {i + 1}. {nombre}
@@ -276,7 +276,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         </p>
       )}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <section className="rounded-xl border border-hair bg-surface p-4">
         {draft.paso === 0 && (
           <PasoReflejar
             ctx={ctx}
@@ -437,12 +437,12 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         <button
           disabled={draft.paso === 0}
           onClick={() => set({ paso: draft.paso - 1 })}
-          className="rounded-full border border-neutral-300 px-4 py-2 text-sm font-bold text-neutral-600 disabled:opacity-40"
+          className="rounded-md border border-hair px-4 py-2 text-sm font-bold text-muted disabled:opacity-40"
         >
           ← Atrás
         </button>
 
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-muted">
           {incluidas.length} tareas · {horas(cargaAjustada)} de {horas(bal.planeableMin)}
           {bal.sobrecargado && <strong className="ml-1 text-warn">se pasa {horas(-bal.colchonMin)}</strong>}
         </span>
@@ -457,7 +457,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
               setAvisoWins(false)
               set({ paso: draft.paso + 1 })
             }}
-            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white"
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white"
           >
             {draft.paso === 1 && winsSinPlan.length > 0 && avisoWins ? 'Avanzar sin si-entonces →' : 'Siguiente →'}
           </button>
@@ -508,7 +508,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             }}
             // Antes ámbar (color de advertencia): un botón primario es una acción,
             // y la gramática reserva el ámbar solo para advertencias — nunca botones.
-            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             {pending ? 'Creando…' : '✓ Crear semana'}
           </button>
@@ -523,7 +523,7 @@ function BotonIA({ onClick, cargando, texto }: { onClick: () => void; cargando: 
     <button
       onClick={onClick}
       disabled={cargando}
-      className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-50"
+      className="rounded-md border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-50"
     >
       {cargando ? '⏳ pensando…' : `✨ ${texto}`}
     </button>
@@ -556,17 +556,17 @@ function PasoReflejar({
   const a = ctx.anterior
   return (
     <div className="space-y-3">
-      <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">1 · Reflejar: el AAR de la semana que terminó</h2>
+      <h2 className="lbl text-brand-deep">1 · Reflejar: el AAR de la semana que terminó</h2>
 
       {!a ? (
-        <p className="text-sm text-neutral-500">No hay semana anterior registrada. Este paso no aplica todavía.</p>
+        <p className="text-sm text-muted">No hay semana anterior registrada. Este paso no aplica todavía.</p>
       ) : (
         <>
           {/* La semana pasada ya quedó archivada — este paso no la reabre ni la
               califica, la lee como el único insumo real para calibrar la que
               sigue. Una semana con Wins fallidos o factor alto no es una racha
               rota: es más dato, no menos. */}
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted">
             La semana pasada está archivada. Estos números no son un veredicto — son la calibración de esta semana.
           </p>
 
@@ -578,11 +578,11 @@ function PasoReflejar({
             </dl>
             <ul className="mt-2 space-y-1 text-sm">
               {a.wins.map((w) => (
-                <li key={w.posicion} className="text-neutral-800">
-                  <span className="text-neutral-400">Win {w.posicion} ·</span> {w.titulo}
+                <li key={w.posicion} className="text-ink">
+                  <span className="text-faint">Win {w.posicion} ·</span> {w.titulo}
                 </li>
               ))}
-              {a.wins.length === 0 && <li className="text-xs text-neutral-400">Esa semana no comprometió Wins.</li>}
+              {a.wins.length === 0 && <li className="text-xs text-faint">Esa semana no comprometió Wins.</li>}
             </ul>
           </Pregunta>
 
@@ -606,20 +606,20 @@ function PasoReflejar({
                 <li key={w.posicion} className="flex items-center gap-2">
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      w.estatus === 'logrado' ? 'bg-ok text-white' : w.estatus === 'fallido' ? 'bg-danger text-white' : 'bg-neutral-200 text-neutral-700'
+                      w.estatus === 'logrado' ? 'bg-ok text-white' : w.estatus === 'fallido' ? 'bg-danger text-white' : 'bg-hair text-muted'
                     }`}
                   >
                     {ESTATUS_WIN_LABEL[w.estatus] ?? w.estatus}
                   </span>
-                  <span className="text-neutral-800">{w.titulo}</span>
-                  <span className="text-xs text-neutral-400">
+                  <span className="text-ink">{w.titulo}</span>
+                  <span className="text-xs text-faint">
                     {w.tareasHechas}/{w.tareasTotal}
                   </span>
                 </li>
               ))}
             </ul>
             {a.tareasSinTerminar.length > 0 && (
-              <p className="mt-2 text-xs text-neutral-500">Quedó abierto: {a.tareasSinTerminar.join(' · ')}</p>
+              <p className="mt-2 text-xs text-muted">Quedó abierto: {a.tareasSinTerminar.join(' · ')}</p>
             )}
           </Pregunta>
 
@@ -630,7 +630,7 @@ function PasoReflejar({
       )}
 
       <div className="flex items-center justify-between gap-2">
-        <label className="text-xs font-semibold uppercase text-neutral-500">Narrativa del AAR</label>
+        <label className="lbl">Narrativa del AAR</label>
         {a && <BotonIA onClick={onIA} cargando={cargando} texto="Redactar con IA" />}
       </div>
       <textarea
@@ -638,17 +638,17 @@ function PasoReflejar({
         onChange={(e) => onChange(e.target.value)}
         rows={4}
         placeholder="Qué esperabas, qué pasó, por qué la brecha…"
-        className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
+        className="w-full rounded-lg border border-hair px-3 py-2 text-sm text-ink"
       />
 
       {/* La cuarta pregunta va con el acento de marca y no dentro del bloque de
           datos: es la única que produce una decisión, y la única que la IA no
           contesta. */}
       <div className="rounded-lg border border-brand/40 bg-brand/5 p-3">
-        <label htmlFor="que-cambias" className="text-xs font-bold uppercase tracking-wide text-brand-deep">
+        <label htmlFor="que-cambias" className="lbl text-brand-deep">
           4 · ¿Qué cambias esta semana?
         </label>
-        <p className="mt-0.5 text-xs text-neutral-600">
+        <p className="mt-0.5 text-xs text-muted">
           Un cambio, concreto y observable. Sin esto el AAR se queda en descripción y la semana repite la brecha.
         </p>
         <input
@@ -656,7 +656,7 @@ function PasoReflejar({
           value={queCambias}
           onChange={(e) => onQueCambias(e.target.value)}
           placeholder="Ej. no agendo juntas antes de las 11 para proteger el bloque de análisis"
-          className="mt-2 w-full rounded border border-brand/40 px-2 py-1.5 text-sm text-neutral-900"
+          className="mt-2 w-full rounded border border-brand/40 px-2 py-1.5 text-sm text-ink"
         />
       </div>
     </div>
@@ -665,8 +665,8 @@ function PasoReflejar({
 
 function Pregunta({ n, texto, children }: { n: number; texto: string; children: React.ReactNode }): React.ReactElement {
   return (
-    <section className="rounded-lg border border-neutral-200 p-3">
-      <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-500">
+    <section className="hair pt-3">
+      <h3 className="lbl">
         {n} · {texto}
       </h3>
       <div className="mt-2">{children}</div>
@@ -687,12 +687,12 @@ function Brecha({
         // Decirlo explícito importa: sin reconciliación la causa NO está medida,
         // y la alternativa —inventar una explicación plausible— es justo lo que
         // el AAR sobre datos objetivos existe para evitar.
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           Ningún día de esa semana se reconcilió, así que la causa de la brecha no está medida. Cerrar el día en{' '}
           <span className="font-semibold">/cierre</span> es lo que la vuelve dato.
         </p>
       ) : desvios.totalMin === 0 ? (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           {desvios.diasReconciliados} día(s) reconciliados y ningún desvío registrado: el plan no se rompió por ninguna causa
           clasificada.
         </p>
@@ -701,18 +701,18 @@ function Brecha({
           <ul className="space-y-1">
             {desvios.porCausa.map((c) => (
               <li key={c.causa} className="flex items-center justify-between gap-2">
-                <span className="text-neutral-800">
+                <span className="text-ink">
                   {c.label}
-                  <span className="ml-1 text-xs text-neutral-400">le toca a {c.aQuienToca}</span>
+                  <span className="ml-1 text-xs text-faint">le toca a {c.aQuienToca}</span>
                 </span>
-                <span className="shrink-0 font-mono text-xs text-neutral-600">
+                <span className="shrink-0 num text-xs text-muted">
                   {horas(c.minutos)} · {c.pct}%
                 </span>
               </li>
             ))}
           </ul>
           {desvios.dominante && (
-            <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+            <p className="rounded-lg bg-paper px-3 py-2 text-xs text-muted">
               Causa dominante: <strong>{desvios.dominante.label}</strong> — le toca a {desvios.dominante.aQuienToca}.
             </p>
           )}
@@ -720,13 +720,13 @@ function Brecha({
       )}
 
       {premortem.predichos === 0 ? (
-        <p className="text-xs text-neutral-400">Esa semana no hizo pre-mortem, así que no hay predicción que evaluar.</p>
+        <p className="text-xs text-faint">Esa semana no hizo pre-mortem, así que no hay predicción que evaluar.</p>
       ) : premortem.cerrados === 0 ? (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           {premortem.predichos} riesgo(s) predichos, ninguno evaluado al cerrar la semana: la predicción quedó sin veredicto.
         </p>
       ) : (
-        <p className="rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-700">
+        <p className="rounded-lg bg-paper px-3 py-2 text-xs text-muted">
           Pre-mortem: predijiste <strong>{premortem.predichos}</strong>, ocurrieron <strong>{premortem.ocurrieron}</strong> de los{' '}
           {premortem.cerrados} evaluados, y la defensa sirvió en <strong>{premortem.defensasSirvieron}</strong>.
         </p>
@@ -737,9 +737,9 @@ function Brecha({
 
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }): React.ReactElement {
   return (
-    <div className="rounded-lg bg-neutral-50 px-3 py-2">
-      <dt className="text-[10px] font-bold uppercase text-neutral-500">{etiqueta}</dt>
-      <dd className="font-mono text-sm font-semibold text-neutral-900">{valor}</dd>
+    <div className="rounded-lg bg-paper px-3 py-2">
+      <dt className="lbl text-[10px]">{etiqueta}</dt>
+      <dd className="num text-sm font-semibold text-ink">{valor}</dd>
     </div>
   )
 }
@@ -765,10 +765,10 @@ function PasoWins({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">2 · Los 3 Wins de la semana</h2>
+        <h2 className="lbl text-brand-deep">2 · Los 3 Wins de la semana</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto="Sugerir con IA" />
       </div>
-      <p className="text-xs text-neutral-500">Un Win es un resultado, no una actividad. Si no se puede declarar logrado o fallido, no es un Win.</p>
+      <p className="text-xs text-muted">Un Win es un resultado, no una actividad. Si no se puede declarar logrado o fallido, no es un Win.</p>
 
       {aviso && (
         <p className="rounded-lg border border-warn-border bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">
@@ -778,7 +778,7 @@ function PasoWins({
       )}
 
       {wins.map((w, i) => (
-        <div key={i} className="space-y-1 rounded-lg border border-neutral-200 p-3">
+        <div key={i} className="space-y-1 rounded-lg border border-hair p-3">
           <div className="flex items-center gap-2">
             {/* Chip decorativo (numeración, no advertencia): la gramática de
                 color reserva warn para advertencias reales, así que usa el
@@ -788,14 +788,14 @@ function PasoWins({
               value={w.titulo}
               onChange={(e) => editar(i, { titulo: e.target.value })}
               placeholder="Resultado concreto…"
-              className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-900"
+              className="flex-1 rounded border border-hair px-2 py-1 text-sm text-ink"
             />
           </div>
           <input
             value={w.dod}
             onChange={(e) => editar(i, { dod: e.target.value })}
             placeholder="¿Cómo sabrás que está logrado?"
-            className="w-full rounded border border-neutral-200 px-2 py-1 text-xs text-neutral-900"
+            className="w-full rounded border border-hair px-2 py-1 text-xs text-ink"
           />
 
           {/* Solo aparece cuando el Win existe: pedir el plan de un Win vacío es
@@ -807,19 +807,19 @@ function PasoWins({
                 aria-label={`Plan si-entonces del Win ${i + 1}`}
                 onChange={(e) => editar(i, { siEntonces: e.target.value })}
                 placeholder="Si [obstáculo], entonces [acción]…"
-                className={`w-full rounded border px-2 py-1 text-xs text-neutral-900 ${
-                  w.siEntonces.trim() === '' && aviso ? 'border-warn-border bg-warn-soft' : 'border-neutral-200'
+                className={`w-full rounded border px-2 py-1 text-xs text-ink ${
+                  w.siEntonces.trim() === '' && aviso ? 'border-warn-border bg-warn-soft' : 'border-hair'
                 }`}
               />
 
               <div className="flex flex-wrap items-center gap-2 pt-1">
-                <span className="text-xs text-neutral-500">¿Esto hace la próxima semana ≥1% más fácil?</span>
+                <span className="text-xs text-muted">¿Esto hace la próxima semana ≥1% más fácil?</span>
                 <button
                   type="button"
                   aria-pressed={w.leverage === true}
                   onClick={() => editar(i, { leverage: w.leverage === true ? null : true })}
                   className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                    w.leverage === true ? 'bg-brand-deep text-white' : 'border border-neutral-300 text-neutral-600'
+                    w.leverage === true ? 'bg-brand-deep text-white' : 'border border-hair text-muted'
                   }`}
                 >
                   Sí
@@ -829,7 +829,7 @@ function PasoWins({
                   aria-pressed={w.leverage === false}
                   onClick={() => editar(i, { leverage: w.leverage === false ? null : false })}
                   className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                    w.leverage === false ? 'bg-neutral-700 text-white' : 'border border-neutral-300 text-neutral-600'
+                    w.leverage === false ? 'bg-brand-deep text-white' : 'border border-hair text-muted'
                   }`}
                 >
                   No
@@ -839,7 +839,7 @@ function PasoWins({
                   puede seguir siendo el Win correcto de la semana —un entregable
                   con fecha lo es— pero conviene haberlo decidido a propósito. */}
               {w.leverage === false && (
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-muted">
                   Considera si es un Win o solo una tarea grande: un Win deja algo instalado —un proceso, una plantilla, una
                   decisión— que la semana siguiente ya no vuelve a costar.
                 </p>
@@ -898,16 +898,16 @@ function PasoVaciar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">3 · Vaciar y dimensionar</h2>
+        <h2 className="lbl text-brand-deep">3 · Vaciar y dimensionar</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto={`Estimar ${sinEstimar || ''} con IA`} />
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-muted">
         Estima el tiempo limpio. El factor {factor} se aplica solo: {horas(cargaAjustada)} ajustados de {horas(planeableMin)} planeables.
       </p>
       {grupos.length > 0 && (
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-muted">
           Etiqueta qué competencia ejercita cada tarea: <strong>{etiquetadas}</strong> de {incluidas.length} incluidas.{' '}
-          <span className="text-neutral-400">○ = reactivo sin ninguna evidencia todavía.</span>
+          <span className="text-faint">○ = reactivo sin ninguna evidencia todavía.</span>
         </p>
       )}
 
@@ -922,12 +922,12 @@ function PasoVaciar({
             }
           }}
           placeholder="Agregar pendiente nuevo y Enter…"
-          className="flex-1 rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-900"
+          className="flex-1 rounded border border-hair px-2 py-1 text-sm text-ink"
         />
         <select
           value={nuevoProy}
           onChange={(e) => setNuevoProy(e.target.value)}
-          className="rounded border border-neutral-300 bg-white px-1 py-1 text-xs text-neutral-600"
+          className="rounded border border-hair bg-surface px-1 py-1 text-xs text-muted"
         >
           <option value="">Sin proyecto</option>
           {proyectos.map((p) => (
@@ -940,19 +940,19 @@ function PasoVaciar({
 
       <ul className="space-y-1">
         {items.map((it) => (
-          <li key={it.ref} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 ${it.incluida ? 'border-brand/30 bg-white' : 'border-neutral-200 bg-neutral-50'}`}>
+          <li key={it.ref} className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 ${it.incluida ? 'border-brand/30 bg-surface' : 'border-hair bg-paper'}`}>
             <input
               type="checkbox"
               checked={it.incluida}
               aria-label={`Incluir ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { incluida: e.target.checked })}
             />
-            <span className={`min-w-0 flex-1 text-sm ${it.incluida ? 'text-neutral-900' : 'text-neutral-400'}`}>
+            <span className={`min-w-0 flex-1 text-sm ${it.incluida ? 'text-ink' : 'text-faint'}`}>
               {it.titulo}
               {it.arrastrada && (
                 <span className="ml-1 rounded bg-[#5b4b8a] px-1 text-[10px] font-bold uppercase text-white">viene de antes</span>
               )}
-              {it.proyecto && <span className="ml-1 text-xs text-neutral-400">· {it.proyecto}</span>}
+              {it.proyecto && <span className="ml-1 text-xs text-faint">· {it.proyecto}</span>}
               {it.deadline && <span className="ml-1 rounded bg-warn-soft px-1 text-[10px] font-bold text-warn">{it.deadline}</span>}
             </span>
             <input
@@ -963,13 +963,13 @@ function PasoVaciar({
               aria-label={`Minutos de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { estimadoMin: Math.max(0, Number(e.target.value) || 0) })}
               placeholder="min"
-              className="w-16 rounded border border-neutral-300 px-1 py-0.5 text-xs text-neutral-900"
+              className="w-16 rounded border border-hair px-1 py-0.5 text-xs text-ink"
             />
             <select
               value={it.winPosicion ?? ''}
               aria-label={`Win de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { winPosicion: e.target.value ? Number(e.target.value) : undefined })}
-              className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+              className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
             >
               <option value="">Sin Win</option>
               {wins.map((w, i) => (
@@ -986,7 +986,7 @@ function PasoVaciar({
                 aria-label={`Competencia de ${it.titulo}`}
                 onChange={(e) => onItem(it.ref, { competenciaId: e.target.value || undefined })}
                 className={`w-full rounded border px-1 py-0.5 text-xs ${
-                  it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-neutral-300 bg-white text-neutral-500'
+                  it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-hair bg-surface text-muted'
                 }`}
               >
                 <option value="">Sin competencia</option>
@@ -1004,7 +1004,7 @@ function PasoVaciar({
             )}
           </li>
         ))}
-        {items.length === 0 && <li className="text-xs text-neutral-400">Backlog vacío. Agrega pendientes arriba.</li>}
+        {items.length === 0 && <li className="text-xs text-faint">Backlog vacío. Agrega pendientes arriba.</li>}
       </ul>
     </div>
   )
@@ -1030,7 +1030,7 @@ function PasoBloquear({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">4 · Bloquear en la semana</h2>
+        <h2 className="lbl text-brand-deep">4 · Bloquear en la semana</h2>
         {bal.sobrecargado && <BotonIA onClick={onIA} cargando={cargando} texto="Proponer recorte con IA" />}
       </div>
 
@@ -1063,32 +1063,32 @@ function PasoBloquear({
           // atrasado: ámbar, que es lo que la gramática de color reserva para
           // advertencias.
           return (
-            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-warn-soft' : 'bg-neutral-50'}`}>
-              <dt className="text-[10px] font-bold uppercase text-neutral-500">{d.fecha.slice(5)}</dt>
-              <dd className={`font-mono text-xs font-semibold ${asignado > libre ? 'text-warn' : 'text-neutral-900'}`}>
+            <div key={d.fecha} className={`rounded-lg p-1 ${asignado > libre ? 'bg-warn-soft' : 'bg-paper'}`}>
+              <dt className="lbl text-[10px]">{d.fecha.slice(5)}</dt>
+              <dd className={`num text-xs font-semibold ${asignado > libre ? 'text-warn' : 'text-ink'}`}>
                 {horas(asignado)}
-                <span className="text-neutral-400">/{horas(libre)}</span>
+                <span className="text-faint">/{horas(libre)}</span>
               </dd>
             </div>
           )
         })}
       </dl>
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-muted">
         Elige el día, no la hora: la hora se acomoda en Mi Día con el reflow, que ya conoce tus juntas. Sin día, la tarea entra a
         la semana y espera en pendientes.
       </p>
 
       <ul className="space-y-1">
         {items.map((it) => (
-          <li key={it.ref} className="flex items-center gap-2 rounded-lg border border-neutral-200 p-2">
-            <span className="min-w-0 flex-1 text-sm text-neutral-900">{it.titulo}</span>
-            <span className="font-mono text-xs text-neutral-500">{horas(Math.round(it.estimadoMin * factor))}</span>
+          <li key={it.ref} className="flex items-center gap-2 rounded-lg border border-hair p-2">
+            <span className="min-w-0 flex-1 text-sm text-ink">{it.titulo}</span>
+            <span className="num text-xs text-muted">{horas(Math.round(it.estimadoMin * factor))}</span>
             <select
               value={it.fecha ?? ''}
               aria-label={`Día de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { fecha: e.target.value || undefined })}
-              className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+              className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
             >
               <option value="">Sin día</option>
               {capacidad.dias.map((d) => (
@@ -1139,14 +1139,14 @@ function PasoPreemptar({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">5 · Pre-emptar</h2>
+        <h2 className="lbl text-brand-deep">5 · Pre-emptar</h2>
         <BotonIA onClick={onIA} cargando={cargando} texto="Pre-mortem con IA" />
       </div>
-      <p className="text-xs text-neutral-500">Imagina que la semana terminó y los Wins no se lograron. ¿Qué pasó?</p>
+      <p className="text-xs text-muted">Imagina que la semana terminó y los Wins no se lograron. ¿Qué pasó?</p>
 
       {riesgos.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-deep/5 px-2 py-1.5">
-          <span className="text-xs text-neutral-600">
+          <span className="text-xs text-muted">
             {agregadas.length > 0 ? (
               <>
                 <strong className="text-brand-deep">{agregadas.length}</strong> de {medidas.length} medidas en la semana ·{' '}
@@ -1158,7 +1158,7 @@ function PasoPreemptar({
           </span>
           <button
             onClick={() => medidas.forEach((m, i) => (todasAgregadas ? m.agregada : !m.agregada) && onToggleMedida(i))}
-            className="rounded-full border border-brand-deep px-2 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
+            className="rounded-md border border-brand-deep px-2 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {todasAgregadas ? 'Quitar todas' : 'Agregar todas'}
           </button>
@@ -1171,13 +1171,13 @@ function PasoPreemptar({
           return (
             <li
               key={i}
-              className={`rounded-lg border p-2 ${m?.agregada ? 'border-brand/50 bg-brand/5' : 'border-neutral-200'}`}
+              className={`rounded-lg border p-2 ${m?.agregada ? 'border-brand/50 bg-brand/5' : 'border-hair'}`}
             >
-              <p className="text-sm font-semibold text-neutral-900">⚠ {r.riesgo}</p>
-              <p className="mt-0.5 text-xs text-neutral-600">→ {r.defensa}</p>
+              <p className="text-sm font-semibold text-ink">⚠ {r.riesgo}</p>
+              <p className="mt-0.5 text-xs text-muted">→ {r.defensa}</p>
 
               {m && (
-                <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-neutral-100 pt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-hair pt-2">
                   <input
                     type="checkbox"
                     checked={m.agregada}
@@ -1188,7 +1188,7 @@ function PasoPreemptar({
                     value={m.titulo}
                     aria-label={`Título de la medida del riesgo ${i + 1}`}
                     onChange={(e) => onEditarMedida(i, { titulo: e.target.value })}
-                    className="min-w-40 flex-1 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-900"
+                    className="min-w-40 flex-1 rounded border border-hair px-2 py-0.5 text-xs text-ink"
                   />
                   <input
                     type="number"
@@ -1197,15 +1197,15 @@ function PasoPreemptar({
                     value={m.estimadoMin || ''}
                     aria-label={`Minutos de la medida del riesgo ${i + 1}`}
                     onChange={(e) => onEditarMedida(i, { estimadoMin: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-16 rounded border border-neutral-300 px-1 py-0.5 text-xs text-neutral-900"
+                    className="w-16 rounded border border-hair px-1 py-0.5 text-xs text-ink"
                   />
-                  <span className="text-xs text-neutral-400">min</span>
+                  <span className="text-xs text-faint">min</span>
                 </div>
               )}
             </li>
           )
         })}
-        {riesgos.length === 0 && <li className="text-xs text-neutral-400">Sin riesgos anotados.</li>}
+        {riesgos.length === 0 && <li className="text-xs text-faint">Sin riesgos anotados.</li>}
       </ul>
 
       {/* La carga se muestra AQUÍ y no solo en el pie: los pasos 3 y 4 existen
@@ -1244,12 +1244,12 @@ function PasoPreemptar({
         </div>
       )}
 
-      <label className="block text-xs font-semibold uppercase text-neutral-500">Desbloqueador</label>
+      <label className="block lbl">Desbloqueador</label>
       <input
         value={desbloqueador}
         onChange={(e) => onChange({ desbloqueador: e.target.value })}
         placeholder="La actividad que, hecha primero, destraba el resto…"
-        className="w-full rounded-lg border border-warn-border px-3 py-2 text-sm text-neutral-900"
+        className="w-full rounded-lg border border-warn-border px-3 py-2 text-sm text-ink"
       />
     </div>
   )

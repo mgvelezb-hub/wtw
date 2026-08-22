@@ -124,7 +124,7 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
     <Link
       href={href}
       className={`flex shrink-0 scroll-mx-2 snap-start items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-        active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'
+        active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'
       }`}
     >
       <Icono name={icon} />
@@ -211,7 +211,7 @@ function DesktopNavItem({
           aria-current={active ? 'page' : undefined}
           className={`flex flex-1 items-center rounded-md text-sm font-medium transition-colors ${
             rail ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
-          } ${active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'}`}
+          } ${active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'}`}
         >
           <Icono name={item.icon} />
           {!rail && <span>{item.label}</span>}
@@ -222,7 +222,7 @@ function DesktopNavItem({
             onClick={() => setAbierto((v) => !v)}
             aria-expanded={desplegado}
             aria-label={desplegado ? `Ocultar sub-secciones de ${item.label}` : `Mostrar sub-secciones de ${item.label}`}
-            className={`ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-transform hover:bg-neutral-100 hover:text-neutral-600 ${
+            className={`ml-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-faint transition-transform hover:bg-paper hover:text-muted ${
               desplegado ? 'rotate-180' : ''
             }`}
           >
@@ -243,19 +243,19 @@ function DesktopNavItem({
       )}
 
       {!rail && (
-        <p className="hidden px-3 pb-1 text-[11px] leading-snug text-neutral-400 [@media(hover:none)]:block">
+        <p className="hidden px-3 pb-1 text-[11px] leading-snug text-faint [@media(hover:none)]:block">
           {item.desc}
         </p>
       )}
 
       {item.sub && desplegado && (
-        <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-neutral-200 pl-2">
+        <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">
           {item.sub.map((s) => (
             <Link
               key={s.href}
               href={s.href}
               className={`flex items-center gap-2 truncate rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                subActive(s.href) ? 'bg-brand-soft text-brand-deep' : 'text-neutral-500 hover:bg-neutral-100'
+                subActive(s.href) ? 'bg-brand-soft text-brand-deep' : 'text-muted hover:bg-paper'
               }`}
             >
               {s.color && <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: s.color }} aria-hidden />}
@@ -390,7 +390,7 @@ export function AppShell({
   }
 
   return (
-    <div className={`min-h-dvh bg-[#f4efe3] ${transicion} ${esRail ? 'md:pl-14' : 'md:pl-56'}`}>
+    <div className={`min-h-dvh bg-paper ${transicion} ${esRail ? 'md:pl-14' : 'md:pl-56'}`}>
       {/* Bajo 640px esta barra no existe: el teléfono navega por la barra
           inferior (`NavInferior`) y la pantalla recupera esos 56 px de alto,
           que en un iPhone son la diferencia entre ver el bloque de la tarde o
@@ -400,13 +400,13 @@ export function AppShell({
       <nav
         id="nav-lateral"
         aria-label="Secciones"
-        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:py-4 ${transicion} ${
+        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-hair bg-surface px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:py-4 ${transicion} ${
           esRail ? 'md:w-14 md:px-2' : 'md:w-56 md:px-3'
         }`}
       >
         <div className={`hidden pb-4 md:block ${esRail ? 'px-0 text-center' : 'px-2'}`}>
           <p className="text-base font-bold text-brand">{esRail ? 'W' : 'WTW'}</p>
-          {!esRail && <p className="truncate text-xs text-neutral-400">{nombre}</p>}
+          {!esRail && <p className="truncate text-xs text-faint">{nombre}</p>}
         </div>
 
         {/* Tablet angosta (640–767): fila plana scrollable, con fade en los
@@ -428,13 +428,13 @@ export function AppShell({
           {!scrollState.atStart && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-white to-transparent"
+              className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-surface to-transparent"
             />
           )}
           {!scrollState.atEnd && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-white to-transparent"
+              className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent"
             />
           )}
         </div>
@@ -453,7 +453,7 @@ export function AppShell({
                     aria-expanded={!estaColapsado}
                     aria-label={g.grupo}
                     title={esRail ? g.grupo : undefined}
-                    className={`flex w-full items-center border-t border-neutral-100 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400 hover:text-neutral-600 ${
+                    className={`lbl flex w-full items-center border-t border-hair pb-1 pt-2 hover:text-ink ${
                       esRail ? 'justify-center px-0' : 'justify-between px-2'
                     }`}
                   >
@@ -468,7 +468,7 @@ export function AppShell({
                 ) : (
                   g.grupo &&
                   !esRail && (
-                    <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{g.grupo}</p>
+                    <p className="lbl px-2 pb-1">{g.grupo}</p>
                   )
                 )}
                 {!estaColapsado && (
@@ -488,9 +488,9 @@ export function AppShell({
             )
           })}
 
-          <div className="mt-auto border-t border-neutral-100 pt-3">
-            <p className={`text-[10px] leading-snug text-neutral-400 ${esRail ? 'px-0 text-center' : 'px-2'}`}>
-              <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1 py-0.5 font-sans text-[10px] text-neutral-500">
+          <div className="mt-auto border-t border-hair pt-3">
+            <p className={`text-[10px] leading-snug text-faint ${esRail ? 'px-0 text-center' : 'px-2'}`}>
+              <kbd className="rounded border border-hair bg-paper px-1 py-0.5 font-sans text-[10px] text-faint">
                 {teclaAtajo}K
               </kbd>
               {!esRail && ' para saltar'}
@@ -503,7 +503,7 @@ export function AppShell({
               aria-controls="nav-lateral"
               aria-label={esRail ? 'Expandir la navegación' : 'Colapsar la navegación'}
               title={`${esRail ? 'Expandir' : 'Colapsar'} la navegación ([)`}
-              className={`mt-2 flex w-full items-center rounded-md py-2 text-[11px] font-medium text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 ${
+              className={`mt-2 flex w-full items-center rounded-md py-2 text-[11px] font-medium text-faint transition-colors hover:bg-paper hover:text-muted ${
                 esRail ? 'justify-center px-0' : 'gap-2 px-2'
               }`}
             >

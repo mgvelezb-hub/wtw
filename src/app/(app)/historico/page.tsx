@@ -23,16 +23,16 @@ export default async function HistoricoPage() {
   const hayTendencias = cronologico.length >= 2
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-2xl space-y-4 p-4">
-        <h1 className="text-lg font-bold text-neutral-900">Histórico</h1>
+        <h1 className="text-2xl font-semibold text-ink">Histórico</h1>
 
         {historico.length === 0 ? (
-          <p className="text-sm text-neutral-400">
+          <p className="text-sm text-faint">
             Sin semanas cerradas todavía — el histórico aparece cuando una semana termina su ciclo.
           </p>
         ) : !hayTendencias ? (
-          <p className="text-sm text-neutral-400">Con 2+ semanas cerradas aparecen las tendencias.</p>
+          <p className="text-sm text-faint">Con 2+ semanas cerradas aparecen las tendencias.</p>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <TrendCard
@@ -64,34 +64,36 @@ export default async function HistoricoPage() {
         )}
 
         {historico.length > 0 && (
-          <table className="w-full overflow-hidden rounded-lg border border-neutral-200 bg-white text-sm shadow-sm">
-            <thead className="bg-neutral-50 text-left text-xs uppercase text-neutral-500">
-              <tr>
-                <th className="px-3 py-2">Semana</th>
-                <th className="px-3 py-2">Factor</th>
-                <th className="px-3 py-2">Wins</th>
-                <th className="px-3 py-2">Horas (medidas/plan)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historico.map((h) => (
-                <tr key={h.isoWeek} className="border-t border-neutral-100">
-                  <td className="px-3 py-2">{h.isoWeek}</td>
-                  <td className="px-3 py-2">{h.factorUsado.toFixed(2)}</td>
-                  <td className="px-3 py-2">
-                    {h.winsLogrados}/{h.winsTotal}
-                  </td>
-                  <td className="px-3 py-2 text-neutral-500">
-                    {h.minutosMedidos !== null || h.minutosPlaneados !== null
-                      ? `${h.minutosMedidos !== null ? formatHoras(h.minutosMedidos) : '—'} / ${
-                          h.minutosPlaneados !== null ? formatHoras(h.minutosPlaneados) : '—'
-                        }`
-                      : '—'}
-                  </td>
+          <div className="hair pt-4">
+            <table className="w-full text-sm">
+              <thead className="text-left">
+                <tr>
+                  <th className="lbl px-3 py-2">Semana</th>
+                  <th className="lbl px-3 py-2">Factor</th>
+                  <th className="lbl px-3 py-2">Wins</th>
+                  <th className="lbl px-3 py-2">Horas (medidas/plan)</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {historico.map((h) => (
+                  <tr key={h.isoWeek} className="hair">
+                    <td className="num px-3 py-2 text-ink">{h.isoWeek}</td>
+                    <td className="num px-3 py-2 text-ink">{h.factorUsado.toFixed(2)}</td>
+                    <td className="num px-3 py-2 text-ink">
+                      {h.winsLogrados}/{h.winsTotal}
+                    </td>
+                    <td className="num px-3 py-2 text-muted">
+                      {h.minutosMedidos !== null || h.minutosPlaneados !== null
+                        ? `${h.minutosMedidos !== null ? formatHoras(h.minutosMedidos) : '—'} / ${
+                            h.minutosPlaneados !== null ? formatHoras(h.minutosPlaneados) : '—'
+                          }`
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </main>

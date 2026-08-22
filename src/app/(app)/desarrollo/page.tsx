@@ -17,8 +17,10 @@ export default async function DesarrolloPage() {
   ])
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
-      <div className="mx-auto max-w-3xl p-4">
+    <main className="min-h-dvh bg-paper">
+      <div className="mx-auto max-w-6xl px-5 py-8 sm:px-10">
+        {/* El catálogo entra como `pie` y no como bloque aparte: es la última
+            fila de la misma lista de hairlines que cierra la página. */}
         <DesarrolloBoard
           view={view}
           opciones={opciones}
@@ -27,10 +29,8 @@ export default async function DesarrolloPage() {
             desde: bitacora.desde ? bitacora.desde.toISOString().slice(0, 10) : null,
           }}
           riesgos={riesgos}
+          pie={<CatalogoSection catalogo={catalogo} />}
         />
-        <div className="mt-4">
-          <CatalogoSection catalogo={catalogo} />
-        </div>
       </div>
     </main>
   )

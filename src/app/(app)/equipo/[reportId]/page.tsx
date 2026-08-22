@@ -10,23 +10,23 @@ export default async function ReportDetallePage({ params }: { params: Promise<{ 
 
   if (!detalle) {
     return (
-      <main className="flex min-h-dvh items-center justify-center bg-neutral-50">
-        <p className="text-sm text-neutral-500">No tienes acceso a este colaborador.</p>
+      <main className="flex min-h-dvh items-center justify-center bg-paper">
+        <p className="text-sm text-muted">No tienes acceso a este colaborador.</p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-2xl space-y-6 p-4">
-        <h1 className="text-lg font-bold text-neutral-900">{detalle.report.nombre}</h1>
+        <h1 className="text-2xl font-semibold text-ink">{detalle.report.nombre}</h1>
 
         {detalle.gapsTop5.length > 0 && (
           <section>
-            <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Huecos para staffing</h2>
-            <div className="space-y-1">
+            <h2 className="lbl mb-2">Huecos para staffing</h2>
+            <div className="flex flex-col">
               {detalle.gapsTop5.map((g) => (
-                <div key={g.id} className="rounded-md bg-amber-50 px-3 py-1.5 text-sm text-amber-800 shadow-sm">
+                <div key={g.id} className="hair bg-warn-soft px-3 py-2 text-sm text-warn">
                   {g.texto}
                 </div>
               ))}
@@ -35,19 +35,20 @@ export default async function ReportDetallePage({ params }: { params: Promise<{ 
         )}
 
         <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Cobertura completa</h2>
-          <ul className="space-y-1">
+          <h2 className="lbl mb-2">Cobertura completa</h2>
+          <div className="flex flex-col">
             {detalle.cobertura.map((c) => (
-              <li
+              <div
                 key={c.id}
-                className={`rounded-md px-3 py-1.5 text-sm shadow-sm ${
-                  c.evidenciaCount === 0 ? 'bg-amber-50 text-amber-800' : 'bg-white text-neutral-700'
+                className={`hair grid grid-cols-[1fr_48px] items-center gap-3 px-1 py-2 text-sm ${
+                  c.evidenciaCount === 0 ? 'bg-warn-soft text-warn' : 'text-ink'
                 }`}
               >
-                {c.texto} <span className="text-xs text-neutral-400">({c.evidenciaCount})</span>
-              </li>
+                <span>{c.texto}</span>
+                <span className="num text-right text-xs text-faint">{c.evidenciaCount}</span>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       </div>
     </main>

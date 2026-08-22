@@ -29,8 +29,8 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
 
   if (!view.week) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
-        <p className="text-sm text-neutral-500">
+      <div className="flex min-h-[60vh] items-center justify-center bg-paper px-4 text-center">
+        <p className="text-sm text-muted">
           No hay semana activa. Corre <code>/wtw-semana</code> para armarla.
         </p>
       </div>

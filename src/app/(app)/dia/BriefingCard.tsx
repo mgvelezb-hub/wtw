@@ -36,10 +36,10 @@ function duracion(min: number): string {
 }
 
 function Linea({ icono, children, tono = 'calma' }: { icono: string; children: ReactNode; tono?: 'calma' | 'ambar' | 'rojo' }) {
-  const color = tono === 'rojo' ? 'text-danger' : tono === 'ambar' ? 'text-warn' : 'text-neutral-600'
+  const color = tono === 'rojo' ? 'text-danger' : tono === 'ambar' ? 'text-warn' : 'text-muted'
   return (
     <li className="flex gap-2 leading-relaxed">
-      <span aria-hidden className={`mt-px shrink-0 ${tono === 'calma' ? 'text-brand' : color}`}>
+      <span aria-hidden className={`mt-px shrink-0 ${tono === 'calma' ? 'text-faint' : color}`}>
         {icono}
       </span>
       <span className={color}>{children}</span>
@@ -75,9 +75,12 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
   const b = briefing
 
   return (
-    <section aria-labelledby="briefing-titulo" className="rounded-xl border border-brand-soft bg-white p-4 shadow-sm">
+    // Sin card: el arranque es una sección más del instrumento — etiqueta,
+    // renglones y una línea que la cierra. La caja blanca con sombra la hacía
+    // parecer una notificación, que es justo lo que NO es.
+    <section aria-labelledby="briefing-titulo">
       <div className="flex items-center gap-1.5">
-        <h2 id="briefing-titulo" className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+        <h2 id="briefing-titulo" className="lbl flex items-center gap-1.5">
           Tu arranque
           <AyudaContextual
             titulo="Tu arranque"
@@ -94,14 +97,14 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
           onClick={alternar}
           aria-expanded={abierto}
           aria-controls="briefing-lineas"
-          className="ml-auto text-xs font-semibold text-neutral-400 hover:text-brand-deep"
+          className="ml-auto text-xs font-semibold text-faint hover:text-brand-deep"
         >
           {abierto ? '▾ ocultar' : '▸ ver'}
         </button>
       </div>
 
       {abierto && (
-        <ul id="briefing-lineas" className="mt-2.5 space-y-1.5 text-sm">
+        <ul id="briefing-lineas" className="mt-2 space-y-1.5 text-[13px]">
           {b.primerBloque && (
             <Linea icono="→">
               Primer bloque {b.primerBloque.hora === 'flex' ? 'sin hora fija' : b.primerBloque.hora} —{' '}
@@ -140,7 +143,7 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
               Win {b.winEnRiesgo.posicion} sin bloques restantes —{' '}
               {b.winEnRiesgo.siEntonces ? (
                 <>
-                  repasa su si-entonces: <em className="text-neutral-500">{b.winEnRiesgo.siEntonces}</em>
+                  repasa su si-entonces: <em className="text-faint">{b.winEnRiesgo.siEntonces}</em>
                 </>
               ) : (
                 <>agéndale un bloque o suéltalo</>
@@ -151,11 +154,12 @@ export function BriefingCard({ briefing }: { briefing: Briefing }) {
           {b.sobrecarga && (
             <Linea icono="▲" tono={b.sobrecarga.nivel === 'rojo' ? 'rojo' : 'ambar'}>
               {b.sobrecarga.nivel === 'rojo' ? 'Carga en espiral' : 'Carga al límite'}
-              <span className="ml-1 text-xs text-neutral-500">{b.sobrecarga.detalle}</span>
+              <span className="ml-1 text-xs text-faint">{b.sobrecarga.detalle}</span>
             </Linea>
           )}
         </ul>
       )}
+      <div className="hair mt-3" />
     </section>
   )
 }

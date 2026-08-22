@@ -58,7 +58,7 @@ export function TourPrimeraVez({
         onClick={() => setVisto(false)}
         aria-label={`${titulo} — ver la guía de esta página`}
         title="Ver de nuevo la guía de esta página"
-        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-neutral-300 text-[11px] font-bold leading-none text-neutral-400 transition-colors hover:border-brand hover:text-brand ${
+        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-hair text-[11px] font-bold leading-none text-faint transition-colors hover:border-brand hover:text-brand ${
           className ?? ''
         }`}
       >
@@ -72,11 +72,11 @@ export function TourPrimeraVez({
     // título de la página, el banner abierto baje solo a su propio renglón y el
     // "?" descartado se quede junto al título. Sin `basis-full` el item se
     // encogería para caber en el hueco sobrante en vez de saltar de línea.
-    <div className={`w-full basis-full rounded-xl border border-brand-soft bg-brand-soft/40 p-4 ${className ?? ''}`}>
+    <div className={`w-full basis-full rounded-lg border border-hair bg-brand-soft/40 p-4 ${className ?? ''}`}>
       <p className="text-sm font-bold text-brand-deep">{titulo}</p>
       <ul className="mt-2 space-y-1">
         {bullets.map((b, i) => (
-          <li key={i} className="flex gap-2 text-sm leading-relaxed text-neutral-700">
+          <li key={i} className="flex gap-2 text-sm leading-relaxed text-ink">
             <span aria-hidden className="text-brand">
               ·
             </span>

@@ -43,7 +43,7 @@ function TipoChip({ tipo, active, onClick }: { tipo: MinutaItemTipo; active: boo
       type="button"
       onClick={onClick}
       className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${
-        active ? 'border-brand-deep bg-brand-deep text-white' : 'border-neutral-200 text-neutral-600 hover:border-neutral-300'
+        active ? 'border-brand-deep bg-brand-deep text-white' : 'border-hair text-muted hover:border-brand-strong hover:text-brand-strong'
       }`}
     >
       {TIPO_LABEL[tipo]}
@@ -251,36 +251,36 @@ export function MinutaDrawer({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="flex-1 bg-black/30" onClick={onClose} />
-      <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-neutral-200 bg-white p-5 shadow-xl">
+      <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-hair bg-surface p-5 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold uppercase tracking-wide text-brand-strong">Minuta de junta</p>
+            <p className="lbl text-brand-strong">Minuta de junta</p>
             <input
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
-              className="mt-0.5 w-full rounded border border-transparent bg-transparent text-lg font-bold text-brand-deep focus:border-neutral-300 focus:bg-neutral-50 focus:outline-none"
+              className="mt-0.5 w-full rounded border border-transparent bg-transparent text-lg font-bold text-brand-deep focus:border-hair focus:bg-paper focus:outline-none"
             />
           </div>
           <button
             onClick={onClose}
-            className="shrink-0 rounded-md px-2 py-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+            className="shrink-0 rounded-md px-2 py-1 text-faint hover:bg-hair hover:text-ink"
           >
             ✕
           </button>
         </div>
 
         {cargando ? (
-          <p className="mt-6 text-sm text-neutral-400">Cargando…</p>
+          <p className="mt-6 text-sm text-faint">Cargando…</p>
         ) : (
           <>
             {!block.proyectoId && (
               <div className="mt-4">
-                <label className="text-xs font-bold uppercase text-neutral-500">Proyecto</label>
+                <label className="lbl">Proyecto</label>
                 <select
                   value={proyectoId ?? ''}
                   disabled={!!minutaId}
                   onChange={(e) => setProyectoId(e.target.value || null)}
-                  className="mt-1 w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm disabled:bg-neutral-100 disabled:text-neutral-700"
+                  className="mt-1 w-full rounded-md border border-hair px-2 py-1.5 text-sm disabled:bg-hair disabled:text-ink"
                 >
                   <option value="" disabled>
                     Selecciona un proyecto…
@@ -295,7 +295,7 @@ export function MinutaDrawer({
             )}
 
             <div className="mt-4">
-              <label className="text-xs font-bold uppercase text-neutral-500">Asistentes</label>
+              <label className="lbl">Asistentes</label>
               {asistentes.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1.5">
                   {asistentes.map((a) => (
@@ -322,11 +322,11 @@ export function MinutaDrawer({
                     }
                   }}
                   placeholder="Agregar asistente…"
-                  className="flex-1 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="flex-1 rounded-md border border-hair px-2 py-1 text-sm"
                 />
                 <button
                   onClick={() => agregarAsistente(asistenteInput)}
-                  className="rounded-md bg-neutral-100 px-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-200"
+                  className="rounded-md bg-hair px-2.5 text-sm font-semibold text-ink hover:bg-hair"
                 >
                   +
                 </button>
@@ -337,7 +337,7 @@ export function MinutaDrawer({
                     <button
                       key={s}
                       onClick={() => agregarAsistente(s)}
-                      className="rounded-full border border-neutral-200 px-2 py-0.5 text-[11px] text-neutral-500 hover:border-brand-strong hover:text-brand-strong"
+                      className="rounded-full border border-hair px-2 py-0.5 text-[11px] text-muted hover:border-brand-strong hover:text-brand-strong"
                     >
                       + {s}
                     </button>
@@ -346,8 +346,8 @@ export function MinutaDrawer({
               )}
             </div>
 
-            <div className="mt-5 border-t border-neutral-100 pt-4">
-              <p className="text-xs font-bold uppercase text-neutral-500">Nuevo item</p>
+            <div className="mt-5 border-t border-hair pt-4">
+              <p className="lbl">Nuevo item</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {TIPOS_FRECUENTES.map((t) => (
                   <TipoChip key={t} tipo={t} active={tipo === t} onClick={() => setTipo(t)} />
@@ -356,7 +356,7 @@ export function MinutaDrawer({
               <button
                 type="button"
                 onClick={() => setMostrarMasTipos((v) => !v)}
-                className="mt-1.5 text-[11px] font-semibold text-neutral-400 hover:text-neutral-600"
+                className="mt-1.5 text-[11px] font-semibold text-faint hover:text-muted"
               >
                 {mostrarMasTipos ? '▾ menos tipos' : '▸ más tipos'}
               </button>
@@ -381,13 +381,13 @@ export function MinutaDrawer({
                   value={responsable}
                   onChange={(e) => setResponsable(e.target.value)}
                   placeholder="Responsable (opcional)"
-                  className="min-w-0 flex-1 rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="min-w-0 flex-1 rounded-md border border-hair px-2 py-1 text-sm"
                 />
                 <input
                   type="date"
                   value={fechaCompromiso}
                   onChange={(e) => setFechaCompromiso(e.target.value)}
-                  className="rounded-md border border-neutral-300 px-2 py-1 text-sm"
+                  className="rounded-md border border-hair px-2 py-1 text-sm"
                 />
               </div>
               <button
@@ -416,8 +416,8 @@ export function MinutaDrawer({
               )}
 
               {propuestos && (
-                <div className="mt-2 rounded-md border-2 border-brand-deep bg-white p-2">
-                  <p className="text-[11px] font-bold uppercase text-brand-deep">
+                <div className="mt-2 rounded-md border-2 border-brand-deep bg-surface p-2">
+                  <p className="lbl text-brand-deep">
                     {propuestos.length} items propuestos — destilda los que no
                   </p>
                   <ul className="mt-1.5 space-y-1.5">
@@ -436,11 +436,11 @@ export function MinutaDrawer({
                           }}
                         />
                         <span className="min-w-0">
-                          <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+                          <span className="rounded-full bg-hair px-1.5 py-0.5 text-[10px] font-bold uppercase text-muted">
                             {TIPO_LABEL[p.tipo]}
                           </span>
-                          <span className="ml-1 text-neutral-800">{p.texto}</span>
-                          {p.responsable && <span className="ml-1 text-[11px] text-neutral-500">— {p.responsable}</span>}
+                          <span className="ml-1 text-ink">{p.texto}</span>
+                          {p.responsable && <span className="ml-1 text-[11px] text-muted">— {p.responsable}</span>}
                           {p.fechaCompromiso && (
                             <span className="ml-1 rounded bg-brand-soft px-1 text-[10px] font-bold text-brand-deep">
                               {p.fechaCompromiso}
@@ -463,7 +463,7 @@ export function MinutaDrawer({
                       type="button"
                       disabled={pending}
                       onClick={() => setPropuestos(null)}
-                      className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm font-bold text-neutral-600"
+                      className="rounded-md border border-hair px-3 py-1.5 text-sm font-bold text-muted"
                     >
                       Descartar
                     </button>
@@ -473,13 +473,13 @@ export function MinutaDrawer({
               {!proyectoId && <p className="mt-1 text-[11px] text-danger">Selecciona un proyecto primero.</p>}
             </div>
 
-            <div className="mt-5 border-t border-neutral-100 pt-4">
-              <p className="text-xs font-bold uppercase text-neutral-500">Items capturados ({items.length})</p>
-              <ul className="mt-2 space-y-2">
+            <div className="mt-5 border-t border-hair pt-4">
+              <p className="lbl">Items capturados ({items.length})</p>
+              <ul className="mt-1">
                 {items.map((it) => (
-                  <li key={it.id} className="rounded-md border border-neutral-200 p-2.5 text-sm">
+                  <li key={it.id} className="hair py-2.5 text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-bold uppercase text-neutral-600">
+                      <span className="rounded-full bg-hair px-2 py-0.5 text-[10px] font-bold uppercase text-muted">
                         {TIPO_LABEL[it.tipo]}
                       </span>
                       {it.estado === 'convertido' ? (
@@ -499,14 +499,14 @@ export function MinutaDrawer({
                     </div>
                     {it.textoRich ? (
                       <div
-                        className="minuta-rich mt-1 text-neutral-800"
+                        className="minuta-rich mt-1 text-ink"
                         dangerouslySetInnerHTML={{ __html: it.textoRich }}
                       />
                     ) : (
-                      <p className="mt-1 text-neutral-800">{it.texto}</p>
+                      <p className="mt-1 text-ink">{it.texto}</p>
                     )}
                     {(it.responsable || it.fechaCompromiso) && (
-                      <p className="mt-1 text-[11px] text-neutral-400">
+                      <p className="mt-1 text-[11px] text-faint">
                         {it.responsable}
                         {it.responsable && it.fechaCompromiso ? ' · ' : ''}
                         {it.fechaCompromiso}
@@ -514,7 +514,7 @@ export function MinutaDrawer({
                     )}
                   </li>
                 ))}
-                {items.length === 0 && <li className="text-xs text-neutral-400">Sin items capturados todavía.</li>}
+                {items.length === 0 && <li className="mt-2 text-xs text-faint">Sin items capturados todavía.</li>}
               </ul>
             </div>
           </>

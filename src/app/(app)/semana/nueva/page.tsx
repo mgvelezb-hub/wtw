@@ -10,7 +10,7 @@ export default async function NuevaSemanaPage() {
   const ctx = await contextoPlaneacion(session.userId)
 
   return (
-    <main className="min-h-dvh bg-neutral-50 p-4">
+    <main className="min-h-dvh bg-paper p-4">
       <div className="mx-auto max-w-3xl">
         <PlaneadorSemanal ctx={ctx} />
       </div>

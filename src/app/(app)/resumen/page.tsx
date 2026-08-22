@@ -32,7 +32,7 @@ export default async function ResumenPage() {
   ])
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-3xl p-4">
         <ResumenBoard
           minutas={minutas.map((m) => ({

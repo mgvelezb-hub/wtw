@@ -86,14 +86,14 @@ export function ResumenBoard({
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-lg font-bold text-brand-deep">Resumen con IA</h1>
-        <p className="text-xs text-neutral-500">
+        <h1 className="text-2xl font-semibold text-ink">Resumen con IA</h1>
+        <p className="text-xs text-muted">
           Cruza lo que se dijo (minutas capturadas) con lo que sigue vivo (tareas, issues y entregables abiertos).
         </p>
       </header>
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Alcance</h2>
+      <section className="rounded-lg border border-hair bg-surface p-4">
+        <h2 className="lbl">Alcance</h2>
         <div className="mt-2 flex flex-wrap gap-1">
           {ALCANCES.map((a) => (
             <button
@@ -101,14 +101,14 @@ export function ResumenBoard({
               onClick={() => setClave(a.clave)}
               title={a.ayuda}
               className={`rounded-full px-3 py-1 text-xs font-bold ${
-                clave === a.clave ? 'bg-brand-deep text-white' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                clave === a.clave ? 'bg-brand text-white' : 'bg-paper text-muted hover:bg-hair'
               }`}
             >
               {a.label}
             </button>
           ))}
         </div>
-        <p className="mt-1 text-xs text-neutral-400">{ALCANCES.find((a) => a.clave === clave)?.ayuda}</p>
+        <p className="mt-1 text-xs text-faint">{ALCANCES.find((a) => a.clave === clave)?.ayuda}</p>
 
         <div className="mt-3 space-y-2">
           {clave === 'junta' && (
@@ -116,7 +116,7 @@ export function ResumenBoard({
               value={minutaId}
               onChange={(e) => setMinutaId(e.target.value)}
               aria-label="Junta"
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
+              className="w-full rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-ink"
             >
               {minutas.length === 0 && <option value="">Sin minutas capturadas</option>}
               {minutas.map((m) => (
@@ -134,20 +134,20 @@ export function ResumenBoard({
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
                 aria-label="Desde"
-                className="rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+                className="num rounded-md border border-hair px-2 py-1.5 text-sm text-ink"
               />
               <input
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
                 aria-label="Hasta"
-                className="rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+                className="num rounded-md border border-hair px-2 py-1.5 text-sm text-ink"
               />
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 aria-label="Proyecto (opcional)"
-                className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-600"
+                className="rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-muted"
               >
                 <option value="">Todos los proyectos</option>
                 {proyectos.map((p) => (
@@ -165,7 +165,7 @@ export function ResumenBoard({
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
               aria-label="Día"
-              className="rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+              className="num rounded-md border border-hair px-2 py-1.5 text-sm text-ink"
             />
           )}
 
@@ -175,7 +175,7 @@ export function ResumenBoard({
               onChange={(e) => setSemana(e.target.value)}
               aria-label="Semana ISO"
               placeholder="2026-W33"
-              className="w-32 rounded border border-neutral-300 px-2 py-1.5 text-sm text-neutral-900"
+              className="num w-32 rounded-md border border-hair px-2 py-1.5 text-sm text-ink"
             />
           )}
 
@@ -184,7 +184,7 @@ export function ResumenBoard({
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               aria-label="Proyecto"
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
+              className="w-full rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-ink"
             >
               {proyectos.length === 0 && <option value="">Sin proyectos activos</option>}
               {proyectos.map((p) => (
@@ -199,29 +199,29 @@ export function ResumenBoard({
         <button
           disabled={pending || faltaDato}
           onClick={generar}
-          className="mt-3 w-full rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+          className="mt-3 w-full rounded-md bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
         >
           {pending ? '⏳ generando…' : '✨ Generar resumen'}
         </button>
 
         {error && (
-          <p role="alert" className="mt-2 rounded border border-danger bg-red-50 px-3 py-2 text-sm text-danger">
+          <p role="alert" className="mt-2 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
       </section>
 
       {texto !== null && (
-        <section className="rounded-xl border-2 border-brand-deep bg-white p-4 shadow-sm">
+        <section className="rounded-lg border-2 border-brand bg-surface p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Resumen</h2>
+            <h2 className="lbl">Resumen</h2>
             <div className="flex gap-1.5">
               <button
                 onClick={() => {
                   void navigator.clipboard.writeText(texto)
                   if (artifactId) startTransition(() => void marcarResumenEnviadoAction(artifactId))
                 }}
-                className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep"
+                className="rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep"
               >
                 Copiar
               </button>
@@ -238,46 +238,46 @@ export function ResumenBoard({
                     }
                   })
                 }}
-                className="rounded-full bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+                className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
               >
                 Guardar edición
               </button>
             </div>
           </div>
-          {meta && <p className="mt-1 text-[11px] text-neutral-400">{meta}</p>}
-          {guardado && <p className="mt-1 text-xs text-brand-deep">Versión editada guardada.</p>}
+          {meta && <p className="mt-1 text-[11px] text-faint">{meta}</p>}
+          {guardado && <p className="mt-1 text-xs text-ok">Versión editada guardada.</p>}
 
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             rows={22}
             aria-label="Texto del resumen"
-            className="mt-2 w-full rounded border border-neutral-300 px-3 py-2 font-mono text-xs text-neutral-900"
+            className="mt-2 w-full rounded-md border border-hair bg-surface px-3 py-2 font-mono text-xs text-ink"
           />
-          <p className="mt-1 text-[11px] text-neutral-400">
+          <p className="mt-1 text-[11px] text-faint">
             Lo que edites se guarda aparte: el borrador original nunca se sobrescribe.
           </p>
         </section>
       )}
 
       {previos.length > 0 && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Resúmenes anteriores</h2>
-          <ul className="mt-2 space-y-1">
+        <section className="hair pt-4">
+          <h2 className="lbl">Resúmenes anteriores</h2>
+          <ul className="mt-2">
             {previos.map((p) => (
-              <li key={p.id} className="flex items-baseline justify-between gap-2 text-sm">
+              <li key={p.id} className="hair flex items-baseline justify-between gap-2 py-2 text-sm">
                 <button
                   onClick={() => {
                     setTexto(p.texto)
                     setArtifactId(p.id)
                     setMeta(`${p.etiqueta} · generado ${p.fecha}`)
                   }}
-                  className="min-w-0 text-left text-neutral-800 hover:underline"
+                  className="min-w-0 text-left text-ink hover:underline"
                 >
                   {p.etiqueta}
                 </button>
-                <span className="shrink-0 text-[10px] uppercase text-neutral-400">
-                  {p.fecha} · {p.estado}
+                <span className="shrink-0 text-[10px] uppercase text-faint">
+                  <span className="num">{p.fecha}</span> · {p.estado}
                 </span>
               </li>
             ))}

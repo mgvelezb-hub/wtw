@@ -9,7 +9,7 @@ export default async function EquipoPage() {
   const reports = await listReports(session.userId)
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <EquipoBoard reports={reports} />
     </main>
   )

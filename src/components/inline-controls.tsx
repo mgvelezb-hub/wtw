@@ -133,14 +133,14 @@ export function CampoEnLinea({
             setAbierto(false)
           }
         }}
-        className={`${ancho} rounded border px-1 py-0.5 text-xs text-neutral-900 ${
-          valido ? 'border-neutral-300' : 'border-[#b43232]'
+        className={`${ancho} rounded border px-1 py-0.5 text-xs text-ink ${
+          valido ? 'border-hair' : 'border-danger'
         }`}
       />
       <button
         disabled={disabled || !valido}
         onClick={guardar}
-        className="text-xs font-bold text-[#0c4a45] disabled:text-neutral-300"
+        className="text-xs font-bold text-brand-deep disabled:text-faint"
         title="Guardar"
         aria-label="Guardar"
       >
@@ -149,7 +149,7 @@ export function CampoEnLinea({
       <button
         disabled={disabled}
         onClick={() => setAbierto(false)}
-        className="text-xs font-bold text-neutral-400 hover:text-[#b43232]"
+        className="text-xs font-bold text-faint hover:text-danger"
         title="Cancelar"
         aria-label="Cancelar"
       >

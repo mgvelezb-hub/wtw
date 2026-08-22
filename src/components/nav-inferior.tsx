@@ -68,7 +68,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
             type="button"
             aria-label="Cerrar el panel de secciones"
             onClick={() => setAbierto(false)}
-            className="fixed inset-0 z-30 bg-neutral-900/30 sm:hidden"
+            className="fixed inset-0 z-30 bg-ink/30 sm:hidden"
           />
           {/* Panel inline, no `<dialog>` nativo: el diálogo del navegador trae
               su propio backdrop y su propio manejo de foco, incompatibles con
@@ -77,9 +77,9 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Todas las secciones"
-            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-neutral-200 bg-white pb-4 shadow-lg sm:hidden"
+            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-hair bg-surface pb-4 shadow-[0_-4px_16px_rgba(26,35,35,0.08)] sm:hidden"
           >
-            <div className="sticky top-0 flex items-center justify-between border-b border-neutral-100 bg-white px-4 py-3">
+            <div className="sticky top-0 flex items-center justify-between border-b border-hair bg-surface px-4 py-3">
               <p className="text-sm font-bold text-brand-deep">Todas las secciones</p>
               <button
                 type="button"
@@ -87,7 +87,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
                   setAbierto(false)
                   botonMas.current?.focus()
                 }}
-                className="rounded-md px-2 py-1 text-xs font-medium text-neutral-500 hover:bg-neutral-100"
+                className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-paper"
               >
                 Cerrar
               </button>
@@ -95,11 +95,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
 
             {gruposDelPanel.map((g) => (
               <div key={g.id} className="px-3 pt-3">
-                {g.grupo && (
-                  <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
-                    {g.grupo}
-                  </p>
-                )}
+                {g.grupo && <p className="lbl px-2 pb-1">{g.grupo}</p>}
                 <div className="flex flex-col">
                   {g.items.map((it) => (
                     <Link
@@ -108,21 +104,21 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
                       aria-label={`${it.label}: ${it.desc}`}
                       aria-current={isActive(it.href) ? 'page' : undefined}
                       className={`flex items-start gap-3 rounded-lg px-2 py-2.5 transition-colors ${
-                        isActive(it.href) ? 'bg-brand-soft' : 'active:bg-neutral-100'
+                        isActive(it.href) ? 'bg-brand-soft' : 'active:bg-paper'
                       }`}
                     >
-                      <span className={isActive(it.href) ? 'mt-0.5 text-brand-deep' : 'mt-0.5 text-neutral-400'}>
+                      <span className={isActive(it.href) ? 'mt-0.5 text-brand-deep' : 'mt-0.5 text-faint'}>
                         <Icono name={it.icon} />
                       </span>
                       <span className="min-w-0">
                         <span
                           className={`block text-sm font-medium ${
-                            isActive(it.href) ? 'text-brand-deep' : 'text-neutral-700'
+                            isActive(it.href) ? 'text-brand-deep' : 'text-ink'
                           }`}
                         >
                           {it.label}
                         </span>
-                        <span className="block text-[11px] leading-snug text-neutral-400">{it.desc}</span>
+                        <span className="block text-[11px] leading-snug text-muted">{it.desc}</span>
                       </span>
                     </Link>
                   ))}
@@ -138,7 +134,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
           sin eso el home indicator queda encima de los dos tabs de en medio. */}
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-hair bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
         <div className="flex items-stretch">
           {principales.map((it) => {
@@ -150,7 +146,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
                 aria-label={`${it.label}: ${it.desc}`}
                 aria-current={activo ? 'page' : undefined}
                 className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
-                  activo ? 'text-brand' : 'text-neutral-500'
+                  activo ? 'text-brand' : 'text-muted'
                 }`}
               >
                 <Icono name={it.icon} width={22} height={22} />
@@ -166,7 +162,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
             aria-expanded={abierto}
             aria-label="Más secciones"
             className={`flex flex-1 flex-col items-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors ${
-              abierto || enOtraRuta ? 'text-brand' : 'text-neutral-500'
+              abierto || enOtraRuta ? 'text-brand' : 'text-muted'
             }`}
           >
             <Icono name="mas" width={22} height={22} />

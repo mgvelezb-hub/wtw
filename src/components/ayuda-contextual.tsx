@@ -102,7 +102,7 @@ export function AyudaContextual({
         className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-colors ${
           abierto
             ? 'border-brand bg-brand-soft text-brand-deep'
-            : 'border-neutral-300 text-neutral-400 hover:border-brand hover:text-brand'
+            : 'border-hair text-faint hover:border-brand hover:text-brand'
         }`}
       >
         ?
@@ -119,12 +119,12 @@ export function AyudaContextual({
             // `normal-case tracking-normal font-normal`: el portal ya no hereda
             // del <h2> uppercase, pero el reset se conserva por si algún día el
             // popover vuelve a montarse en línea.
-            className="fixed z-50 rounded-lg border border-brand-soft bg-white p-3 text-left font-normal normal-case tracking-normal shadow-lg"
+            className="fixed z-50 rounded-lg border border-hair bg-surface p-3 text-left font-normal normal-case tracking-normal shadow-lg"
           >
             <span className="block text-xs font-bold text-brand-deep">{titulo}</span>
-            <span className="mt-1 block text-xs font-normal leading-relaxed text-neutral-600">{children}</span>
+            <span className="mt-1 block text-xs font-normal leading-relaxed text-muted">{children}</span>
             {ejemplo && (
-              <span className="mt-1.5 block text-xs font-normal italic leading-relaxed text-neutral-500">{ejemplo}</span>
+              <span className="mt-1.5 block text-xs font-normal italic leading-relaxed text-faint">{ejemplo}</span>
             )}
           </span>,
           document.body,

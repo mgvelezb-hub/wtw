@@ -174,7 +174,7 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
   if (!abierto) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/25" onMouseDown={cerrar}>
+    <div className="fixed inset-0 z-50 bg-ink/30" onMouseDown={cerrar}>
       <div
         ref={panel}
         role="dialog"
@@ -182,9 +182,9 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
         aria-label="Ir a"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={alTeclearPanel}
-        className="mx-auto mt-24 w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg"
+        className="mx-auto mt-24 w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border border-hair bg-surface shadow-lg"
       >
-        <div className="flex items-center gap-2 border-b border-neutral-100 px-3">
+        <div className="flex items-center gap-2 border-b border-hair px-3">
           <input
             ref={input}
             value={query}
@@ -198,22 +198,28 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
             aria-activedescendant={resultados[sel] ? `cmdk-op-${sel}` : undefined}
             aria-label="Buscar una sección o un proyecto"
             placeholder="Ir a… (sección o proyecto)"
-            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-neutral-400"
+            className="w-full bg-transparent py-3 text-sm outline-none placeholder:text-faint"
           />
           <button
             type="button"
             onClick={cerrar}
-            className="shrink-0 rounded border border-neutral-200 px-1.5 py-0.5 text-[10px] font-medium text-neutral-400 hover:bg-neutral-100"
+            className="shrink-0 rounded border border-hair px-1.5 py-0.5 text-[10px] font-medium text-faint hover:bg-paper"
           >
             Esc
           </button>
         </div>
 
         {resultados.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-neutral-400">Nada coincide con «{query}»</p>
+          <p className="px-4 py-6 text-center text-sm text-faint">Nada coincide con «{query}»</p>
         ) : (
           // ~8 filas visibles (44 px cada una) y el resto con scroll.
-          <ul ref={lista} id="cmdk-lista" role="listbox" aria-label="Resultados" className="max-h-[22rem] overflow-y-auto py-1">
+          <ul
+            ref={lista}
+            id="cmdk-lista"
+            role="listbox"
+            aria-label="Resultados"
+            className="max-h-[22rem] divide-y divide-hair overflow-y-auto py-1"
+          >
             {resultados.map((r, i) => (
               <li key={`${r.href}-${i}`}>
                 <button
@@ -225,10 +231,10 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
                   onMouseEnter={() => setSel(i)}
                   onClick={() => navegar(r.href)}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                    i === sel ? 'bg-brand-soft' : ''
+                    i === sel ? 'bg-brand-soft text-brand-deep' : ''
                   }`}
                 >
-                  <span className={i === sel ? 'shrink-0 text-brand-deep' : 'shrink-0 text-neutral-400'}>
+                  <span className={i === sel ? 'shrink-0 text-brand-deep' : 'shrink-0 text-faint'}>
                     {r.icon ? (
                       <Icono name={r.icon} width={18} height={18} />
                     ) : (
@@ -240,17 +246,21 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-neutral-800">{r.label}</span>
-                    <span className="block truncate text-[11px] text-neutral-400">{r.desc}</span>
+                    <span className={`block truncate text-sm font-medium ${i === sel ? 'text-brand-deep' : 'text-ink'}`}>
+                      {r.label}
+                    </span>
+                    <span className="block truncate text-[11px] text-muted">{r.desc}</span>
                   </span>
-                  <span className="shrink-0 text-[10px] uppercase tracking-wide text-neutral-300">{r.contexto}</span>
+                  <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-faint">
+                    {r.contexto}
+                  </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
 
-        <div className="flex items-center justify-between border-t border-neutral-100 px-3 py-1.5 text-[10px] text-neutral-400">
+        <div className="flex items-center justify-between border-t border-hair px-3 py-1.5 text-[10px] text-faint">
           <span>↑↓ para moverte · Enter para ir</span>
           <span>{resultados.length} destinos</span>
         </div>

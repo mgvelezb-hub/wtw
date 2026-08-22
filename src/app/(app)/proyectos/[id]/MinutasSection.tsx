@@ -28,17 +28,17 @@ function formatFecha(fecha: string): string {
 
 export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
   return (
-    <section>
-      <h2 className="mb-2 text-xs font-semibold uppercase text-neutral-500">Minutas</h2>
-      <div className="space-y-3">
+    <section className="hair pt-6">
+      <h2 className="lbl mb-2">Minutas</h2>
+      <div className="divide-y divide-hair">
         {minutas.map((m) => (
-          <div key={m.id} className="rounded-lg border border-neutral-200 bg-white p-3 shadow-sm">
+          <div key={m.id} className="py-3">
             <div className="flex items-start justify-between gap-2">
-              <span className="font-medium text-neutral-900">{m.titulo}</span>
-              <span className="shrink-0 text-xs text-neutral-500">{formatFecha(m.fecha)}</span>
+              <span className="font-medium text-ink">{m.titulo}</span>
+              <span className="num shrink-0 text-xs text-muted">{formatFecha(m.fecha)}</span>
             </div>
             {m.asistentes.length > 0 && (
-              <p className="mt-1 text-xs text-neutral-500">{m.asistentes.join(', ')}</p>
+              <p className="mt-1 text-xs text-muted">{m.asistentes.join(', ')}</p>
             )}
             {/* Bloque de flujo normal, no flex: colapsados los dos son botones
                 inline que caben en un renglón; abierto, cada panel es un div de
@@ -51,29 +51,29 @@ export function MinutasSection({ minutas }: { minutas: MinutaView[] }) {
             <div className="mt-2 space-y-1.5">
               {m.items.map((item) => (
                 <div key={item.id} className="flex items-start gap-2 text-sm">
-                  <span className="mt-0.5 shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-neutral-500">
+                  <span className="lbl mt-0.5 shrink-0">
                     {TIPO_LABEL[item.tipo]}
                   </span>
-                  <span className="flex-1 text-neutral-800">
+                  <span className="flex-1 text-ink">
                     {item.textoRich ? (
                       <span className="minuta-rich" dangerouslySetInnerHTML={{ __html: item.textoRich }} />
                     ) : (
                       item.texto
                     )}
-                    {item.responsable && <span className="text-neutral-500"> — {item.responsable}</span>}
+                    {item.responsable && <span className="text-muted"> — {item.responsable}</span>}
                   </span>
                   {item.estado === 'convertido' && (
-                    <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
+                    <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-semibold text-brand-deep">
                       Convertido
                     </span>
                   )}
                 </div>
               ))}
-              {m.items.length === 0 && <p className="text-xs text-neutral-400">Sin items.</p>}
+              {m.items.length === 0 && <p className="text-xs text-faint">Sin items.</p>}
             </div>
           </div>
         ))}
-        {minutas.length === 0 && <p className="text-sm text-neutral-400">Sin minutas registradas.</p>}
+        {minutas.length === 0 && <p className="text-sm text-faint">Sin minutas registradas.</p>}
       </div>
     </section>
   )

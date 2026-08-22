@@ -103,7 +103,7 @@ export function CierreBoard({
     <div className="space-y-5">
       <header>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold text-neutral-900">Cierre del día</h1>
+          <h1 className="text-2xl font-semibold text-ink">Cierre del día</h1>
           <TourPrimeraVez
             ruta="/cierre"
             bullets={[
@@ -116,16 +116,16 @@ export function CierreBoard({
             ]}
           />
           <nav className="ml-auto flex items-center gap-1 text-xs">
-            <Link href={`/cierre?dia=${diaAnterior}`} className="rounded border border-neutral-300 px-2 py-1 text-neutral-600">
+            <Link href={`/cierre?dia=${diaAnterior}`} className="rounded border border-hair px-2 py-1 text-muted">
               ←
             </Link>
-            <span className="font-mono text-neutral-500">{cierre.fecha}</span>
-            <Link href={`/cierre?dia=${diaSiguiente}`} className="rounded border border-neutral-300 px-2 py-1 text-neutral-600">
+            <span className="num text-muted">{cierre.fecha}</span>
+            <Link href={`/cierre?dia=${diaSiguiente}`} className="rounded border border-hair px-2 py-1 text-muted">
               →
             </Link>
           </nav>
         </div>
-        <p className="mt-1 text-sm text-neutral-500">
+        <p className="mt-1 text-sm text-muted">
           60 segundos. Esto <strong>no reemplaza al cronómetro</strong>: lo audita. Lo que captura es <em>por qué</em> se
           rompió el plan, que es la mitad de la información y hoy se pierde completa.
         </p>
@@ -133,20 +133,20 @@ export function CierreBoard({
 
       {error && <p className="rounded-lg bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
+      <section className="hair pt-4">
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-          <span className="text-neutral-500">
-            Planeado <strong className="text-neutral-900">{horas(cierre.planMin)}</strong>
+          <span className="text-muted">
+            Planeado <strong className="num text-ink">{horas(cierre.planMin)}</strong>
           </span>
-          <span className="text-neutral-500">
-            Cronometrado <strong className="text-neutral-900">{horas(cierre.medidoMin)}</strong>
+          <span className="text-muted">
+            Cronometrado <strong className="num text-ink">{horas(cierre.medidoMin)}</strong>
           </span>
-          <span className="text-neutral-500">
+          <span className="text-muted">
             {/* "Sin explicar" es el dato, no un veredicto: por eso el color solo
                 marca si falta registrar algo (danger) o si ya quedó completo
                 (ok) — nunca "qué tan mal te fue". */}
             Sin explicar{' '}
-            <strong className={faltaPorExplicar > 0 ? 'text-danger' : 'text-ok'}>{horas(faltaPorExplicar)}</strong>
+            <strong className={`num ${faltaPorExplicar > 0 ? 'text-danger' : 'text-ok'}`}>{horas(faltaPorExplicar)}</strong>
           </span>
         </div>
 
@@ -154,12 +154,12 @@ export function CierreBoard({
           // Antes decía "no hay nada que reconciliar", que es lo contrario de la
           // verdad: el día que el plan no existió o se rompió entero es cuando más
           // importa registrar a dónde se fue el tiempo.
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-muted">
             No había nada planeado este día — o los pendientes ya se pasaron. Registra abajo en qué se fue el tiempo: es el
             único momento en que ese dato existe.
           </p>
         ) : (
-          <p className="mt-2 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-muted">
             {cierre.huecoMin === 0
               ? 'El cronómetro cubre todo lo planeado. Guarda el día así: un cierre sin desvíos significa que el plan se cumplió.'
               : `${horas(cierre.huecoMin)} planeados no aparecen en ningún cronómetro. Regístralo abajo — no es una confesión, es el dato que calibra el plan de mañana.`}
@@ -167,7 +167,7 @@ export function CierreBoard({
         )}
 
         {cierre.desdeSnapshot && (
-          <p className="mt-2 text-[11px] text-neutral-400">
+          <p className="mt-2 text-[11px] text-faint">
             Estas cifras vienen del snapshot tomado al pasar los pendientes, no de los bloques vivos — por eso siguen
             siendo fieles a lo que había planeado ese día.
           </p>
@@ -186,32 +186,32 @@ export function CierreBoard({
 
       <section className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Qué pasó de verdad</h2>
+          <h2 className="lbl">Qué pasó de verdad</h2>
           <button
             onClick={() => {
               setFilas((f) => [...f, { key: `n${f.length}${Date.now()}`, causa: 'bomberazo', minutos: 30 }])
               setGuardado(false)
             }}
-            className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
+            className="rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
           >
             + Desvío
           </button>
         </div>
 
         {filas.length === 0 && (
-          <p className="text-xs text-neutral-400">
+          <p className="text-xs text-faint">
             Sin desvíos. Guardar así declara que el día salió como estaba planeado — que es un dato, no un formulario vacío.
           </p>
         )}
 
         {filas.map((f) => (
-          <div key={f.key} className="space-y-1 rounded-lg border border-neutral-200 bg-white p-2">
+          <div key={f.key} className="space-y-1 rounded-lg border border-hair bg-surface p-2">
             <div className="flex flex-wrap items-center gap-1">
               <select
                 value={f.causa}
                 aria-label="Causa del desvío"
                 onChange={(e) => set(f.key, { causa: e.target.value as DesvioCausa })}
-                className="min-w-48 flex-1 rounded border border-neutral-300 bg-white px-1 py-1 text-sm text-neutral-900"
+                className="min-w-48 flex-1 rounded border border-hair bg-surface px-1 py-1 text-sm text-ink"
               >
                 {CAUSAS.map((c) => (
                   <option key={c} value={c}>
@@ -226,22 +226,22 @@ export function CierreBoard({
                 value={f.minutos || ''}
                 aria-label="Minutos del desvío"
                 onChange={(e) => set(f.key, { minutos: Math.max(0, Number(e.target.value) || 0) })}
-                className="w-20 rounded border border-neutral-300 px-1 py-1 text-sm text-neutral-900"
+                className="num w-20 rounded border border-hair px-1 py-1 text-sm text-ink"
               />
-              <span className="text-xs text-neutral-400">min</span>
+              <span className="text-xs text-faint">min</span>
               <button
                 onClick={() => {
                   setFilas((x) => x.filter((y) => y.key !== f.key))
                   setGuardado(false)
                 }}
                 aria-label="Quitar desvío"
-                className="ml-auto text-xs text-neutral-400 underline"
+                className="ml-auto text-xs text-faint underline"
               >
                 quitar
               </button>
             </div>
 
-            <p className="text-[11px] leading-tight text-neutral-500">{CAUSA_QUE_SIGNIFICA[f.causa]}</p>
+            <p className="text-[11px] leading-tight text-muted">{CAUSA_QUE_SIGNIFICA[f.causa]}</p>
 
             <div className="flex flex-wrap gap-1">
               {conStakeholder(f.causa) && cierre.stakeholders.length > 0 && (
@@ -249,7 +249,7 @@ export function CierreBoard({
                   value={f.stakeholderId ?? ''}
                   aria-label="De quién vino la urgencia"
                   onChange={(e) => set(f.key, { stakeholderId: e.target.value || undefined })}
-                  className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+                  className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
                 >
                   <option value="">¿De quién vino?</option>
                   {cierre.stakeholders.map((s) => (
@@ -264,7 +264,7 @@ export function CierreBoard({
                   value={f.taskId ?? ''}
                   aria-label="Tarea afectada"
                   onChange={(e) => set(f.key, { taskId: e.target.value || undefined })}
-                  className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+                  className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
                 >
                   <option value="">Sin tarea específica</option>
                   {cierre.tareas.map((t) => (
@@ -279,7 +279,7 @@ export function CierreBoard({
                 aria-label="Nota del desvío"
                 onChange={(e) => set(f.key, { nota: e.target.value })}
                 placeholder="Nota (opcional)"
-                className="min-w-32 flex-1 rounded border border-neutral-300 px-2 py-0.5 text-xs text-neutral-900"
+                className="min-w-32 flex-1 rounded border border-hair px-2 py-0.5 text-xs text-ink"
               />
             </div>
 
@@ -327,7 +327,7 @@ export function CierreBoard({
           }}
           placeholder="Nota del día (opcional)"
           aria-label="Nota del día"
-          className="w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-900"
+          className="w-full rounded border border-hair px-2 py-1 text-sm text-ink"
         />
 
         <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export function CierreBoard({
                 })
               )
             }
-            className="rounded-full bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-md bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
           >
             {pending ? 'Guardando…' : cierre.yaReconciliado ? 'Actualizar cierre' : 'Cerrar el día'}
           </button>
@@ -357,7 +357,7 @@ export function CierreBoard({
             <button
               disabled={pending}
               onClick={() => accion(() => borrarCierreAction(cierre.fecha))}
-              className="ml-auto text-xs text-neutral-400 underline"
+              className="ml-auto text-xs text-faint underline"
             >
               deshacer cierre
             </button>
@@ -369,10 +369,10 @@ export function CierreBoard({
           hacerlo antes le cambia la fecha a los bloques y borra la evidencia de lo
           que se había planeado. */}
       {(cierre.pendientesPorMover > 0 || cierre.yaMovidos) && (
-        <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-brand-deep">Pendientes sin terminar</h2>
+        <section className="hair pt-4">
+          <h2 className="lbl">Pendientes sin terminar</h2>
           {movidos ?? cierre.yaMovidos ? (
-            <p className="mt-1 text-sm text-neutral-700">
+            <p className="mt-1 text-sm text-ink">
               {movidos
                 ? `${movidos.movidos} ${movidos.movidos === 1 ? 'pendiente movido' : 'pendientes movidos'} a ${movidos.hacia}.`
                 : `${cierre.yaMovidos!.cuantos} ${
@@ -381,7 +381,7 @@ export function CierreBoard({
               {cierre.pendientesPorMover > 0 && ` Quedan ${cierre.pendientesPorMover} en este día.`}
             </p>
           ) : (
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-muted">
               {cierre.pendientesPorMover} sin terminar. Se pasan al siguiente día hábil, y las cifras de arriba quedan
               congeladas para que este día siga siendo legible después.
             </p>
@@ -395,7 +395,7 @@ export function CierreBoard({
                   setMovidos(await pasarPendientesAction(cierre.fecha))
                 })
               }
-              className="mt-2 rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-deep/10 disabled:opacity-40"
+              className="mt-2 rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft disabled:opacity-40"
             >
               {pending ? 'Moviendo…' : `Pasar ${cierre.pendientesPorMover} al siguiente día hábil`}
             </button>
@@ -403,8 +403,8 @@ export function CierreBoard({
         </section>
       )}
 
-      <section className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm">
-        <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-brand-deep">
+      <section className="hair pt-4">
+        <h2 className="lbl flex items-center gap-1.5">
           Qué causa domina — últimos 14 días
           <AyudaContextual
             titulo="La compuerta de 14 días"
@@ -416,13 +416,13 @@ export function CierreBoard({
             lectura útil llega a las dos semanas de cerrar el día.
           </AyudaContextual>
         </h2>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-muted">
           La compuerta no evalúa si el factor de realismo sobrevive: sobrevive, es el objetivo. Evalúa qué causa domina,
           porque cada una lleva a un trabajo distinto.
         </p>
 
         {patron.dominante === null ? (
-          <p className="mt-2 text-sm text-neutral-400">
+          <p className="mt-2 text-sm text-faint">
             {patron.diasReconciliados === 0
               ? 'Ningún día reconciliado todavía. Este panel es la única salida de la compuerta — sin días cerrados no hay nada que leer.'
               : `${patron.diasReconciliados} día${patron.diasReconciliados > 1 ? 's' : ''} cerrado${
@@ -431,7 +431,7 @@ export function CierreBoard({
           </p>
         ) : (
           <>
-            <p className="mt-2 text-sm text-neutral-700">
+            <p className="mt-2 text-sm text-ink">
               Domina <strong className="text-brand-deep">{CAUSA_LABEL[patron.dominante]}</strong> sobre{' '}
               {horas(patron.totalMin)} en {patron.diasReconciliados} día{patron.diasReconciliados > 1 ? 's' : ''}{' '}
               reconciliado{patron.diasReconciliados > 1 ? 's' : ''}.
@@ -441,11 +441,11 @@ export function CierreBoard({
                 .filter((c) => c.minutos > 0)
                 .map((c) => (
                   <li key={c.causa} className="flex items-center gap-2 text-xs">
-                    <span className="w-52 shrink-0 truncate text-neutral-700">{c.label}</span>
-                    <span className="h-2 flex-1 overflow-hidden rounded bg-neutral-100">
+                    <span className="w-52 shrink-0 truncate text-ink">{c.label}</span>
+                    <span className="h-2 flex-1 overflow-hidden rounded bg-hair">
                       <span className="block h-full bg-brand" style={{ width: `${c.pct}%` }} />
                     </span>
-                    <span className="w-16 shrink-0 text-right text-neutral-500">{horas(c.minutos)}</span>
+                    <span className="num w-16 shrink-0 text-right text-muted">{horas(c.minutos)}</span>
                     <span className={`shrink-0 rounded px-1 text-[10px] font-bold uppercase ${A_QUIEN_TOCA_COLOR[c.aQuienToca]}`}>
                       {c.aQuienToca}
                     </span>
@@ -454,16 +454,16 @@ export function CierreBoard({
             </ul>
 
             {patron.origenUrgencias.length > 0 && (
-              <div className="mt-3 border-t border-neutral-100 pt-2">
+              <div className="mt-3 border-t border-hair pt-2">
                 <p className="text-xs font-bold text-brand-deep">De dónde vienen las urgencias</p>
                 <ul className="mt-1 space-y-0.5">
                   {patron.origenUrgencias.map((o) => (
-                    <li key={o.nombre} className="text-xs text-neutral-600">
-                      {o.nombre} — <strong>{horas(o.minutos)}</strong>
+                    <li key={o.nombre} className="text-xs text-muted">
+                      {o.nombre} — <strong className="num">{horas(o.minutos)}</strong>
                     </li>
                   ))}
                 </ul>
-                <p className="mt-1 text-[11px] text-neutral-400">
+                <p className="mt-1 text-[11px] text-faint">
                   Esto es evidencia para renegociar alcance, no percepción.
                 </p>
               </div>
@@ -511,14 +511,14 @@ function PromoverDesvio({
         onChange={(e) => setTitulo(e.target.value)}
         placeholder="Qué hiciste, como se escribiría una tarea"
         aria-label="Título del trabajo"
-        className="w-full rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
+        className="w-full rounded border border-hair bg-surface px-2 py-0.5 text-xs text-ink"
       />
       <div className="flex flex-wrap items-center gap-1">
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           aria-label="Proyecto del trabajo"
-          className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+          className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
         >
           {proyectos.map((p) => (
             <option key={p.id} value={p.id}>
@@ -530,7 +530,7 @@ function PromoverDesvio({
           value={alcance}
           onChange={(e) => setAlcance(e.target.value as 'aliado' | 'sow')}
           aria-label="Alcance del trabajo"
-          className="rounded border border-neutral-300 bg-white px-1 py-0.5 text-xs text-neutral-600"
+          className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
         >
           <option value="aliado">Fuera del SOW (aliado)</option>
           <option value="sow">Dentro del SOW</option>
@@ -543,7 +543,7 @@ function PromoverDesvio({
             onChange={(e) => setDolor(e.target.value)}
             placeholder="Qué dolor del cliente atendió (requerido)"
             aria-label="Dolor del cliente"
-            className="w-full rounded border border-neutral-300 bg-white px-2 py-0.5 text-xs text-neutral-900"
+            className="w-full rounded border border-hair bg-surface px-2 py-0.5 text-xs text-ink"
           />
           {proyecto && !proyecto.tieneTarifa && (
             <p className="text-[11px] text-danger">
@@ -563,11 +563,11 @@ function PromoverDesvio({
               dolorCliente: alcance === 'aliado' ? dolor : undefined,
             })
           }
-          className="rounded-full bg-brand-deep px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+          className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
         >
           {pending ? 'Registrando…' : 'Registrar'}
         </button>
-        <button onClick={onCancelar} className="text-xs text-neutral-500 underline">
+        <button onClick={onCancelar} className="text-xs text-muted underline">
           cancelar
         </button>
       </div>

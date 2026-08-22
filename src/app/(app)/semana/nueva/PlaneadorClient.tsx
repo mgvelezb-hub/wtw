@@ -9,5 +9,5 @@ import dynamic from 'next/dynamic'
 // setState dentro de un efecto.
 export const PlaneadorSemanal = dynamic(() => import('./PlaneadorSemanal').then((m) => m.PlaneadorSemanal), {
   ssr: false,
-  loading: () => <p className="text-sm text-neutral-500">Cargando el planeador…</p>,
+  loading: () => <p className="text-sm text-muted">Cargando el planeador…</p>,
 })

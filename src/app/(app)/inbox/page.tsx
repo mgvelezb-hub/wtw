@@ -20,7 +20,7 @@ export default async function InboxPage() {
   ])
 
   return (
-    <main className="min-h-dvh bg-[#f4efe3]">
+    <main className="min-h-dvh bg-paper">
       <InboxBoard
         // Objeto plano, no el modelo de Prisma (regla 2): la lista solo usa estos
         // campos, y así no viajan columnas que la UI no necesita.

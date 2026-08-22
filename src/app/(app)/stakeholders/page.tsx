@@ -20,7 +20,7 @@ export default async function StakeholdersPage() {
   ])
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-3xl p-4">
         <StakeholdersBoard mapa={mapa} proyectos={proyectos} competencias={competencias} />
       </div>
