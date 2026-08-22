@@ -21,6 +21,7 @@ export type IconName =
   | 'engrane'
   | 'barras'
   | 'chevron'
+  | 'chevron-doble'
   | 'mas'
 
 export type SubItem = { href: string; label: string; color?: string }
@@ -33,7 +34,24 @@ export type NavItem = {
   sub?: SubItem[]
 }
 
-export type Grupo = { grupo: string; items: NavItem[] }
+// Un grupo de la navegación. `grupo` es la etiqueta VISIBLE ('' = sin
+// encabezado, como los primarios y Ajustes); `id` es la identidad estable que
+// usan la key de React y la preferencia de colapso en localStorage; `contexto`
+// es la etiqueta que ⌘K muestra a la derecha de cada resultado, que sí tiene que
+// existir aunque el grupo no lleve encabezado visible.
+export type Grupo = {
+  id: string
+  grupo: string
+  contexto: string
+  colapsable?: boolean
+  // Los grupos de biblioteca arrancan cerrados: son destinos de consulta, no de
+  // operación diaria, y su costo de estar siempre abiertos es empujar lo demás.
+  colapsadoPorDefecto?: boolean
+  // Grupo de cierre (Ajustes): va al pie del sidebar y al final de ⌘K, después
+  // de los proyectos. No es un destino que se busque, es donde se termina.
+  alFinal?: boolean
+  items: NavItem[]
+}
 
 export type ProyectoNav = { id: string; nombre: string; color: string }
 
@@ -153,6 +171,12 @@ export function Icono({ name, ...props }: { name: IconName } & SVGProps<SVGSVGEl
       return (
         <svg {...shared}>
           <path d="M6 9l6 6 6-6" />
+        </svg>
+      )
+    case 'chevron-doble':
+      return (
+        <svg {...shared}>
+          <path d="M11 7l-5 5 5 5M18 7l-5 5 5 5" />
         </svg>
       )
     case 'mas':

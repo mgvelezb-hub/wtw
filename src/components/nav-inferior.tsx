@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Icono, type Grupo, type NavItem } from './nav-iconos'
 
 // Los 4 destinos de operación diaria que viven en la barra inferior del iPhone.
-// El orden es el del día real: planear → cerrar → la semana → la bandeja.
-// Todo lo demás entra por "Más": una barra de teléfono con 12 destinos no es
-// navegación, es una lista disfrazada.
-const DESTINOS = ['/dia', '/cierre', '/semana', '/inbox']
+// El orden es el del horizonte: hoy → la semana → el cierre → la bandeja.
+// "Actividades" se queda pese a no ser un momento primario porque la captura
+// rápida ES el uso principal del teléfono. Todo lo demás entra por "Más": una
+// barra de teléfono con 12 destinos no es navegación, es una lista disfrazada.
+const DESTINOS = ['/dia', '/semana', '/cierre', '/inbox']
 
 function itemsPrincipales(grupos: Grupo[]): NavItem[] {
   const porHref = new Map(grupos.flatMap((g) => g.items).map((it) => [it.href, it]))
@@ -25,6 +26,12 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
   const isActive = (href: string): boolean => pathname === href || pathname.startsWith(href + '/')
 
   const principales = itemsPrincipales(grupos)
+
+  // El panel no repite lo que ya está en la barra: quien lo abre viene a buscar
+  // Proyectos, Carrera o algo de la biblioteca, no el botón que acaba de ver.
+  const gruposDelPanel = grupos
+    .map((g) => ({ ...g, items: g.items.filter((it) => !DESTINOS.includes(it.href)) }))
+    .filter((g) => g.items.length > 0)
 
   // El panel guarda la ruta en la que se abrió, no un booleano: así navegar lo
   // cierra solo —el <Link> cambia la ruta sin desmontar el shell, y nadie más
@@ -86,8 +93,8 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
               </button>
             </div>
 
-            {grupos.map((g, i) => (
-              <div key={i} className="px-3 pt-3">
+            {gruposDelPanel.map((g) => (
+              <div key={g.id} className="px-3 pt-3">
                 {g.grupo && (
                   <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">
                     {g.grupo}

@@ -7,11 +7,15 @@ import { CommandPalette } from '@/components/command-palette'
 import { NavInferior } from '@/components/nav-inferior'
 import { Icono, type Grupo, type IconName, type NavItem, type ProyectoNav } from '@/components/nav-iconos'
 
-// Grupos que el usuario puede colapsar en el sidebar de escritorio. "Ajustes"
-// vive suelto (grupo: '') y nunca se colapsa.
-const GRUPOS_COLAPSABLES = ['Personal', 'Proyecto', 'Firma & Carrera', 'Equipo']
-
 const NAV_COLAPSADO_KEY = 'wtw-nav-colapsado'
+const RAIL_KEY = 'wtw-rail'
+
+// Tooltip de escritorio. En estado expandido es un complemento (la etiqueta ya
+// se ve) y por eso espera 400 ms; en estado rail es la ÚNICA forma de leer el
+// nombre de la sección, así que aparece casi de inmediato.
+const HOVER_FINO = '(hover: hover) and (pointer: fine)'
+const TOOLTIP_DELAY_EXPANDIDO = 400
+const TOOLTIP_DELAY_RAIL = 120
 
 // La tecla modificadora nunca cambia mientras la página vive: no hay a qué
 // suscribirse, solo a qué leer una vez del lado del cliente.
@@ -23,37 +27,54 @@ function teclaDelCliente(): string {
   return /mac|iphone|ipad|ipod/i.test(window.navigator.userAgent) ? '⌘' : 'Ctrl '
 }
 
+// La nav no está organizada por modelo de datos (Personal / Proyecto / Firma /
+// Equipo) sino por los MOMENTOS en que el usuario abre la app: hoy, la semana,
+// el cierre, sus proyectos y su carrera. Todo lo demás es material de consulta
+// —se busca, no se recorre— y vive en "Biblioteca", cerrada por default.
 function buildNav(proyectos: ProyectoNav[]): Grupo[] {
   return [
     {
-      grupo: 'Personal',
+      id: 'primarios',
+      grupo: '',
+      contexto: 'Principal',
       items: [
-        { href: '/dia', label: 'Mi Día', desc: 'Tu jornada de hoy: bloques, cronómetro y pendientes', icon: 'sol' },
-        { href: '/cierre', label: 'Cierre', desc: '60 segundos al final del día: qué pasó de verdad', icon: 'luna' },
+        { href: '/dia', label: 'Hoy', desc: 'Tu jornada de hoy: bloques, cronómetro y pendientes', icon: 'sol' },
         {
           href: '/semana',
-          label: 'Mi Semana',
+          label: 'Semana',
           desc: 'El plan semanal: wins, carga y bloques por día',
           icon: 'calendario',
           sub: [{ href: '/semana/nueva', label: 'Planeador' }],
         },
-        {
-          href: '/inbox',
-          label: 'Actividades',
-          desc: 'Captura rápida de tareas sueltas antes de agendarlas',
-          icon: 'bandeja',
-        },
-      ],
-    },
-    {
-      grupo: 'Proyecto',
-      items: [
+        { href: '/cierre', label: 'Cierre', desc: '60 segundos al final del día: qué pasó de verdad', icon: 'luna' },
         {
           href: '/proyectos',
           label: 'Proyectos',
           desc: 'Engagements activos: entregables, pendientes y minutas',
           icon: 'portafolio',
           sub: proyectos.map((p) => ({ href: `/proyectos/${p.id}`, label: p.nombre, color: p.color })),
+        },
+        {
+          href: '/desarrollo',
+          label: 'Carrera',
+          desc: 'Tu camino a Gerente: reactivos, evidencia y práctica',
+          icon: 'diana',
+          sub: [{ href: '/desarrollo/caso', label: 'Mi caso' }],
+        },
+      ],
+    },
+    {
+      id: 'biblioteca',
+      grupo: 'Biblioteca',
+      contexto: 'Biblioteca',
+      colapsable: true,
+      colapsadoPorDefecto: true,
+      items: [
+        {
+          href: '/inbox',
+          label: 'Actividades',
+          desc: 'Captura rápida de tareas sueltas antes de agendarlas',
+          icon: 'bandeja',
         },
         {
           href: '/stakeholders',
@@ -67,11 +88,6 @@ function buildNav(proyectos: ProyectoNav[]): Grupo[] {
           desc: 'Trabajo extra que te posiciona como aliado estratégico',
           icon: 'escudo',
         },
-      ],
-    },
-    {
-      grupo: 'Firma & Carrera',
-      items: [
         {
           href: '/historico',
           label: 'Histórico',
@@ -84,23 +100,18 @@ function buildNav(proyectos: ProyectoNav[]): Grupo[] {
           desc: 'Genera resúmenes cruzando minutas con lo que sigue vivo',
           icon: 'chispa',
         },
-        {
-          href: '/desarrollo',
-          label: 'Desarrollo',
-          desc: 'Tu camino a Gerente: reactivos, evidencia y práctica',
-          icon: 'diana',
-        },
-      ],
-    },
-    {
-      grupo: 'Equipo',
-      items: [
         { href: '/equipo', label: 'Equipo', desc: 'Los reportes directos y su semana', icon: 'personas' },
+        // Archivada tras el flag (src/lib/flags.ts): hoy se filtra y no se ve.
+        // Sigue declarada aquí para que WTW_RUTAS_ACTIVAS=roi la reviva sin
+        // tener que volver a tocar la navegación.
         { href: '/roi', label: 'ROI', desc: 'Retorno de la inversión en aliado por proyecto', icon: 'barras' },
       ],
     },
     {
+      id: 'ajustes',
       grupo: '',
+      contexto: 'Ajustes',
+      alFinal: true,
       items: [
         { href: '/settings', label: 'Ajustes', desc: 'Horario, buffer, factor manual y calendario', icon: 'engrane' },
       ],
@@ -122,32 +133,90 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
   )
 }
 
-// Item de escritorio: incluye el tooltip con descripción (delay ~400ms, solo en
-// dispositivos con hover real) y, en pantallas táctiles, la misma descripción
-// visible en línea dentro del grupo — ahí no hay hover confiable, así que no
-// tiene sentido esconderla detrás de uno.
-function DesktopNavItem({ item, active, subActive }: { item: NavItem; active: boolean; subActive: (href: string) => boolean }) {
+// Item de escritorio. En estado expandido incluye el tooltip con descripción
+// (delay ~400ms, solo en dispositivos con hover real) y, en pantallas táctiles,
+// la misma descripción visible en línea — ahí no hay hover confiable, así que
+// no tiene sentido esconderla detrás de uno. En estado rail solo queda el icono
+// centrado: la etiqueta pasa al `aria-label` y al tooltip.
+function DesktopNavItem({
+  item,
+  active,
+  subActive,
+  rail,
+}: {
+  item: NavItem
+  active: boolean
+  subActive: (href: string) => boolean
+  rail: boolean
+}) {
   const tieneSub = !!item.sub && item.sub.length > 0
   const algunSubActivo = tieneSub && item.sub!.some((s) => subActive(s.href))
   // Sub-items colapsados por default para que la sidebar no sea un árbol
   // permanente; se abren solos cuando el usuario ya está dentro de uno de
   // ellos (si no, el proyecto actual quedaría invisible en la nav).
   const [abierto, setAbierto] = useState(false)
-  const desplegado = abierto || algunSubActivo
+  const desplegado = !rail && (abierto || algunSubActivo)
+
+  // El tooltip se posiciona a mano y se pinta `fixed`, no `absolute`: el sidebar
+  // es un contenedor de scroll (`overflow-y-auto` obliga a que el eje X también
+  // recorte), así que un hijo absoluto que asome a la derecha queda cortado por
+  // el borde de la columna. Un elemento `fixed` toma el viewport como bloque
+  // contenedor y escapa de ese recorte. En rail eso deja de ser un detalle: sin
+  // tooltip no hay forma de saber qué es cada icono.
+  const fila = useRef<HTMLDivElement>(null)
+  const [tip, setTip] = useState<{ top: number; left: number } | null>(null)
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function cancelar(): void {
+    if (temporizador.current) clearTimeout(temporizador.current)
+    temporizador.current = null
+  }
+
+  function colocar(): void {
+    const r = fila.current?.getBoundingClientRect()
+    if (r) setTip({ top: r.top + r.height / 2, left: r.right + 8 })
+  }
+
+  // `forzar` es el camino del teclado: ahí no hay hover que esperar ni media
+  // query que consultar — si el ítem tiene el foco, la descripción se muestra.
+  function mostrarTip(forzar = false): void {
+    cancelar()
+    if (forzar) {
+      colocar()
+      return
+    }
+    if (!window.matchMedia(HOVER_FINO).matches) return
+    temporizador.current = setTimeout(colocar, rail ? TOOLTIP_DELAY_RAIL : TOOLTIP_DELAY_EXPANDIDO)
+  }
+
+  function ocultarTip(): void {
+    cancelar()
+    setTip(null)
+  }
+
+  useEffect(() => cancelar, [])
 
   return (
-    <div className="group/item relative">
-      <div className="flex items-center">
+    <div
+      className="relative"
+      onMouseEnter={() => mostrarTip()}
+      onMouseLeave={ocultarTip}
+      onFocus={() => mostrarTip(true)}
+      onBlur={ocultarTip}
+    >
+      <div ref={fila} className="flex items-center">
         <Link
           href={item.href}
-          className={`flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-            active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'
-          }`}
+          aria-label={rail ? item.label : undefined}
+          aria-current={active ? 'page' : undefined}
+          className={`flex flex-1 items-center rounded-md text-sm font-medium transition-colors ${
+            rail ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+          } ${active ? 'bg-brand text-white' : 'text-neutral-600 hover:bg-neutral-100'}`}
         >
           <Icono name={item.icon} />
-          <span>{item.label}</span>
+          {!rail && <span>{item.label}</span>}
         </Link>
-        {tieneSub && (
+        {tieneSub && !rail && (
           <button
             type="button"
             onClick={() => setAbierto((v) => !v)}
@@ -162,16 +231,22 @@ function DesktopNavItem({ item, active, subActive }: { item: NavItem; active: bo
         )}
       </div>
 
-      <div
-        role="tooltip"
-        className="pointer-events-none invisible absolute left-full top-1/2 z-30 ml-2 w-56 -translate-y-1/2 rounded-lg bg-brand-deep px-3 py-2 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity [@media(hover:hover)_and_(pointer:fine)]:duration-150 [@media(hover:hover)_and_(pointer:fine)]:delay-[400ms] [@media(hover:hover)_and_(pointer:fine)]:group-hover/item:visible [@media(hover:hover)_and_(pointer:fine)]:group-hover/item:opacity-100"
-      >
-        {item.desc}
-      </div>
+      {tip && (
+        <div
+          role="tooltip"
+          style={{ top: tip.top, left: tip.left }}
+          className="pointer-events-none fixed z-50 w-56 -translate-y-1/2 rounded-lg bg-brand-deep px-3 py-2 text-xs leading-snug text-white shadow-lg"
+        >
+          {rail && <span className="mb-0.5 block text-[13px] font-semibold">{item.label}</span>}
+          {item.desc}
+        </div>
+      )}
 
-      <p className="hidden px-3 pb-1 text-[11px] leading-snug text-neutral-400 [@media(hover:none)]:block">
-        {item.desc}
-      </p>
+      {!rail && (
+        <p className="hidden px-3 pb-1 text-[11px] leading-snug text-neutral-400 [@media(hover:none)]:block">
+          {item.desc}
+        </p>
+      )}
 
       {item.sub && desplegado && (
         <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-neutral-200 pl-2">
@@ -258,6 +333,47 @@ export function AppShell({
     }
   }, [])
 
+  // Ancho del sidebar de escritorio: `null` = todavía no se leyó la preferencia
+  // (misma regla 1). El default es EXPANDIDO a propósito: el lunes por la mañana
+  // nadie quiere descubrir que su nav cambió de forma sola.
+  const [rail, setRail] = useState<boolean | null>(null)
+  const esRail = rail ?? false
+
+  // Mismo trato que `setColapsado` arriba: `react-hooks/set-state-in-effect`
+  // marca este setState, y se acepta a conciencia — es el precio de la regla 1
+  // (leer localStorage solo después de montar) y el patrón ya establecido aquí.
+  useEffect(() => {
+    setRail(window.localStorage.getItem(RAIL_KEY) === 'rail')
+  }, [])
+
+  function toggleRail(): void {
+    setRail((prev) => {
+      const next = !(prev ?? false)
+      window.localStorage.setItem(RAIL_KEY, next ? 'rail' : 'expandido')
+      return next
+    })
+  }
+
+  // `[` colapsa/expande el rail. Global, como ⌘K, pero sin modificador: por eso
+  // hay que ignorarlo cuando el foco está escribiendo en algún lado — si no, un
+  // corchete en una minuta reacomodaría la pantalla.
+  useEffect(() => {
+    function alTeclear(e: KeyboardEvent): void {
+      if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return
+      const t = e.target
+      if (t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return
+      e.preventDefault()
+      toggleRail()
+    }
+    document.addEventListener('keydown', alTeclear)
+    return () => document.removeEventListener('keydown', alTeclear)
+  }, [])
+
+  // La transición solo se enciende una vez leída la preferencia: si el usuario
+  // guardó "rail", el primer commit pasa de 224 a 56 px, y sin este guardia esa
+  // corrección de hidratación se vería como una animación al cargar.
+  const transicion = rail === null ? '' : 'transition-[width,padding] duration-150 ease-out'
+
   // El atajo funciona con ⌘ o Ctrl indistintamente, pero la etiqueta debe decir
   // la tecla que esa persona tiene. `useSyncExternalStore` y no un `useState` en
   // `useEffect`: el snapshot del servidor es '⌘' (el caso común aquí) y el del
@@ -265,35 +381,40 @@ export function AppShell({
   // del servidor (regla 1 de CLAUDE.md) ni un render extra en cadena.
   const teclaAtajo = useSyncExternalStore(sinSuscripcion, teclaDelCliente, () => '⌘')
 
-  function toggleGrupo(grupo: string): void {
+  function toggleGrupo(id: string): void {
     setColapsado((prev) => {
-      const next = { ...(prev ?? {}), [grupo]: !(prev?.[grupo] ?? false) }
+      const next = { ...(prev ?? {}), [id]: !(prev?.[id] ?? false) }
       window.localStorage.setItem(NAV_COLAPSADO_KEY, JSON.stringify(next))
       return next
     })
   }
 
   return (
-    <div className="min-h-dvh bg-[#f4efe3] md:pl-56">
+    <div className={`min-h-dvh bg-[#f4efe3] ${transicion} ${esRail ? 'md:pl-14' : 'md:pl-56'}`}>
       {/* Bajo 640px esta barra no existe: el teléfono navega por la barra
           inferior (`NavInferior`) y la pantalla recupera esos 56 px de alto,
           que en un iPhone son la diferencia entre ver el bloque de la tarde o
           tener que scrollear. De 640 a 767 (tablet angosta, iPad en split
-          view) sigue la fila de tabs de siempre; desde 768 es el sidebar. */}
+          view) sigue la fila de tabs de siempre; desde 768 es el sidebar,
+          que puede estar expandido (224 px) o en rail (56 px). */}
       <nav
+        id="nav-lateral"
         aria-label="Secciones"
-        className="fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:w-56 md:flex-col md:gap-0 md:overflow-y-auto md:border-b-0 md:border-r md:px-3 md:py-4"
+        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-neutral-200 bg-white px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:py-4 ${transicion} ${
+          esRail ? 'md:w-14 md:px-2' : 'md:w-56 md:px-3'
+        }`}
       >
-        <div className="hidden px-2 pb-4 md:block">
-          <p className="text-base font-bold text-brand">WTW</p>
-          <p className="truncate text-xs text-neutral-400">{nombre}</p>
+        <div className={`hidden pb-4 md:block ${esRail ? 'px-0 text-center' : 'px-2'}`}>
+          <p className="text-base font-bold text-brand">{esRail ? 'W' : 'WTW'}</p>
+          {!esRail && <p className="truncate text-xs text-neutral-400">{nombre}</p>}
         </div>
 
         {/* Tablet angosta (640–767): fila plana scrollable, con fade en los
             bordes que tienen más contenido y scroll-snap para que cada tab
             quede completo al soltar. Sin grupos colapsables ni tooltips — el
             long-press no es confiable en web y aquí no hay espacio para
-            descripciones. */}
+            descripciones. Este rango no tiene rail: a 700 px de ancho la nav
+            ya es horizontal. */}
         <div className="relative min-w-0 md:hidden">
           <div
             ref={scrollRef}
@@ -318,21 +439,25 @@ export function AppShell({
           )}
         </div>
 
-        {/* Desktop: agrupado por capa, colapsable, con tooltip por ítem */}
-        <div className="hidden md:block">
-          {grupos.map((g, i) => {
-            const esColapsable = g.grupo && GRUPOS_COLAPSABLES.includes(g.grupo)
-            const estaColapsado = esColapsable ? (colapsado?.[g.grupo] ?? false) : false
+        {/* Desktop: primarios sueltos arriba, biblioteca colapsable, Ajustes al
+            pie. El toggle del rail cierra la columna. */}
+        <div className="hidden md:flex md:flex-1 md:flex-col">
+          {grupos.map((g) => {
+            const estaColapsado = g.colapsable ? (colapsado?.[g.id] ?? g.colapsadoPorDefecto ?? false) : false
             return (
-              <div key={i} className="mb-3">
-                {esColapsable ? (
+              <div key={g.id} className="mb-3">
+                {g.colapsable ? (
                   <button
                     type="button"
-                    onClick={() => toggleGrupo(g.grupo)}
+                    onClick={() => toggleGrupo(g.id)}
                     aria-expanded={!estaColapsado}
-                    className="flex w-full items-center justify-between px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400"
+                    aria-label={g.grupo}
+                    title={esRail ? g.grupo : undefined}
+                    className={`flex w-full items-center border-t border-neutral-100 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-neutral-400 hover:text-neutral-600 ${
+                      esRail ? 'justify-center px-0' : 'justify-between px-2'
+                    }`}
                   >
-                    <span>{g.grupo}</span>
+                    {!esRail && <span>{g.grupo}</span>}
                     <Icono
                       name="chevron"
                       width={12}
@@ -341,14 +466,21 @@ export function AppShell({
                     />
                   </button>
                 ) : (
-                  g.grupo && (
+                  g.grupo &&
+                  !esRail && (
                     <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400">{g.grupo}</p>
                   )
                 )}
                 {!estaColapsado && (
                   <div className="flex flex-col gap-0.5">
                     {g.items.map((it) => (
-                      <DesktopNavItem key={it.href} item={it} active={isActive(it.href)} subActive={isActive} />
+                      <DesktopNavItem
+                        key={it.href}
+                        item={it}
+                        active={isActive(it.href)}
+                        subActive={isActive}
+                        rail={esRail}
+                      />
                     ))}
                   </div>
                 )}
@@ -356,12 +488,29 @@ export function AppShell({
             )
           })}
 
-          <p className="mt-1 border-t border-neutral-100 px-2 pt-3 text-[10px] leading-snug text-neutral-400">
-            <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1 py-0.5 font-sans text-[10px] text-neutral-500">
-              {teclaAtajo}K
-            </kbd>{' '}
-            para saltar
-          </p>
+          <div className="mt-auto border-t border-neutral-100 pt-3">
+            <p className={`text-[10px] leading-snug text-neutral-400 ${esRail ? 'px-0 text-center' : 'px-2'}`}>
+              <kbd className="rounded border border-neutral-200 bg-neutral-50 px-1 py-0.5 font-sans text-[10px] text-neutral-500">
+                {teclaAtajo}K
+              </kbd>
+              {!esRail && ' para saltar'}
+            </p>
+
+            <button
+              type="button"
+              onClick={toggleRail}
+              aria-expanded={!esRail}
+              aria-controls="nav-lateral"
+              aria-label={esRail ? 'Expandir la navegación' : 'Colapsar la navegación'}
+              title={`${esRail ? 'Expandir' : 'Colapsar'} la navegación ([)`}
+              className={`mt-2 flex w-full items-center rounded-md py-2 text-[11px] font-medium text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 ${
+                esRail ? 'justify-center px-0' : 'gap-2 px-2'
+              }`}
+            >
+              <Icono name="chevron-doble" width={16} height={16} className={esRail ? 'rotate-180' : ''} />
+              {!esRail && <span>Colapsar</span>}
+            </button>
+          </div>
         </div>
       </nav>
 

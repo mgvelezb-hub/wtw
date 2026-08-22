@@ -29,12 +29,12 @@ function normalizar(s: string): string {
     .toLowerCase()
 }
 
-function construirResultados(grupos: Grupo[], proyectos: ProyectoNav[]): Resultado[] {
+function rutasDe(grupos: Grupo[]): Resultado[] {
   const rutas: Resultado[] = []
 
   for (const g of grupos) {
     for (const it of g.items) {
-      rutas.push({ href: it.href, label: it.label, desc: it.desc, contexto: g.grupo || 'Ajustes', icon: it.icon })
+      rutas.push({ href: it.href, label: it.label, desc: it.desc, contexto: g.contexto, icon: it.icon })
       for (const s of it.sub ?? []) {
         // Los sub-links de proyecto se omiten aquí: entran abajo con su color y
         // su propio contexto, y duplicarlos volvería ruidosa la lista.
@@ -44,6 +44,13 @@ function construirResultados(grupos: Grupo[], proyectos: ProyectoNav[]): Resulta
     }
   }
 
+  return rutas
+}
+
+// El orden sin query es el de la nav —los 5 momentos primarios, luego la
+// biblioteca—, después los proyectos activos y al final Ajustes. Sin escribir
+// nada, el primer Enter cae en "Hoy".
+function construirResultados(grupos: Grupo[], proyectos: ProyectoNav[]): Resultado[] {
   const proyectosRes: Resultado[] = proyectos.map((p) => ({
     href: `/proyectos/${p.id}`,
     label: p.nombre,
@@ -52,7 +59,11 @@ function construirResultados(grupos: Grupo[], proyectos: ProyectoNav[]): Resulta
     color: p.color,
   }))
 
-  return [...rutas, ...proyectosRes]
+  return [
+    ...rutasDe(grupos.filter((g) => !g.alFinal)),
+    ...proyectosRes,
+    ...rutasDe(grupos.filter((g) => g.alFinal)),
+  ]
 }
 
 function filtrar(todos: Resultado[], query: string): Resultado[] {
