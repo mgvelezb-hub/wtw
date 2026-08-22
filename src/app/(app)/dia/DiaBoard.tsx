@@ -153,6 +153,134 @@ function nowHHMM(tickMs: number): string {
 const DIA_ABR = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const MES_ABR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
+// "2026-08-21" → "Vie 21 Ago". Se parsea como medianoche UTC —igual que en
+// page.tsx— así que `getUTC*` devuelve el día real sin corrimiento de zona.
+function fechaCorta(fecha: string): string {
+  const d = new Date(fecha)
+  if (Number.isNaN(d.getTime())) return fecha
+  return `${DIA_ABR[d.getUTCDay()]} ${d.getUTCDate()} ${MES_ABR[d.getUTCMonth()]}`
+}
+
+// Separador fino entre grupos de la barra de estado. Se oculta abajo de 640 px:
+// cuando la barra envuelve a dos renglones, las rayitas quedan colgando al final
+// de la línea y ensucian más de lo que separan.
+function SepBarra() {
+  return <span aria-hidden className="hidden h-3 w-px shrink-0 bg-neutral-200 sm:block" />
+}
+
+// ── Barra de estado del día ──────────────────────────────────────────────────
+//
+// Un solo renglón que reemplaza cinco avisos apilados: el header con el rango de
+// fechas, el chip de factor, el chip de carga, el banner teal del desbloqueador y
+// el banner ámbar de arrastradas. La regla de diseño es que el estado del día es
+// AMBIENTAL —se consulta de reojo, no se lee— así que va en 12–13 px, en gris, y
+// solo sube de tono lo que de verdad está fuera de rango (la carga en rojo si no
+// cabe, el chip de sobrecarga si el semáforo no está en verde).
+//
+// Lo accionable no desaparece, se contrae: "2 arrastradas" abre el bloque
+// colapsable de abajo, "1 desbloqueador" abre un popover con el texto completo.
+function BarraEstadoDia({
+  p,
+  esHoy,
+  pending,
+  startTransition,
+  onAbrirArrastradas,
+}: {
+  p: DiaBoardProps
+  esHoy: boolean
+  pending: boolean
+  startTransition: StartTransitionFn
+  onAbrirArrastradas: () => void
+}) {
+  const semana = (p.isoWeek.split('-W')[1] ?? p.isoWeek).replace(/^0/, '')
+  // `colchon` viene del service como `planeable - carga`, así que la suma
+  // reconstruye el planeable sin tocar la firma de props.
+  const planeable = p.carga + p.colchon
+  const excede = p.carga > planeable
+  const arrastradas = esHoy ? p.stranded.length : 0
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs text-neutral-500 shadow-sm">
+      {/* El h1 de la página: la fecha. El rango completo de la semana ya no
+          necesita 2xl de tipografía — es contexto, no titular. */}
+      <h1 className="text-[13px] font-bold text-brand-deep">{fechaCorta(p.selectedDay)}</h1>
+      <SepBarra />
+      <span>Semana {semana}</span>
+      <SepBarra />
+      <span className="tabular-nums">09–18</span>
+      <SepBarra />
+      <span title="Factor de realismo de la semana">
+        Factor <span className="font-semibold tabular-nums text-brand-deep">×{p.factorUsado.toFixed(1)}</span>
+      </span>
+      <SepBarra />
+      <span>
+        Carga{' '}
+        <span className={`font-semibold tabular-nums ${excede ? 'text-danger' : 'text-brand-deep'}`}>
+          {p.carga.toFixed(0)} h
+        </span>{' '}
+        de <span className="tabular-nums">{planeable.toFixed(0)} h</span> planeables
+      </span>
+      <ChipSobrecarga sobrecarga={p.sobrecarga} />
+
+      <div className="ml-auto flex flex-wrap items-center gap-2">
+        {arrastradas > 0 && (
+          <button
+            type="button"
+            onClick={onAbrirArrastradas}
+            className="font-semibold text-warn underline underline-offset-2 hover:no-underline"
+          >
+            {arrastradas} arrastrada{arrastradas > 1 ? 's' : ''}
+          </button>
+        )}
+        {p.desbloqueador && (
+          <span className="flex items-center gap-1 font-semibold text-brand-strong">
+            1 desbloqueador
+            <AyudaContextual
+              titulo="Desbloqueador de la semana"
+              alineacion="derecha"
+              ejemplo="Se define el lunes, en el planeador. Vive aquí para recordarse sin ocupar una franja del día."
+            >
+              {p.desbloqueador}
+            </AyudaContextual>
+          </span>
+        )}
+        {esHoy && (
+          <>
+            <button
+              disabled={pending}
+              onClick={() => startTransition(() => void startDayAction())}
+              className="rounded-full border border-brand-deep px-2.5 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+            >
+              ▶ Arrancar día
+            </button>
+            {/* Ya NO mueve nada aquí. Mover primero borraba la evidencia de lo
+                planeado; ahora esto lleva al cierre, donde se registra qué pasó
+                y de ahí se pasan los pendientes. */}
+            <Link
+              href={`/cierre?dia=${p.today}`}
+              title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
+              className="rounded-full border border-brand-deep px-2.5 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+            >
+              Cerrar el día →
+            </Link>
+          </>
+        )}
+        <TourPrimeraVez
+          ruta="/dia"
+          bullets={[
+            'Tus bloques de hoy, en el orden en que los vas a hacer. Un bloque es un rato reservado para una tarea o una junta.',
+            <>
+              <strong>▶</strong> arranca el cronómetro de un bloque; <strong>⋯</strong> tiene el resto de las acciones
+              —mover de día, cambiar la hora, capturar la minuta, descartar.
+            </>,
+            'Al final del día, Cierre te pregunta qué pasó de verdad: qué se hizo, qué no y por qué. De ahí salen los pendientes del día siguiente.',
+          ]}
+        />
+      </div>
+    </div>
+  )
+}
+
 // Opciones válidas para "Mover a…" / "Agendar a…": nunca un día que ya pasó
 // (imposible), máximo 7 días hacia adelante desde hoy.
 function moveTargets(todayStr: string): DiaTab[] {
@@ -193,6 +321,19 @@ export function DiaBoard(p: DiaBoardProps) {
   const [verTerminadas, setVerTerminadas] = useState(false)
   const [verCanceladas, setVerCanceladas] = useState(false)
   const [minutaBlock, setMinutaBlock] = useState<DayBlockView | null>(null)
+  // Cerrado por default: las arrastradas son una decisión pendiente, no una
+  // alarma. El contador de la barra las abre y hace scroll hasta ellas.
+  const [arrastradasAbiertas, setArrastradasAbiertas] = useState(false)
+
+  function abrirArrastradas() {
+    setArrastradasAbiertas(true)
+    // Un frame de espera: el <ul> no existe hasta que React repinta con el
+    // estado abierto, y `scrollIntoView` sobre la sección cerrada apuntaría a
+    // una caja de otra altura.
+    requestAnimationFrame(() => {
+      document.getElementById('arrastradas')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+  }
 
   useEffect(() => {
     setTick(Date.now())
@@ -217,77 +358,42 @@ export function DiaBoard(p: DiaBoardProps) {
     // Modo trabajo en iPad. Bajo lg los dos wrappers son `display:contents`:
     // no generan caja, así que sus hijos apilan directo en el flex del
     // contenedor y `order-*` los deja en el MISMO orden de siempre
-    // (hero → header → wins/capacidad → días → arrastradas → bloques →
+    // (barra+hero → arranque → wins/capacidad → días → arrastradas → bloques →
     // pendientes). Desde lg sí son cajas: 2/3 de timeline y 1/3 de contexto
     // pegajoso, y el `order-*` queda inerte porque ya no son flex items.
     <div className="mx-auto flex max-w-5xl flex-col gap-5 px-4 py-6 lg:grid lg:grid-cols-3 lg:items-start">
       <div className="contents lg:col-span-2 lg:block lg:space-y-5">
-        <RunningHero
-          blocks={activos}
-          tick={tick}
-          esHoy={esHoy}
-          selectedLabel={p.selectedLabel}
-          pending={pending}
-          startTransition={startTransition}
-        />
+        {/* Barra de estado + "qué estoy haciendo ahorita": UNA sola región
+            pegajosa. El hero era sticky por su cuenta; si la barra también lo
+            fuera por separado, las dos se pelearían el mismo `top` y la de
+            arriba taparía a la otra. Pegadas juntas, la barra queda siempre
+            visible y el hero conserva exactamente su posición relativa.
+            El fondo repite el crema del shell para que el contenido que pasa
+            por debajo no se transparente. */}
+        <div className="sticky top-14 z-20 space-y-2 bg-[#f4efe3] pb-1 md:top-0">
+          <BarraEstadoDia
+            p={p}
+            esHoy={esHoy}
+            pending={pending}
+            startTransition={startTransition}
+            onAbrirArrastradas={abrirArrastradas}
+          />
+          <RunningHero
+            blocks={activos}
+            tick={tick}
+            esHoy={esHoy}
+            selectedLabel={p.selectedLabel}
+            pending={pending}
+            startTransition={startTransition}
+          />
+        </div>
 
-        {/* Lo primero que se lee al abrir el día, justo debajo de "en qué estás
-            ahorita". Sin `order-*`: comparte el order 0 del hero y del header, y
-            entre iguales manda el orden del DOM — así queda en medio de los dos
-            tanto en la columna de lg como en el flex apilado de abajo. */}
+        {/* Lo primero que se lee al abrir el día, justo debajo de la barra y del
+            aviso de "en qué estás ahorita". Sin `order-*`: comparte el order 0
+            de la región pegajosa, y entre iguales manda el orden del DOM — así
+            queda inmediatamente después tanto en la columna de lg como en el
+            flex apilado de abajo. */}
         {esHoy && p.briefing && <BriefingCard briefing={p.briefing} />}
-
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-strong">
-            Semana ISO {p.isoWeek.split('-W')[1]} · Jornada 09–18
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <h1 className="text-2xl font-bold text-brand-deep">{p.rango}</h1>
-            <TourPrimeraVez
-              ruta="/dia"
-              bullets={[
-                'Tus bloques de hoy, en el orden en que los vas a hacer. Un bloque es un rato reservado para una tarea o una junta.',
-                <>
-                  <strong>▶</strong> arranca el cronómetro de un bloque; <strong>⋯</strong> tiene el resto de las acciones
-                  —mover de día, cambiar la hora, capturar la minuta, descartar.
-                </>,
-                'Al final del día, Cierre te pregunta qué pasó de verdad: qué se hizo, qué no y por qué. De ahí salen los pendientes del día siguiente.',
-              ]}
-            />
-            <div className="ml-auto flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-deep">
-                Factor realismo {p.factorUsado.toFixed(1)}
-              </span>
-              <ChipSobrecarga sobrecarga={p.sobrecarga} />
-              {p.desbloqueador && (
-                <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand-deep">
-                  ⚡ {p.desbloqueador}
-                </span>
-              )}
-              {esHoy && (
-                <>
-                  <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => void startDayAction())}
-                    className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
-                  >
-                    ▶ Arrancar día
-                  </button>
-                  {/* Ya NO mueve nada aquí. Mover primero borraba la evidencia de
-                      lo planeado; ahora esto lleva al cierre, donde se registra qué
-                      pasó y de ahí se pasan los pendientes. */}
-                  <Link
-                    href={`/cierre?dia=${p.today}`}
-                    title="Registrar qué pasó hoy y pasar los pendientes al siguiente día hábil"
-                    className="rounded-full border border-brand-deep px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
-                  >
-                    Cerrar el día →
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
 
         <div className="order-2 flex gap-2 overflow-x-auto">
           {p.tabs.map((t) => {
@@ -315,38 +421,56 @@ export function DiaBoard(p: DiaBoardProps) {
         </div>
 
         {esHoy && p.stranded.length > 0 && (
-          <div className="order-2 rounded-lg border border-warn-border bg-warn-soft px-4 py-3 text-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="font-semibold text-warn">
-                ⚠️ Tienes {p.stranded.length} tarea{p.stranded.length > 1 ? 's' : ''} de días anteriores sin terminar.
-              </p>
+          /* Antes era un banner ámbar abierto con toda la lista adentro: el
+             aviso más pesado de la pantalla para algo que casi nunca se atiende
+             en ese instante. Ahora es un renglón colapsable —cerrado por
+             default— y quien lo abre es el contador "N arrastradas" de la barra
+             de estado. Los dos botones siguen aquí, intactos. */
+          <section id="arrastradas" className="order-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xs font-bold uppercase tracking-wide text-warn">
+                {p.stranded.length} arrastrada{p.stranded.length > 1 ? 's' : ''} de días anteriores
+              </h2>
               <button
-                disabled={pending}
-                onClick={() =>
-                  startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
-                }
-                className="rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
+                type="button"
+                onClick={() => setArrastradasAbiertas((v) => !v)}
+                aria-expanded={arrastradasAbiertas}
+                aria-controls="arrastradas-lista"
+                className="ml-auto text-xs font-semibold text-neutral-400 hover:text-brand-deep"
               >
-                Llevar todo a hoy
+                {arrastradasAbiertas ? '▾ ocultar' : '▸ ver'}
               </button>
             </div>
-            <ul className="mt-2 space-y-1">
-              {p.stranded.map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-2 text-warn">
-                  <span>
-                    {s.titulo} <span className="text-xs opacity-70">({s.fecha})</span>
-                  </span>
-                  <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => void carryToTodayAction(s.id, p.today))}
-                    className="shrink-0 text-xs font-semibold underline hover:no-underline"
-                  >
-                    llevar a hoy
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {arrastradasAbiertas && (
+              <div id="arrastradas-lista" className="mt-2 border-t border-neutral-100 pt-2">
+                <ul className="space-y-1">
+                  {p.stranded.map((s) => (
+                    <li key={s.id} className="flex items-center justify-between gap-2 text-neutral-700">
+                      <span>
+                        {s.titulo} <span className="text-xs text-neutral-400">({s.fecha})</span>
+                      </span>
+                      <button
+                        disabled={pending}
+                        onClick={() => startTransition(() => void carryToTodayAction(s.id, p.today))}
+                        className="shrink-0 text-xs font-semibold text-brand-strong underline hover:no-underline"
+                      >
+                        llevar a hoy
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  disabled={pending}
+                  onClick={() =>
+                    startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
+                  }
+                  className="mt-2 rounded-md bg-brand px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
+                >
+                  Llevar todo a hoy
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
         <div
@@ -708,6 +832,10 @@ function AvisoDiscreto({ children }: { children: ReactNode }) {
 // Hero fijo arriba: el bloque "ahora" — con cronómetro grande y controles cuando
 // es una tarea en curso. Replica el .hero del tablero original (teal-900, DoD
 // inline, Pausar/Terminar/Cancelar), en vez de un timer perdido dentro de la card.
+//
+// El `sticky` ya no vive aquí: el hero se monta DENTRO de la región pegajosa que
+// arranca en la barra de estado del día, así que fijarlo otra vez por su cuenta
+// solo lo haría pelearse con ella por el mismo `top`.
 function RunningHero({
   blocks,
   tick,
@@ -760,7 +888,7 @@ function RunningHero({
   const isTareaCronometrable = current.tipo === 'tarea' && !current.externa
   if (!isTareaCronometrable) {
     return (
-      <div className="sticky top-14 z-10 rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md md:top-0">
+      <div className="rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md">
         <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-soft">
           <span className="h-2 w-2 animate-pulse rounded-full bg-ok-soft" /> Ahora · {current.inicio}–{current.fin}
         </p>
@@ -777,7 +905,7 @@ function RunningHero({
   const isRunning = !!current.runningSince
 
   return (
-    <div className="sticky top-14 z-10 rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md md:top-0">
+    <div className="rounded-xl bg-brand-deep px-5 py-4 text-white shadow-md">
       <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-soft">
         <span className="h-2 w-2 animate-pulse rounded-full bg-ok-soft" />
         {isRunning ? 'En curso' : 'Ahora'} · {current.inicio}–{current.fin}
