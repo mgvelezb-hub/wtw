@@ -10,6 +10,7 @@ import {
   unscheduleBlockAction,
 } from '@/app/(app)/dia/dnd-actions'
 import { captureAction } from '@/app/(app)/inbox/actions'
+import { SNAP_MIN } from '@/app/(app)/semana/lienzo'
 
 // Las actions de Mi Día (`dia/dnd-actions`) son la ÚNICA implementación de
 // mover / agendar / desagendar, con sus propios checks de propiedad. El lienzo
@@ -40,7 +41,7 @@ export async function moverBloqueAction(blockId: string, dateStr: string, hhmm: 
     const block = await prisma.block.findUnique({ where: { id: blockId }, select: { tipo: true } })
     // Solo los bloques de tarea se reposicionan: una junta la manda el
     // calendario, no el arrastre.
-    if (block?.tipo === 'tarea') await setBlockTimeAction(blockId, hhmm)
+    if (block?.tipo === 'tarea') await setBlockTimeAction(blockId, hhmm, SNAP_MIN)
   }
   revalidar()
 }
@@ -57,7 +58,7 @@ export async function agendarTareaAction(taskId: string, dateStr: string, hhmm: 
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     })
-    if (block) await setBlockTimeAction(block.id, hhmm)
+    if (block) await setBlockTimeAction(block.id, hhmm, SNAP_MIN)
   }
   revalidar()
 }

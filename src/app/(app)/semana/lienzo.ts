@@ -10,8 +10,9 @@
 export const PX_POR_HORA = 64
 export const PX_POR_MIN = PX_POR_HORA / 60
 export const MIN_ALTO_BLOQUE_PX = 28
-// El drop dentro de una columna redondea a cuartos de hora. Ojo: la action de
-// destino (`setBlockTimeAction`) todavía re-redondea a 30 min.
+// El drop dentro de una columna redondea a cuartos de hora. Las envolturas de
+// `semana/actions.ts` pasan este mismo snap a `setBlockTimeAction` para que el
+// server no re-redondee a 30 lo que aquí ya cayó en 15.
 export const SNAP_MIN = 15
 
 export function toMin(hhmm: string): number {

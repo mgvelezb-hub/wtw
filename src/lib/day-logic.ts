@@ -10,6 +10,13 @@ export type CurrentPick<T extends DayBlock> =
   | { kind: 'next'; block: T }
   | { kind: 'none'; block: null }
 
+// Redondeo de una hora (en minutos) al múltiplo más cercano. /dia agenda en
+// bloques de 30; el lienzo de /semana suelta en cuartos de hora — el snap es
+// del que llama, no de la action.
+export function snapAMultiplo(min: number, snapMin: number): number {
+  return Math.round(min / snapMin) * snapMin
+}
+
 export function pickCurrentBlock<T extends DayBlock>(blocks: T[], nowHHMM: string): CurrentPick<T> {
   const activos = blocks.filter((b) => !b.done && b.inicio !== 'flex')
 

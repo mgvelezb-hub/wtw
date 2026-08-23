@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { isoWeekOf, weekRange, nowMinutesMx } from '@/lib/dates'
+import { snapAMultiplo } from '@/lib/day-logic'
 import { syncCalendar } from '@/app/api/v1/calendar/service'
 import { runningEntry } from '@/app/api/v1/timer/service'
 
@@ -201,10 +202,6 @@ export async function reflowTodayAction(todayStr: string) {
   return { reflowed: updates.length, fueraDeJornada }
 }
 
-function snap30(min: number): number {
-  return Math.round(min / 30) * 30
-}
-
 // Ancla de "ahora" para cascadas: redondea HACIA ARRIBA al siguiente bloque de
 // 30 min — nunca hacia abajo (agendaría en el pasado). Sin esto el ancla caía
 // en el minuto exacto ("10:57") y esa hora se arrastraba en cascada a toda
@@ -216,7 +213,10 @@ function nowAnchor30(): number {
 // Reposiciona un bloque de tarea a una hora exacta (drag o input de hora) —
 // empuja SOLO los bloques de tarea que choquen (nunca las juntas: las
 // actividades sí pueden traslaparse con una sesión si así se decide a mano).
-export async function setBlockTimeAction(blockId: string, newInicioHHMM: string) {
+// `snapMin` es el redondeo del destino: 30 por default (/dia), 15 desde el
+// lienzo de /semana — así el server no deshace el cuarto de hora que el
+// cliente ya eligió.
+export async function setBlockTimeAction(blockId: string, newInicioHHMM: string, snapMin: number = 30) {
   const userId = await uid()
   const moved = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true, task: true } })
   if (!moved || moved.week.userId !== userId) throw new Error('block no encontrado')
@@ -233,7 +233,7 @@ export async function setBlockTimeAction(blockId: string, newInicioHHMM: string)
     },
   })
 
-  const newStart = Math.max(0, snap30(toMin(newInicioHHMM)))
+  const newStart = Math.max(0, snapAMultiplo(toMin(newInicioHHMM), snapMin))
   type Entry = { id: string; start: number; dur: number }
   const entries: Entry[] = [
     ...others.map((b) => ({ id: b.id, start: toMin(b.inicio), dur: b.planMin })),
