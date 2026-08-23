@@ -4,9 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import {
+  cancelMeetingAction,
   moveBlockAction,
   scheduleTaskAction,
+  setBlockDurationAction,
   setBlockTimeAction,
+  toggleBloqueanteAction,
   unscheduleBlockAction,
 } from '@/app/(app)/dia/dnd-actions'
 import { captureAction } from '@/app/(app)/inbox/actions'
@@ -60,6 +63,28 @@ export async function agendarTareaAction(taskId: string, dateStr: string, hhmm: 
     })
     if (block) await setBlockTimeAction(block.id, hhmm, SNAP_MIN)
   }
+  revalidar()
+}
+
+// Estirar o encoger un bloque desde la esquina inferior del lienzo. La cascada
+// vive en dia/dnd-actions; aquí solo se agrega la revalidación de /semana.
+export async function redimensionarBloqueAction(blockId: string, durMin: number) {
+  await setBlockDurationAction(blockId, durMin)
+  revalidar()
+}
+
+// Una junta de Outlook que no quita tiempo real: sigue visible en el lienzo
+// pero deja de restar capacidad y de estorbar el reflow — y los bloques de
+// tarea pueden sobreponérsele.
+export async function alternarJuntaBloqueanteAction(blockId: string) {
+  await toggleBloqueanteAction(blockId)
+  revalidar()
+}
+
+// Cancelar la junta desde el lienzo: desaparece de la semana hasta el próximo
+// sync (si sigue viva en Outlook, el sync la trae de vuelta).
+export async function cancelarJuntaAction(blockId: string) {
+  await cancelMeetingAction(blockId)
   revalidar()
 }
 

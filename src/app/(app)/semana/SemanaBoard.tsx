@@ -8,14 +8,20 @@ import {
   MIN_ALTO_BLOQUE_PX,
   PX_POR_HORA,
   PX_POR_MIN,
+  durDesdeResize,
+  fromMin,
   horaDesdeOffset,
+  toMin,
 } from './lienzo'
 import type { LienzoBloque, LienzoSemana } from './service'
 import {
   agendarTareaAction,
+  alternarJuntaBloqueanteAction,
+  cancelarJuntaAction,
   capturarEnBandejaAction,
   desagendarBloqueAction,
   moverBloqueAction,
+  redimensionarBloqueAction,
   toggleWinAction,
 } from './actions'
 
@@ -64,6 +70,17 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
   const [zonaActiva, setZonaActiva] = useState<string | null>(null)
   const [captura, setCaptura] = useState('')
   const [tendenciasAbiertas, setTendenciasAbiertas] = useState(false)
+  // Qué se está arrastrando (id + duración): el dataTransfer no se puede leer
+  // durante dragover por diseño de HTML5, así que la duración del fantasma de
+  // destino viaja por estado local, seteado en el dragstart de cada draggable.
+  const [arrastre, setArrastre] = useState<{ durMin: number } | null>(null)
+  // La sombra de destino: en qué columna y a qué hora caería el drop.
+  const [previewDrop, setPreviewDrop] = useState<{ fecha: string; hhmm: string } | null>(null)
+  // Resize en curso: el bloque crece/encoge en vivo y la action se dispara al soltar.
+  const [resize, setResize] = useState<{ id: string; durMin: number } | null>(null)
+  // Menú contextual de una junta de Outlook (posición fija: el grid tiene
+  // overflow-hidden y un popover absolute se cortaría — decisión 14).
+  const [menuJunta, setMenuJunta] = useState<{ id: string; bloqueante: boolean; x: number; y: number } | null>(null)
 
   useEffect(() => {
     function tick() {
@@ -108,11 +125,17 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
   // Un solo despachador: el payload dice QUÉ se arrastra (`block:` / `pend:`,
   // el mismo vocabulario que Mi Día) y la zona dice A DÓNDE cae. `hhmm` es null
   // cuando se soltó en un lugar sin hora (cabecera del día o franja Flex).
+  function limpiarArrastre() {
+    setZonaActiva(null)
+    setPreviewDrop(null)
+    setArrastre(null)
+  }
+
   function soltar(e: DragEvent<HTMLElement>, fecha: string, hhmm: string | null) {
     const data = e.dataTransfer.getData('text/plain')
     if (!data) return
     e.preventDefault()
-    setZonaActiva(null)
+    limpiarArrastre()
     if (data.startsWith('block:')) {
       startTransition(() => void moverBloqueAction(data.slice(6), fecha, hhmm))
     } else if (data.startsWith('pend:')) {
@@ -124,13 +147,55 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
     const data = e.dataTransfer.getData('text/plain')
     if (!data.startsWith('block:')) return
     e.preventDefault()
-    setZonaActiva(null)
+    limpiarArrastre()
     startTransition(() => void desagendarBloqueAction(data.slice(6)))
   }
 
   function permitir(e: DragEvent<HTMLElement>, zona: string) {
     e.preventDefault()
     if (zonaActiva !== zona) setZonaActiva(zona)
+  }
+
+  // Dragover de una columna del grid: además de marcar la zona, calcula a qué
+  // hora caería el drop y pinta ahí la sombra de destino.
+  function sobreColumna(e: DragEvent<HTMLElement>, fecha: string) {
+    permitir(e, `col:${fecha}`)
+    const rect = e.currentTarget.getBoundingClientRect()
+    const hhmm = horaDesdeOffset(e.clientY - rect.top, v.jornadaInicioMin, v.jornadaFinMin)
+    if (previewDrop?.fecha !== fecha || previewDrop?.hhmm !== hhmm) setPreviewDrop({ fecha, hhmm })
+  }
+
+  // El resize vive en el board (no en el bloque) porque el pointer sale del
+  // bloque en cuanto se arrastra: los listeners van a window y se quitan al soltar.
+  function iniciarResize(b: LienzoBloque, e: React.PointerEvent<HTMLElement>) {
+    e.preventDefault()
+    e.stopPropagation()
+    const startY = e.clientY
+    const durInicial = b.durMin
+    setResize({ id: b.id, durMin: durInicial })
+    function move(ev: PointerEvent) {
+      setResize({ id: b.id, durMin: durDesdeResize(durInicial, ev.clientY - startY) })
+    }
+    function up(ev: PointerEvent) {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      const durFinal = durDesdeResize(durInicial, ev.clientY - startY)
+      setResize(null)
+      if (durFinal !== durInicial) startTransition(() => void redimensionarBloqueAction(b.id, durFinal))
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+
+  function abrirMenuJunta(b: LienzoBloque, e: React.MouseEvent<HTMLElement>) {
+    e.stopPropagation()
+    const rect = e.currentTarget.getBoundingClientRect()
+    setMenuJunta({
+      id: b.id,
+      bloqueante: b.bloqueante,
+      x: Math.min(rect.left, window.innerWidth - 250),
+      y: rect.bottom + 4,
+    })
   }
 
   function capturar() {
@@ -238,8 +303,11 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               {v.dias.map((d) => (
                 <div
                   key={d.fecha}
-                  onDragOver={(e) => permitir(e, `col:${d.fecha}`)}
-                  onDragLeave={() => setZonaActiva(null)}
+                  onDragOver={(e) => sobreColumna(e, d.fecha)}
+                  onDragLeave={() => {
+                    setZonaActiva(null)
+                    setPreviewDrop(null)
+                  }}
                   onDrop={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect()
                     soltar(e, d.fecha, horaDesdeOffset(e.clientY - rect.top, v.jornadaInicioMin, v.jornadaFinMin))
@@ -255,8 +323,32 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
                   {enGrid
                     .filter((b) => b.fecha === d.fecha)
                     .map((b) => (
-                      <BloqueEnGrid key={b.id} b={b} destacado={b.id === destacadoId} />
+                      <BloqueEnGrid
+                        key={b.id}
+                        b={b}
+                        destacado={b.id === destacadoId}
+                        durMinVisual={resize?.id === b.id ? resize.durMin : null}
+                        onDragStartBlock={() => setArrastre({ durMin: b.durMin })}
+                        onDragEndBlock={limpiarArrastre}
+                        onResizeStart={iniciarResize}
+                        onMenuJunta={abrirMenuJunta}
+                      />
                     ))}
+
+                  {/* Sombra de destino: dónde caería el bloque si se suelta aquí. */}
+                  {arrastre && previewDrop?.fecha === d.fecha && (
+                    <div
+                      className="pointer-events-none absolute inset-x-1 z-20 rounded-md border-2 border-dashed border-brand bg-brand-soft/50"
+                      style={{
+                        top: (toMin(previewDrop.hhmm) - v.jornadaInicioMin) * PX_POR_MIN,
+                        height: Math.max(MIN_ALTO_BLOQUE_PX, arrastre.durMin * PX_POR_MIN),
+                      }}
+                    >
+                      <span className="num absolute -top-0.5 right-1 text-[10px] font-semibold text-brand-deep">
+                        → {previewDrop.hhmm}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Línea de la hora actual — solo en la columna de hoy y solo
                       después de montar (regla 1). */}
@@ -300,7 +392,11 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
                       <div
                         key={b.id}
                         draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', `block:${b.id}`)
+                          setArrastre({ durMin: b.planMin })
+                        }}
+                        onDragEnd={limpiarArrastre}
                         className="cursor-grab truncate rounded border-l-[3px] px-1.5 py-1 text-[11px] text-ink active:cursor-grabbing"
                         style={{
                           backgroundColor: `${colorDe(b)}1f`,
@@ -364,7 +460,11 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               <div
                 key={t.id}
                 draggable
-                onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${t.id}`)}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', `pend:${t.id}`)
+                  setArrastre({ durMin: t.estimadoMin ?? 30 })
+                }}
+                onDragEnd={limpiarArrastre}
                 className="flex cursor-grab items-start gap-2.5 rounded-lg border border-dashed border-hair px-3 py-2.5 text-[13px] active:cursor-grabbing"
               >
                 <span className="text-sm leading-none text-faint">⋮⋮</span>
@@ -457,6 +557,50 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
           )}
         </section>
       </aside>
+
+      {/* Menú de junta de Outlook — fixed para que ningún overflow lo corte. */}
+      {menuJunta && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenuJunta(null)} aria-hidden />
+          <div
+            role="menu"
+            className="fixed z-50 w-60 rounded-lg border border-hair bg-surface p-1 shadow-lg"
+            style={{ top: menuJunta.y, left: menuJunta.x }}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              disabled={pending}
+              onClick={() => {
+                const id = menuJunta.id
+                setMenuJunta(null)
+                startTransition(() => void alternarJuntaBloqueanteAction(id))
+              }}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-paper disabled:opacity-40"
+            >
+              {menuJunta.bloqueante ? 'No me quita tiempo' : 'Sí me quita tiempo'}
+            </button>
+            <p className="px-2 pb-1 text-[10.5px] leading-snug text-faint">
+              {menuJunta.bloqueante
+                ? 'Sigue visible pero deja de restar capacidad — y puedes poner bloques encima.'
+                : 'Vuelve a restar capacidad y a estorbar el acomodo del día.'}
+            </p>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={pending}
+              onClick={() => {
+                const id = menuJunta.id
+                setMenuJunta(null)
+                startTransition(() => void cancelarJuntaAction(id))
+              }}
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-40"
+            >
+              Cancelada — quitar de la semana
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -487,27 +631,93 @@ function ChipSobrecarga({ sobrecarga }: { sobrecarga: LienzoSemana['sobrecarga']
 
 // ── Piezas ───────────────────────────────────────────────────────────────────
 
-function BloqueEnGrid({ b, destacado }: { b: LienzoBloque; destacado: boolean }) {
+function BloqueEnGrid({
+  b,
+  destacado,
+  durMinVisual,
+  onDragStartBlock,
+  onDragEndBlock,
+  onResizeStart,
+  onMenuJunta,
+}: {
+  b: LienzoBloque
+  destacado: boolean
+  /** Duración en vivo durante un resize; null cuando no se está redimensionando. */
+  durMinVisual: number | null
+  onDragStartBlock: () => void
+  onDragEndBlock: () => void
+  onResizeStart: (b: LienzoBloque, e: React.PointerEvent<HTMLElement>) => void
+  onMenuJunta: (b: LienzoBloque, e: React.MouseEvent<HTMLElement>) => void
+}) {
+  const durMin = durMinVisual ?? b.durMin
+  const enResize = durMinVisual !== null
   // Solo caben dos renglones a partir de ~45 min; abajo de eso el rango horario
   // desplazaría al título, que es lo único que de verdad hay que leer.
-  const cabeRango = b.durMin >= 45
+  const cabeRango = durMin >= 45
+  const finVisual = enResize && b.inicio !== 'flex' ? fromMin(toMin(b.inicio) + durMin) : b.fin
+  // Junta informativa: sigue a la vista pero no manda — atenuada, punteada, y
+  // debajo de los bloques de tarea (que sí pueden sobreponérsele).
+  const informativa = b.externa && !b.bloqueante
   return (
     <div
-      draggable={!b.externa}
-      onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
-      style={estiloBloque(b, destacado)}
+      draggable={!b.externa && !enResize}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('text/plain', `block:${b.id}`)
+        onDragStartBlock()
+      }}
+      onDragEnd={onDragEndBlock}
+      style={{
+        ...estiloBloque(b, destacado),
+        height: Math.max(MIN_ALTO_BLOQUE_PX, durMin * PX_POR_MIN),
+      }}
       title={`${b.inicio}–${b.fin} · ${b.titulo}`}
-      className={`absolute inset-x-1 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
-        b.externa ? 'cursor-default text-muted' : 'cursor-grab text-ink active:cursor-grabbing'
-      } ${b.done ? 'opacity-50 line-through' : ''}`}
+      className={`group absolute inset-x-1 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
+        b.externa ? 'z-0 cursor-default text-muted' : 'z-10 cursor-grab text-ink active:cursor-grabbing'
+      } ${b.done ? 'opacity-50 line-through' : ''} ${
+        informativa ? 'border border-l-[3px] border-dashed border-faint opacity-60' : ''
+      } ${enResize ? 'ring-1 ring-brand' : ''}`}
     >
       {b.externa && (
-        <span className="block text-[10px] font-bold tracking-[0.06em]">OUTLOOK</span>
+        <span className="flex items-start justify-between gap-1 text-[10px] font-bold tracking-[0.06em]">
+          <span>
+            OUTLOOK
+            {informativa && <span className="font-normal text-faint"> · no bloquea</span>}
+          </span>
+          <button
+            type="button"
+            onClick={(e) => onMenuJunta(b, e)}
+            aria-label={`Opciones de la junta ${b.titulo}`}
+            className="-mr-1 -mt-0.5 rounded px-1 text-[12px] font-bold text-muted opacity-0 hover:bg-hair focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            ⋯
+          </button>
+        </span>
       )}
       <span className={destacado ? 'font-semibold' : ''}>{b.titulo}</span>
       {cabeRango && (
         <span className="num mt-0.5 block text-[10px] text-muted">
-          {b.inicio} – {b.fin}
+          {b.inicio} – {enResize ? <b className="text-brand-deep">{finVisual}</b> : b.fin}
+        </span>
+      )}
+      {/* Esquina de resize: solo bloques de tarea con hora. El handle mata el
+          drag nativo para que estirar nunca se confunda con mover. */}
+      {!b.externa && !b.done && b.inicio !== 'flex' && (
+        <span
+          draggable={false}
+          onDragStart={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+          onPointerDown={(e) => onResizeStart(b, e)}
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover:opacity-100"
+        >
+          <span className="mb-[3px] h-[3px] w-8 rounded-full bg-brand/50" />
+        </span>
+      )}
+      {enResize && (
+        <span className="num absolute bottom-1 right-1.5 rounded bg-surface px-1 text-[10px] font-semibold text-brand-deep">
+          {horas(durMin)}
         </span>
       )}
     </div>

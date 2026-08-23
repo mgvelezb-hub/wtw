@@ -77,3 +77,16 @@ export function horaDesdeOffset(offsetY: number, jornadaInicioMin: number, jorna
   const tope = Math.max(jornadaInicioMin, jornadaFinMin - SNAP_MIN)
   return fromMin(Math.min(Math.max(snap, jornadaInicioMin), tope))
 }
+
+// El resize por la esquina va en pasos de media hora — la unidad de agenda de
+// /dia — aunque el drop use cuartos: mover un bloque es fino, estirarlo es
+// compromiso de tiempo y se piensa en bloques de 30.
+export const RESIZE_SNAP_MIN = 30
+
+// Delta de píxeles arrastrados desde la esquina inferior → nueva duración,
+// redondeada a RESIZE_SNAP_MIN y nunca por debajo de un paso.
+export function durDesdeResize(durMinInicial: number, deltaPx: number): number {
+  const cruda = durMinInicial + deltaPx / PX_POR_MIN
+  const snap = Math.round(cruda / RESIZE_SNAP_MIN) * RESIZE_SNAP_MIN
+  return Math.max(RESIZE_SNAP_MIN, snap)
+}

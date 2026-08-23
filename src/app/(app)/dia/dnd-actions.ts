@@ -80,6 +80,7 @@ export async function scheduleTaskAction(taskId: string, dateStr: string) {
     }),
   ])
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Mueve un bloque a otro día (drag sobre la pestaña de día).
@@ -95,6 +96,7 @@ export async function moveBlockAction(blockId: string, dateStr: string) {
     data: { fecha: new Date(dateStr), weekId: week.id, orden },
   })
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // "Llevar a hoy" — el bloque queda como estaba (mismo estimado/tiempo acumulado,
@@ -114,6 +116,7 @@ export async function carryAllToTodayAction(blockIds: string[], todayStr: string
     )
   )
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // `closeDayAction` vivía aquí y movía los pendientes al siguiente día hábil desde
@@ -199,6 +202,7 @@ export async function reflowTodayAction(todayStr: string) {
     updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } }))
   )
   revalidatePath('/dia')
+  revalidatePath('/semana')
   return { reflowed: updates.length, fueraDeJornada }
 }
 
@@ -253,6 +257,7 @@ export async function setBlockTimeAction(blockId: string, newInicioHHMM: string,
     updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } }))
   )
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Reordenar arrastrando: la mayoría de las tareas no tienen hora fija todavía
@@ -304,6 +309,7 @@ export async function reorderDayAction(dateStr: string, draggedBlockId: string, 
     )
   )
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Ajuste manual de duración (fine-tuning) — empuja lo que venga después si ya
@@ -315,6 +321,7 @@ export async function setBlockDurationAction(blockId: string, newPlanMin: number
   if (block.inicio === 'flex') {
     await prisma.block.update({ where: { id: blockId }, data: { planMin: newPlanMin } })
     revalidatePath('/dia')
+  revalidatePath('/semana')
     return
   }
 
@@ -339,6 +346,7 @@ export async function setBlockDurationAction(blockId: string, newPlanMin: number
     ...updates.map((u) => prisma.block.update({ where: { id: u.id }, data: { inicio: u.inicio, fin: u.fin } })),
   ])
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Arrastrar un bloque agendado de vuelta al listado de pendientes — se borra
@@ -354,6 +362,7 @@ export async function unscheduleBlockAction(blockId: string) {
     prisma.task.update({ where: { id: block.taskId }, data: { estatus: 'backlog', weekId: null } }),
   ])
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Descarta una tarea que ya no hace sentido (cambio de prioridades): borra su
@@ -372,6 +381,7 @@ export async function descartarTareaAction(blockId: string) {
     prisma.task.update({ where: { id: block.taskId }, data: { estatus: 'deferred', weekId: null } }),
   ])
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Descarta una tarea del parking lot (sin bloque agendado) — mismo criterio que
@@ -382,6 +392,7 @@ export async function descartarPendienteAction(taskId: string) {
   if (!task || task.userId !== userId) throw new Error('task no encontrada')
   await prisma.task.update({ where: { id: taskId }, data: { estatus: 'deferred', weekId: null } })
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Marca una junta como cancelada — deja de contar en capacidad y en el reflow,
@@ -395,6 +406,7 @@ export async function cancelMeetingAction(blockId: string) {
   if (!event || event.userId !== userId) throw new Error('junta no encontrada')
   await prisma.calendarEvent.update({ where: { id: eventId }, data: { cancelado: true } })
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }
 
 // Distinto de cancelar: la junta SÍ va a pasar, solo que Mau no la necesita
@@ -409,4 +421,5 @@ export async function toggleBloqueanteAction(blockId: string) {
   if (!event || event.userId !== userId) throw new Error('junta no encontrada')
   await prisma.calendarEvent.update({ where: { id: eventId }, data: { bloqueante: !event.bloqueante } })
   revalidatePath('/dia')
+  revalidatePath('/semana')
 }

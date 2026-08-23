@@ -19,6 +19,9 @@ export type LienzoBloque = {
   taskId: string | null
   /** Junta de Outlook: no se arrastra, no se reposiciona, se pinta en gris. */
   externa: boolean
+  /** Solo significativo en externas: false = junta informativa que no resta
+      capacidad ni estorba — se pinta atenuada y las tareas pueden taparla. */
+  bloqueante: boolean
   done: boolean
   proyecto: { nombre: string; color: string } | null
   ubicacion: Ubicacion
@@ -157,6 +160,7 @@ export async function getLienzoSemana(
       planMin: b.planMin,
       taskId: b.taskId,
       externa: false,
+      bloqueante: true,
       done: b.done,
       proyecto: b.task?.project ? { nombre: b.task.project.nombre, color: b.task.project.color } : null,
       ...pos,
@@ -176,6 +180,7 @@ export async function getLienzoSemana(
       planMin: durMin,
       taskId: null,
       externa: true,
+      bloqueante: e.bloqueante,
       done: false,
       proyecto: null,
       ...pos,
