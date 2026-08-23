@@ -99,15 +99,6 @@ function iso(d: Date): string {
   return d.toISOString().slice(0, 10)
 }
 
-// El % de erosión de frontera ya lo calcula `senalesSobrecarga` y lo deja
-// dentro del detalle en prosa ("52% de los minutos cronometrados..."). Se
-// extrae en vez de recalcularlo: dos definiciones de "fuera de jornada" que
-// se salgan de sincronía es peor que este parseo.
-function pctErosion(detalle: string): number | null {
-  const m = detalle.match(/(\d+)%/)
-  return m ? Number(m[1]) : null
-}
-
 export async function getLienzoSemana(
   userId: string,
   isoWeek: string,
@@ -255,7 +246,7 @@ export async function getLienzoSemana(
     horas,
     bloques,
     fueraDeJornada,
-    fueraPct: erosion ? pctErosion(erosion.detalle) : null,
+    fueraPct: erosion?.valor ?? null,
     bandeja: pendientes.map((t) => ({
       id: t.id,
       titulo: t.titulo,

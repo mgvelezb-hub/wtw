@@ -36,6 +36,11 @@ export type Senal = {
   // Siempre trae los números que la sustentan — la señal no se anuncia sola,
   // se explica sola.
   detalle: string
+  // El número que encabeza la señal, para que la UI lo lea sin parsear el
+  // detalle: sobrecompromiso = semanas sobrecargadas, erosión = % fuera de
+  // jornada. null cuando no hay datos (o cuando ningún número solo la resume,
+  // como en espiral).
+  valor: number | null
 }
 
 export type ResultadoSobrecarga = {
@@ -97,6 +102,7 @@ async function senalSobrecompromiso(userId: string, hoy: Date): Promise<Senal> {
   return {
     clave: 'sobrecompromiso',
     activa: sobrecargadas >= 2,
+    valor: evaluadas === 0 ? null : sobrecargadas,
     detalle:
       evaluadas === 0
         ? 'Sin semanas anteriores registradas todavía.'
@@ -168,6 +174,7 @@ async function senalErosionFrontera(userId: string, hoy: Date): Promise<Senal> {
   return {
     clave: 'erosion_frontera',
     activa: totalMin > 0 && pct > 15,
+    valor: totalMin === 0 ? null : Math.round(pct),
     detalle:
       totalMin === 0
         ? 'Sin minutos cronometrados en los últimos 14 días.'
@@ -243,6 +250,7 @@ async function senalEspiral(userId: string, hoy: Date): Promise<Senal> {
   return {
     clave: 'espiral',
     activa: errorSube && bomberazoSube,
+    valor: null,
     detalle: `Error de estimación: ${errorTexto(errorP1)} en los últimos 14 días (antes ${errorTexto(errorP2)}). Bomberazos: ${bomberazoP1} min en los últimos 14 días (antes ${bomberazoP2} min).`,
   }
 }

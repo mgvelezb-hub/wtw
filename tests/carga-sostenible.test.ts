@@ -68,6 +68,8 @@ describe('senalesSobrecarga', () => {
 
     expect(r.nivel).toBe('verde')
     expect(r.senales.every((s) => !s.activa)).toBe(true)
+    // Sin datos no hay número que encabece ninguna señal.
+    expect(r.senales.every((s) => s.valor === null)).toBe(true)
   })
 
   it('sobrecompromiso sostenido: 2 de 3 semanas anteriores por arriba de lo planeable', async () => {
@@ -80,6 +82,7 @@ describe('senalesSobrecarga', () => {
     const senal = r.senales.find((s) => s.clave === 'sobrecompromiso')!
 
     expect(senal.activa).toBe(true)
+    expect(senal.valor).toBe(2)
     expect(senal.detalle).toContain('2 de 3')
     // Sola, sube a ámbar, no a rojo.
     expect(r.nivel).toBe('ambar')
@@ -110,6 +113,8 @@ describe('senalesSobrecarga', () => {
 
     // 180 / 780 ≈ 23%
     expect(senal.activa).toBe(true)
+    // `valor` es el mismo % del detalle sin parsear prosa — lo que lee el lienzo.
+    expect(senal.valor).toBe(23)
     expect(senal.detalle).toContain('23%')
   })
 
