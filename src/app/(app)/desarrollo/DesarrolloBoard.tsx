@@ -32,6 +32,14 @@ const UMBRAL = 3
 // pieza en toda la página, así que viven como constantes en vez de repetirse.
 const BTN_SECUNDARIO =
   'inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-hair bg-surface px-4 text-[13px] font-semibold text-brand-deep transition-colors hover:border-brand hover:text-brand disabled:opacity-40'
+const ICONO_RECURSO: Record<string, string> = {
+  libro: '📕',
+  curso: '🎓',
+  platica: '🎤',
+  articulo: '📄',
+  ejercicio: '🔁',
+}
+
 const BTN_PRIMARIO =
   'inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-[13px] font-semibold text-surface transition-colors hover:bg-brand-strong disabled:opacity-40'
 const BTN_MINI =
@@ -302,6 +310,30 @@ function FilaReactivo({ r }: { r: ReactivoPatron }): React.ReactElement {
                 </li>
               ))}
             </ul>
+          )}
+
+          {/* La herramienta junto al hueco: el material de la Biblioteca ligado a
+              ESTE reactivo, para ejercitarlo y salir a buscar la evidencia sin
+              ir a pescar al catálogo (feedback de Mau 2026-08-23). */}
+          {r.recursos.length > 0 && (
+            <div className="mt-2.5 border-t border-hair pt-2">
+              <span className="lbl text-[10px]">Para desarrollarlo</span>
+              <ul className="mt-1 space-y-0.5">
+                {r.recursos.map((rec) => (
+                  <li key={rec.id} className="text-xs text-muted">
+                    <span aria-hidden>{ICONO_RECURSO[rec.tipo] ?? '📄'} </span>
+                    <a
+                      href={rec.url ?? '#catalogo'}
+                      {...(rec.url ? { target: '_blank', rel: 'noreferrer' } : {})}
+                      className="font-medium text-brand hover:text-brand-strong hover:underline"
+                    >
+                      {rec.titulo}
+                    </a>
+                    <span className="text-faint"> — {rec.porQue}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
@@ -1024,7 +1056,7 @@ export function DesarrolloBoard({
           )}
         </Seccion>
 
-        {pie}
+        <div id="catalogo">{pie}</div>
       </div>
     </div>
   )

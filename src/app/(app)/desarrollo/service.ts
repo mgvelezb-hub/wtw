@@ -51,6 +51,16 @@ export type PiezaEvidencia = {
   diasDesde: number
 }
 
+// Material de la biblioteca ligado a un reactivo: la herramienta para
+// ejercitarlo y salir a buscar la evidencia, sin ir a pescarla al catálogo.
+export type RecursoLigado = {
+  id: string
+  tipo: string
+  titulo: string
+  url: string | null
+  porQue: string
+}
+
 export type ReactivoPatron = {
   id: string
   orden: number
@@ -63,6 +73,7 @@ export type ReactivoPatron = {
   testigos: string[]
   alertas: string[]
   piezas: PiezaEvidencia[]
+  recursos: RecursoLigado[]
 }
 
 export type PatronNivel = {
@@ -198,6 +209,13 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
           },
           orderBy: { createdAt: 'desc' },
         },
+        // El material de la biblioteca ya vive ligado al reactivo en el schema
+        // (RecursoCompetencias); aquí solo se expone para que la fila del
+        // reactivo ofrezca con qué ejercitarlo.
+        recursos: {
+          select: { id: true, tipo: true, titulo: true, url: true, porQue: true },
+          orderBy: { orden: 'asc' },
+        },
       },
       orderBy: [{ tipo: 'asc' }, { grupo: 'asc' }, { orden: 'asc' }],
     }),
@@ -267,6 +285,7 @@ export async function getDesarrollo(userId: string, hoy: Date = new Date()): Pro
       testigos,
       alertas: alertasDe(c.orden, piezas, proyectos, testigos),
       piezas,
+      recursos: c.recursos,
     }
   })
 
