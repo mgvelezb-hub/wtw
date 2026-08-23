@@ -230,7 +230,7 @@ function BarraEstadoDia({
   const arrastradas = esHoy ? p.stranded.length : 0
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-hair bg-surface px-4 py-2.5 text-[12.5px] text-muted lg:px-7">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-hair bg-surface px-4 py-2.5 text-[0.781rem] text-muted lg:px-7">
       {/* El h1 de la página: la fecha. El rango completo de la semana ya no
           necesita 2xl de tipografía — es contexto, no titular. */}
       <h1 className="font-semibold text-ink">{fechaCorta(p.selectedDay)}</h1>
@@ -584,7 +584,7 @@ export function DiaBoard(p: DiaBoardProps) {
               dos utilidades del día (traer juntas, exportar ICS) más el cierre
               viven en el mismo renglón — es el momento en que se usan. */}
           {(terminadas.length > 0 || canceladas.length > 0 || esHoy) && (
-            <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted">
+            <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[0.781rem] text-muted">
               {terminadas.length > 0 && (
                 <button onClick={() => setVerTerminadas((v) => !v)} className="hover:text-ink">
                   {verTerminadas ? '▾' : '▸'} Terminadas <span className="num">({terminadas.length})</span>
@@ -697,11 +697,12 @@ export function DiaBoard(p: DiaBoardProps) {
         </div>
       </div>
 
-      {/* Contexto: se consulta, no se opera. La ÚNICA superficie blanca continua
-          de la pantalla — una columna, no una pila de cards — pegajosa y con su
-          propio scroll para que Wins y Pendientes sigan a la vista mientras la
-          timeline de la izquierda se recorre. */}
-      <div className="contents lg:sticky lg:top-0 lg:block lg:h-dvh lg:space-y-8 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-hair lg:bg-surface lg:px-6 lg:py-7">
+      {/* Contexto: se consulta, no se opera. Misma superficie paper que el resto
+          de la página (en desktop el bloque blanco desentonaba contra el crema —
+          feedback de Mau 2026-08-23): la separa el hairline, no el fondo. Una
+          columna pegajosa con su propio scroll para que Wins y Pendientes sigan
+          a la vista mientras la timeline de la izquierda se recorre. */}
+      <div className="contents lg:sticky lg:top-0 lg:block lg:h-dvh lg:space-y-8 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-hair lg:bg-paper lg:px-6 lg:py-7">
         <div className="order-1 grid gap-8 px-4 md:grid-cols-2 lg:grid-cols-1 lg:px-0">
           <section>
             <h2 className="lbl flex items-center gap-1.5">
@@ -716,7 +717,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 Se marcan como logrados desde <strong>Mi Semana</strong>.
               </AyudaContextual>
             </h2>
-            <ol className="mt-2.5 space-y-2.5 text-[13px]">
+            <ol className="mt-2.5 space-y-2.5 text-[0.8125rem]">
               {p.wins.map((w) => {
                 // El "si-entonces" solo existe para el Win que el briefing marcó
                 // en riesgo — y es exactamente donde vale leerlo: el que se quedó
@@ -798,7 +799,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </div>
           {/* Desde lg la columna entera ya tiene su propio scroll: un segundo
               scroll anidado aquí adentro pelearía con el de afuera. */}
-          <div className="mt-2.5 max-h-[32rem] space-y-2 overflow-y-auto text-[13px] lg:max-h-none lg:overflow-visible">
+          <div className="mt-2.5 max-h-[32rem] space-y-2 overflow-y-auto text-[0.8125rem] lg:max-h-none lg:overflow-visible">
             {p.pendientes.map((pe) => (
               <div
                 key={pe.id}
@@ -809,7 +810,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 }`}
               >
                 <div className="flex items-baseline gap-2.5">
-                  <span className="num shrink-0 text-[11px] text-muted">
+                  <span className="num shrink-0 text-[0.6875rem] text-muted">
                     {pe.estimadoMin != null ? hhmm(pe.estimadoMin) : '—'}
                   </span>
                   <span className="min-w-0 flex-1 text-ink">
@@ -824,7 +825,7 @@ export function DiaBoard(p: DiaBoardProps) {
                     + Hoy
                   </button>
                 </div>
-                <div className="mt-1 flex items-center gap-2 text-[11px]">
+                <div className="mt-1 flex items-center gap-2 text-[0.6875rem]">
                   {pe.proyecto && <span className="min-w-0 truncate text-faint">{pe.proyecto}</span>}
                   <span className="ml-auto flex shrink-0 items-center gap-1">
                     <select
@@ -836,7 +837,7 @@ export function DiaBoard(p: DiaBoardProps) {
                         e.target.value = ''
                         if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
                       }}
-                      className="rounded border border-hair bg-surface px-1 py-0.5 text-[10px] font-medium text-muted"
+                      className="rounded border border-hair bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
                     >
                       <option value="" disabled>
                         Agendar a…
@@ -853,8 +854,8 @@ export function DiaBoard(p: DiaBoardProps) {
                       disabled={pending}
                       onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
                       titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-                      className="rounded px-1.5 py-0.5 text-[10px] font-bold text-faint hover:bg-danger-soft hover:text-danger"
-                      armedClassName="rounded bg-danger px-1.5 py-0.5 text-[10px] font-bold text-white"
+                      className="rounded px-1.5 py-0.5 text-[0.625rem] font-bold text-faint hover:bg-danger-soft hover:text-danger"
+                      armedClassName="rounded bg-danger px-1.5 py-0.5 text-[0.625rem] font-bold text-white"
                     />
                   </span>
                 </div>
@@ -891,10 +892,10 @@ function Cifra({ n, u, l, alerta }: { n: string; u: string; l: string; alerta?: 
   return (
     <div>
       <p className="leading-none">
-        <span className={`num text-[26px] font-medium ${alerta ? 'text-danger' : 'text-brand-deep'}`}>{n}</span>
+        <span className={`num text-[1.625rem] font-medium ${alerta ? 'text-danger' : 'text-brand-deep'}`}>{n}</span>
         <span className="num text-xs text-faint">{u}</span>
       </p>
-      <p className="lbl mt-1 text-[10px]">{l}</p>
+      <p className="lbl mt-1 text-[0.625rem]">{l}</p>
     </div>
   )
 }
@@ -986,8 +987,8 @@ function AhoraFranja({
     return (
       <div>
         <p className="lbl">Ahora</p>
-        <p className="num mt-2 text-[13px] text-muted">{current.externa ? `📅 ${meta}` : meta}</p>
-        <p className="mt-1 text-[26px] font-semibold leading-[1.15] text-balance text-ink">{current.titulo}</p>
+        <p className="num mt-2 text-[0.8125rem] text-muted">{current.externa ? `📅 ${meta}` : meta}</p>
+        <p className="mt-1 text-[1.625rem] font-semibold leading-[1.15] text-balance text-ink">{current.titulo}</p>
         <div className="hair mt-3.5" />
       </div>
     )
@@ -1002,24 +1003,24 @@ function AhoraFranja({
       <p className="lbl">Ahora</p>
       <div className="mt-2 flex flex-wrap items-end gap-x-7 gap-y-4">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="num text-[13px] text-muted">
+          <p className="num text-[0.8125rem] text-muted">
             {isRunning && (
               <span aria-hidden className="mr-1.5 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-brand align-middle" />
             )}
             {meta}
           </p>
-          <p className="text-[26px] font-semibold leading-[1.15] text-balance text-ink">{current.titulo}</p>
+          <p className="text-[1.625rem] font-semibold leading-[1.15] text-balance text-ink">{current.titulo}</p>
         </div>
 
         <div className="flex flex-col items-end">
           <p className="flex items-baseline gap-1.5">
-            <span className={`num text-[44px] font-medium leading-none ${over ? 'text-danger' : 'text-brand-deep'}`}>
+            <span className={`num text-[2.75rem] font-medium leading-none ${over ? 'text-danger' : 'text-brand-deep'}`}>
               {fmt(seconds)}
             </span>
             <span className="num text-sm text-faint">/ {hhmm(current.planMin)}</span>
           </p>
           {isRunning && (
-            <Link href="/focus" className="mt-1.5 text-[11px] font-semibold text-brand hover:text-brand-strong">
+            <Link href="/focus" className="mt-1.5 text-[0.6875rem] font-semibold text-brand hover:text-brand-strong">
               modo focus →
             </Link>
           )}
@@ -1084,7 +1085,7 @@ function AhoraFranja({
       {current.dodItems.length > 0 && (
         <ul className="mt-3 space-y-1">
           {current.dodItems.map((d) => (
-            <li key={d.id} className="flex items-center gap-2 text-[13px]">
+            <li key={d.id} className="flex items-center gap-2 text-[0.8125rem]">
               <input
                 type="checkbox"
                 checked={d.done}
@@ -1114,7 +1115,7 @@ function MinutaBoton({ block, onAbrirMinuta }: { block: DayBlockView; onAbrirMin
   return (
     <button
       onClick={() => onAbrirMinuta(block)}
-      className="shrink-0 rounded px-1.5 py-1 text-[11px] font-semibold text-muted hover:text-brand-strong"
+      className="shrink-0 rounded px-1.5 py-1 text-[0.6875rem] font-semibold text-muted hover:text-brand-strong"
       title={block.minutaId ? 'Revisar la minuta de esta junta' : 'Capturar la minuta de esta junta'}
       aria-label={block.minutaId ? 'Ver minuta' : 'Capturar minuta'}
     >
@@ -1302,7 +1303,7 @@ function FilaBloque({
         {hhmm(b.planMin)}
       </span>
       {isTarea && seconds > 0 && (
-        <span className={`num block text-[11px] ${over ? 'text-danger' : 'text-ok'}`}>{fmt(seconds)}</span>
+        <span className={`num block text-[0.6875rem] ${over ? 'text-danger' : 'text-ok'}`}>{fmt(seconds)}</span>
       )}
     </span>
   )
@@ -1314,7 +1315,7 @@ function FilaBloque({
         <div className={REJILLA_FILA}>
           {rango}
           <span className="flex min-w-0 items-center gap-2">
-            <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-px text-[10px] font-bold uppercase tracking-wider text-brand-deep">
+            <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-px text-[0.625rem] font-bold uppercase tracking-wider text-brand-deep">
               Outlook
             </span>
             <span className={`min-w-0 truncate ${apagado ? 'text-faint line-through' : 'text-ink'}`} title={b.titulo}>
@@ -1425,7 +1426,7 @@ function FilaBloque({
           {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
 
           {corriendo ? (
-            <span className="shrink-0 text-[11px] font-semibold text-brand" title="Se controla desde la franja de Ahora">
+            <span className="shrink-0 text-[0.6875rem] font-semibold text-brand" title="Se controla desde la franja de Ahora">
               ⏱ en curso
             </span>
           ) : puedeIniciar ? (
@@ -1538,7 +1539,7 @@ function FilaBloque({
                         if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
                       }}
                       aria-label="Mover el bloque a otro día"
-                      className="ml-auto w-24 rounded border border-hair bg-surface px-1 py-0.5 text-[11px] font-medium text-muted"
+                      className="ml-auto w-24 rounded border border-hair bg-surface px-1 py-0.5 text-[0.6875rem] font-medium text-muted"
                     >
                       <option value="" disabled>
                         Día…
@@ -1593,7 +1594,7 @@ function FilaBloque({
       {b.dodItems.length > 0 && (
         <ul className="mt-1.5 space-y-1 pl-[58px] sm:pl-[108px]">
           {b.dodItems.map((d) => (
-            <li key={d.id} className="flex items-center gap-2 text-[13px]">
+            <li key={d.id} className="flex items-center gap-2 text-[0.8125rem]">
               <input
                 type="checkbox"
                 checked={d.done}

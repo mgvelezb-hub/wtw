@@ -61,6 +61,21 @@ body {
   font-family: var(--font-sans);
 }
 
+/* La app se diseñó sobre iPad; en un monitor de escritorio la misma letra se
+   sentía chica (feedback de Mau, 2026-08-23). El rem base sube con el ancho y
+   TODO lo dimensionado en rem (text-xs/sm, paddings de Tailwind) escala
+   proporcionalmente. La geometría del lienzo (px fijos) no cambia. */
+@media (min-width: 1280px) {
+  html {
+    font-size: 17px;
+  }
+}
+@media (min-width: 1600px) {
+  html {
+    font-size: 18px;
+  }
+}
+
 /* Utilidades del lenguaje instrumento. `.num` va en TODO número que se lee en
    columna o se compara (horas, factores, contadores): Plex Mono tabular. `.lbl`
    es la etiqueta de sección en mayúsculas chicas que sustituye a los h2 en

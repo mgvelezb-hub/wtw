@@ -400,7 +400,7 @@ export function AppShell({
       <nav
         id="nav-lateral"
         aria-label="Secciones"
-        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-hair bg-surface px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:py-4 ${transicion} ${
+        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-hair bg-paper px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:py-4 ${transicion} ${
           esRail ? 'md:w-14 md:px-2' : 'md:w-56 md:px-3'
         }`}
       >
@@ -428,13 +428,13 @@ export function AppShell({
           {!scrollState.atStart && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-surface to-transparent"
+              className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-paper to-transparent"
             />
           )}
           {!scrollState.atEnd && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-surface to-transparent"
+              className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-paper to-transparent"
             />
           )}
         </div>
