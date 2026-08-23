@@ -29,4 +29,11 @@ describe('todayStr', () => {
   it('sin argumento usa la fecha actual', () => {
     expect(todayStr()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
+  // Regresión del hydration mismatch: a las 03:00 UTC ya es "mañana" en UTC
+  // pero sigue siendo "hoy" (21:00) en México. `todayStr` debe dar la fecha MX
+  // sin importar el reloj del proceso — es lo que iguala SSR (Vercel, UTC) y
+  // cliente (iPad, MX).
+  it('cruza la medianoche UTC con la fecha de México, no la del servidor', () => {
+    expect(todayStr(new Date('2026-08-24T03:00:00Z'))).toBe('2026-08-23')
+  })
 })

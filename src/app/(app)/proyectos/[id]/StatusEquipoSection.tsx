@@ -212,7 +212,12 @@ export function StatusEquipoSection({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="num text-xs text-muted">{new Date(a.createdAt).toLocaleDateString('es-MX')}</span>
+                        {/* timeZone explícito: sin él, el SSR (UTC en Vercel) y el
+                            cliente (MX) formatean fechas distintas cerca de la
+                            medianoche UTC — hydration mismatch. */}
+                        <span className="num text-xs text-muted">
+                          {new Date(a.createdAt).toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' })}
+                        </span>
                         <span className="rounded-full bg-hair px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">
                           {ESTADO_LABEL[a.estado]}
                         </span>

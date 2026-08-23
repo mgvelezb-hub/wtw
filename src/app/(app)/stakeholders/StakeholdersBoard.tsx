@@ -11,6 +11,7 @@ import {
   VARIABLE_CONFIANZA_LABEL,
 } from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
+import { todayStr } from '@/lib/dates'
 import {
   crearStakeholderAction,
   actualizarStakeholderAction,
@@ -52,8 +53,11 @@ const TIER_COLOR: Record<TierSaliencia, string> = {
   latente: 'bg-hair text-muted',
 }
 
+// Fecha de "hoy" en hora de México, no en UTC del servidor: con toISOString,
+// cualquier render de SSR entre las 18:00 y medianoche MX (donde UTC ya cambió
+// de día) hidrataba con una fecha distinta a la del cliente.
 function hoyISO(): string {
-  return new Date().toISOString().slice(0, 10)
+  return todayStr()
 }
 
 export function StakeholdersBoard({

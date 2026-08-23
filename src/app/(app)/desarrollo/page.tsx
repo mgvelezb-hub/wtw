@@ -29,7 +29,7 @@ export default async function DesarrolloPage() {
             desde: bitacora.desde ? bitacora.desde.toISOString().slice(0, 10) : null,
           }}
           riesgos={riesgos}
-          pie={<CatalogoSection catalogo={catalogo} />}
+          pie={<CatalogoSection key="catalogo" catalogo={catalogo} />}
         />
       </div>
     </main>
