@@ -21,7 +21,7 @@ import type { CallModelResult } from '@/lib/ai/client'
 
 export function mockCallModelResponse(
   text: string,
-  usage: CallModelResult['usage'] = { inputTokens: 100, outputTokens: 50 }
+  usage: CallModelResult['usage'] = { inputTokens: 100, outputTokens: 50, thinkingTokens: 0 }
 ): CallModelResult {
-  return { text, usage }
+  return { text, stopReason: 'end_turn', usage }
 }

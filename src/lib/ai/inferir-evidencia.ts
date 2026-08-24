@@ -148,7 +148,6 @@ export async function inferirEvidencia(userId: string, minutaId: string): Promis
     model: GENERATE,
     system,
     messages,
-    maxTokens: 2000,
   })
 
   const porId = new Map(candidatos.map((c) => [c.id, c]))
