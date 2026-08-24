@@ -794,6 +794,14 @@ model AiCall {
   modelo       String
   inputTokens  Int
   outputTokens Int
+  // Sin estas dos columnas un truncado y una respuesta mal formateada se ven
+  // IDÉNTICOS en el log, y el banner de la UI dice lo mismo en los dos casos.
+  // Diagnosticar el bug del 2026-08-24 costó reproducir la llamada contra la API
+  // para leer un stop_reason que ya habíamos tenido en la mano. `thinkingTokens`
+  // va aparte porque es lo que suele agotar el presupuesto: es la resta que
+  // explica por qué el texto llegó corto.
+  stopReason   String? // "end_turn" | "max_tokens" | "stop_sequence" | null si falló antes
+  thinkingTokens Int    @default(0)
   ms           Int
   createdAt    DateTime @default(now())
 

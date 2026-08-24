@@ -52,6 +52,7 @@ describe('callModel', () => {
     const createSpy = vi.fn().mockResolvedValue({
       content: [{ type: 'text', text: 'borrador de status' }],
       usage: { input_tokens: 120, output_tokens: 45 },
+      stop_reason: 'end_turn',
     })
     vi.doMock('@anthropic-ai/sdk', () => ({
       default: class {
@@ -81,6 +82,8 @@ describe('callModel', () => {
       modelo: 'claude-sonnet-5',
       inputTokens: 120,
       outputTokens: 45,
+      stopReason: 'end_turn',
+      thinkingTokens: 0,
     })
     expect(calls[0].ms).toBeGreaterThanOrEqual(0)
   })
@@ -181,8 +184,13 @@ describe('callModel', () => {
 
     // La llamada truncada igual se registra: sin la fila no hay forma de ver
     // después que el presupuesto quedó corto.
+    // La fila tiene que decir POR QUÉ se cortó y cuánto se fue en razonar: sin
+    // esas dos columnas, un truncado y un JSON mal formado se ven idénticos en el
+    // log y diagnosticarlo obliga a reproducir la llamada contra la API.
     const calls = await prisma.aiCall.findMany({ where: { userId: user.id } })
     expect(calls).toHaveLength(1)
     expect(calls[0].outputTokens).toBe(2000)
+    expect(calls[0].stopReason).toBe('max_tokens')
+    expect(calls[0].thinkingTokens).toBe(1446)
   })
 })
