@@ -116,6 +116,15 @@ del test.
     descartar un error de compilación: `grep` el import en el fuente y `curl` la ruta (un 307/200
     prueba que compila; un 500 no). No asumir "es caché" sin esas dos pruebas.
 
+13. **El razonamiento del modelo sale del MISMO `max_tokens` que el texto.** Los modelos
+    actuales razonan por default: una llamada con `max_tokens: 2000` gastó 1446 tokens en
+    razonar y dejó 554 para el JSON, que llegó cortado a media entrada — y el planeador lo
+    reportó como "la IA respondió en un formato que no pude leer", culpando al modelo de un
+    techo nuestro. Nunca pedir menos de los 8000 del default de `callModel`, y nunca creerle
+    a un banner de "formato ilegible" sin revisar antes `stop_reason` y `thinking_tokens`. Un
+    JSON truncado se delata al parsear; una PROSA truncada no —se guardaba como borrador
+    bueno— así que `callModel` lanza en vez de devolver texto a medias.
+
 ## Rutas archivadas
 
 `/roi` está archivada detrás de un flag (`src/lib/flags.ts`): responde 404 y no aparece en la
