@@ -2,6 +2,22 @@
 
 import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  pointerWithin,
+  rectIntersection,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
 import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
 import type { Briefing } from '@/lib/briefing'
@@ -76,6 +92,78 @@ function parseMinutos(raw: string): number | null {
 type Win = { posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
 type StartTransitionFn = (fn: () => void) => void
+
+// Qué se está arrastrando. Alimenta el DragOverlay y decide qué action se
+// dispara al soltar — el payload ya no viaja como texto en el dataTransfer de
+// HTML5 (que en Safari iOS ni siquiera existe para el dedo), sino como dato del
+// draggable.
+type ItemActivo = {
+  kind: 'block' | 'pend'
+  id: string
+  titulo: string
+  color?: string | null
+}
+
+// La fila gana sobre el contenedor que la contiene: "timeline" envuelve a todas
+// las filas, así que si se resolviera por área siempre taparía el reorder. Se
+// resuelve por puntero (lo que el dedo señala) y, cuando no hay puntero —el
+// KeyboardSensor no lo tiene—, por intersección de rectángulos.
+const detectarColision: CollisionDetection = (args) => {
+  const porPuntero = pointerWithin(args)
+  const lista = porPuntero.length > 0 ? porPuntero : rectIntersection(args)
+  const especifica = lista.find((c) => c.id !== 'timeline')
+  return especifica ? [especifica] : lista
+}
+
+// Pestaña de día: sigue siendo un <Link> (el clic navega igual), y además es
+// zona de drop — el ref de dnd-kit va al <a> que Link rinde.
+function TabDia({ t, activo }: { t: DiaTab; activo: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `tab:${t.fecha}` })
+  return (
+    <Link
+      ref={setNodeRef}
+      href={`/dia?dia=${t.fecha}`}
+      className={`flex shrink-0 items-baseline gap-1.5 rounded-md px-3 py-1.5 text-xs ${
+        activo ? 'bg-brand-deep font-semibold text-white' : 'text-muted hover:bg-surface'
+      } ${isOver ? 'ring-1 ring-inset ring-brand' : ''}`}
+    >
+      <span>{t.abr}</span>
+      <span className="num opacity-80">{t.num}</span>
+    </Link>
+  )
+}
+
+// Zona de drop genérica: resalta al pasarle un arrastre encima. Reemplaza a los
+// onDragOver/onDrop de HTML5 que colgaban de estos mismos contenedores.
+function ZonaDrop({
+  id,
+  clase,
+  activaClase,
+  seccion,
+  children,
+}: {
+  id: string
+  clase: string
+  activaClase: string
+  /** Rinde <section> en vez de <div> — la de Pendientes ya lo era. */
+  seccion?: boolean
+  children: ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+  const className = `${clase} ${isOver ? activaClase : ''}`
+  if (seccion) {
+    return (
+      <section ref={setNodeRef} className={className}>
+        {children}
+      </section>
+    )
+  }
+  return (
+    <div ref={setNodeRef} className={className}>
+      {children}
+    </div>
+  )
+}
 
 export type DiaBoardProps = {
   isoWeek: string
@@ -364,6 +452,63 @@ export function DiaBoard(p: DiaBoardProps) {
   // Cerrado por default: las arrastradas son una decisión pendiente, no una
   // alarma. El contador de la barra las abre y hace scroll hasta ellas.
   const [arrastradasAbiertas, setArrastradasAbiertas] = useState(false)
+  const [activo, setActivo] = useState<ItemActivo | null>(null)
+
+  // Mouse arrastra al instante (4 px de tolerancia para no comerse los clics de
+  // los botones de la fila); en touch un toque corto scrollea la página y uno
+  // sostenido de 200 ms arrastra — la convención de iOS, y lo que hace que el
+  // iPad siga scrolleando con el dedo sobre la timeline.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
+    useSensor(KeyboardSensor)
+  )
+
+  function onDragStart(e: DragStartEvent) {
+    const data = e.active.data.current as ItemActivo | undefined
+    if (data) setActivo(data)
+  }
+
+  function onDragEnd(e: DragEndEvent) {
+    const item = e.active.data.current as ItemActivo | undefined
+    const overId = e.over ? String(e.over.id) : null
+    setActivo(null)
+    if (!item || !overId) return
+
+    // Otro día: la pestaña recibe tanto un bloque (mover) como un pendiente
+    // (agendar), igual que antes.
+    if (overId.startsWith('tab:')) {
+      const fecha = overId.slice(4)
+      if (item.kind === 'block') startTransition(() => void moveBlockAction(item.id, fecha))
+      else startTransition(() => void scheduleTaskAction(item.id, fecha))
+      return
+    }
+
+    // Sobre una fila de tarea: reordenar el día poniendo el arrastrado ANTES de
+    // esa fila. Soltar un bloque sobre sí mismo no es un movimiento.
+    if (overId.startsWith('fila:')) {
+      if (item.kind !== 'block') {
+        startTransition(() => void scheduleTaskAction(item.id, p.selectedDay))
+        return
+      }
+      const destino = overId.slice(5)
+      if (destino === item.id) return
+      startTransition(() => void reorderDayAction(p.selectedDay, item.id, destino))
+      return
+    }
+
+    // El contenedor de la timeline, fuera de cualquier fila: al final del día.
+    if (overId === 'timeline') {
+      if (item.kind === 'block') startTransition(() => void reorderDayAction(p.selectedDay, item.id, null))
+      else startTransition(() => void scheduleTaskAction(item.id, p.selectedDay))
+      return
+    }
+
+    // De vuelta a pendientes: desagendar el bloque sin perderlo.
+    if (overId === 'pendientes' && item.kind === 'block') {
+      startTransition(() => void unscheduleBlockAction(item.id))
+    }
+  }
 
   function abrirArrastradas() {
     setArrastradasAbiertas(true)
@@ -396,13 +541,23 @@ export function DiaBoard(p: DiaBoardProps) {
   const actual = esHoy ? bloqueActual(activos, nowStr) : undefined
 
   return (
-    // Modo trabajo en iPad. Bajo lg los dos wrappers son `display:contents`:
-    // no generan caja, así que sus hijos apilan directo en el flex del
-    // contenedor y `order-*` los deja en el MISMO orden de siempre
-    // (barra → ahora → arranque → wins/capacidad → días → arrastradas →
-    // bloques → pendientes). Desde lg sí son cajas: la timeline a lo ancho y una
-    // columna fija de 340 px de contexto, y el `order-*` queda inerte porque ya
-    // no son flex items.
+    // id estable: sin él dnd-kit numera los `aria-describedby` con un contador
+    // global que difiere entre SSR y cliente — hydration mismatch.
+    <DndContext
+      id="dia-board"
+      sensors={sensors}
+      collisionDetection={detectarColision}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => setActivo(null)}
+    >
+    {/* Modo trabajo en iPad. Bajo lg los dos wrappers son `display:contents`:
+        no generan caja, así que sus hijos apilan directo en el flex del
+        contenedor y `order-*` los deja en el MISMO orden de siempre
+        (barra → ahora → arranque → wins/capacidad → días → arrastradas →
+        bloques → pendientes). Desde lg sí son cajas: la timeline a lo ancho y
+        una columna fija de 340 px de contexto, y el `order-*` queda inerte
+        porque ya no son flex items. */}
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 bg-paper pb-10 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-0 lg:pb-0">
       <div className="contents lg:block lg:min-w-0 lg:space-y-7 lg:pb-12">
         {/* La barra de estado es lo único pegajoso: se consulta mientras la
@@ -443,28 +598,9 @@ export function DiaBoard(p: DiaBoardProps) {
         )}
 
         <div className="order-2 flex gap-1 overflow-x-auto px-4 lg:px-7">
-          {p.tabs.map((t) => {
-            const active = t.fecha === p.selectedDay
-            return (
-              <Link
-                key={t.fecha}
-                href={`/dia?dia=${t.fecha}`}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const data = e.dataTransfer.getData('text/plain')
-                  if (data.startsWith('block:')) startTransition(() => void moveBlockAction(data.slice(6), t.fecha))
-                  else if (data.startsWith('pend:')) startTransition(() => void scheduleTaskAction(data.slice(5), t.fecha))
-                }}
-                className={`flex shrink-0 items-baseline gap-1.5 rounded-md px-3 py-1.5 text-xs ${
-                  active ? 'bg-brand-deep font-semibold text-white' : 'text-muted hover:bg-surface'
-                }`}
-              >
-                <span>{t.abr}</span>
-                <span className="num opacity-80">{t.num}</span>
-              </Link>
-            )
-          })}
+          {p.tabs.map((t) => (
+            <TabDia key={t.fecha} t={t} activo={t.fecha === p.selectedDay} />
+          ))}
         </div>
 
         {esHoy && p.stranded.length > 0 && (
@@ -520,20 +656,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </section>
         )}
 
-        <div
-          className="order-2 px-4 lg:px-7"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            const data = e.dataTransfer.getData('text/plain')
-            if (data.startsWith('pend:')) {
-              e.preventDefault()
-              startTransition(() => void scheduleTaskAction(data.slice(5), p.selectedDay))
-            } else if (data.startsWith('block:')) {
-              e.preventDefault()
-              startTransition(() => void reorderDayAction(p.selectedDay, data.slice(6), null))
-            }
-          }}
-        >
+        <ZonaDrop id="timeline" clase="order-2 px-4 lg:px-7" activaClase="bg-brand-soft/40">
           {/* Único indicador de capacidad del día: el renglón Planeado/Real/Libres
               absorbió la card grande de "Capacidad de hoy". Dos tarjetas midiendo
               lo mismo se contradecían visualmente. */}
@@ -575,6 +698,7 @@ export function DiaBoard(p: DiaBoardProps) {
                 terminada={false}
                 esActual={b.id === actual?.id}
                 onAbrirMinuta={setMinutaBlock}
+                arrastrandose={activo?.kind === 'block' && activo.id === b.id}
               />
             ))}
             {activos.length > 0 && <div className="hair" />}
@@ -640,6 +764,7 @@ export function DiaBoard(p: DiaBoardProps) {
                   terminada={true}
                   esActual={false}
                   onAbrirMinuta={setMinutaBlock}
+                  arrastrandose={activo?.kind === 'block' && activo.id === b.id}
                 />
               ))}
               <div className="hair" />
@@ -661,6 +786,7 @@ export function DiaBoard(p: DiaBoardProps) {
                   terminada={false}
                   esActual={false}
                   onAbrirMinuta={setMinutaBlock}
+                  arrastrandose={activo?.kind === 'block' && activo.id === b.id}
                 />
               ))}
               <div className="hair" />
@@ -694,7 +820,7 @@ export function DiaBoard(p: DiaBoardProps) {
               </ul>
             </div>
           )}
-        </div>
+        </ZonaDrop>
       </div>
 
       {/* Contexto: se consulta, no se opera. Misma superficie paper que el resto
@@ -774,17 +900,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </section>
         </div>
 
-        <section
-          className="order-3 px-4 lg:px-0"
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            const data = e.dataTransfer.getData('text/plain')
-            if (data.startsWith('block:')) {
-              e.preventDefault()
-              startTransition(() => void unscheduleBlockAction(data.slice(6)))
-            }
-          }}
-        >
+        <ZonaDrop seccion id="pendientes" clase="order-3 px-4 lg:px-0" activaClase="ring-1 ring-inset ring-brand">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="lbl flex items-center gap-1.5">
               Pendientes <span className="num">({p.pendientes.length})</span>
@@ -801,65 +917,15 @@ export function DiaBoard(p: DiaBoardProps) {
               scroll anidado aquí adentro pelearía con el de afuera. */}
           <div className="mt-2.5 max-h-[32rem] space-y-2 overflow-y-auto text-[0.8125rem] lg:max-h-none lg:overflow-visible">
             {p.pendientes.map((pe) => (
-              <div
+              <PendienteCard
                 key={pe.id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData('text/plain', `pend:${pe.id}`)}
-                className={`cursor-grab rounded-lg border border-dashed px-3 py-2.5 active:cursor-grabbing ${
-                  pe.urgente ? 'border-danger/40' : 'border-hair'
-                }`}
-              >
-                <div className="flex items-baseline gap-2.5">
-                  <span className="num shrink-0 text-[0.6875rem] text-muted">
-                    {pe.estimadoMin != null ? hhmm(pe.estimadoMin) : '—'}
-                  </span>
-                  <span className="min-w-0 flex-1 text-ink">
-                    {pe.urgente && <span className="text-danger">★ </span>}
-                    {pe.titulo}
-                  </span>
-                  <button
-                    disabled={pending}
-                    onClick={() => startTransition(() => void scheduleTaskAction(pe.id, p.today))}
-                    className="shrink-0 text-xs font-semibold text-brand hover:text-brand-strong disabled:opacity-40"
-                  >
-                    + Hoy
-                  </button>
-                </div>
-                <div className="mt-1 flex items-center gap-2 text-[0.6875rem]">
-                  {pe.proyecto && <span className="min-w-0 truncate text-faint">{pe.proyecto}</span>}
-                  <span className="ml-auto flex shrink-0 items-center gap-1">
-                    <select
-                      disabled={pending}
-                      defaultValue=""
-                      aria-label="Agendar el pendiente a otro día"
-                      onChange={(e) => {
-                        const fecha = e.target.value
-                        e.target.value = ''
-                        if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
-                      }}
-                      className="rounded border border-hair bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
-                    >
-                      <option value="" disabled>
-                        Agendar a…
-                      </option>
-                      {moveOptions
-                        .filter((t) => t.fecha !== p.today)
-                        .map((t) => (
-                          <option key={t.fecha} value={t.fecha}>
-                            {t.abr} {t.num}
-                          </option>
-                        ))}
-                    </select>
-                    <ConfirmarQuitar
-                      disabled={pending}
-                      onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
-                      titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-                      className="rounded px-1.5 py-0.5 text-[0.625rem] font-bold text-faint hover:bg-danger-soft hover:text-danger"
-                      armedClassName="rounded bg-danger px-1.5 py-0.5 text-[0.625rem] font-bold text-white"
-                    />
-                  </span>
-                </div>
-              </div>
+                pe={pe}
+                pending={pending}
+                startTransition={startTransition}
+                today={p.today}
+                moveOptions={moveOptions}
+                arrastrandose={activo?.kind === 'pend' && activo.id === pe.id}
+              />
             ))}
             {p.pendientes.length === 0 && (
               <p className="text-xs leading-relaxed text-faint">
@@ -871,7 +937,7 @@ export function DiaBoard(p: DiaBoardProps) {
               </p>
             )}
           </div>
-        </section>
+        </ZonaDrop>
       </div>
 
       {minutaBlock && (
@@ -882,6 +948,116 @@ export function DiaBoard(p: DiaBoardProps) {
           onClose={() => setMinutaBlock(null)}
         />
       )}
+    </div>
+
+    {/* El fantasma que sigue al dedo o al cursor: solo el título, del color del
+        proyecto cuando lo hay. El original se queda en su sitio atenuado. */}
+    <DragOverlay dropAnimation={null}>
+      {activo && (
+        <div
+          className="max-w-[18rem] truncate rounded-md border-l-[3px] bg-surface px-2.5 py-1.5 text-[0.8125rem] font-semibold text-ink shadow-lg"
+          style={{
+            backgroundColor: activo.color ? `${activo.color}1f` : undefined,
+            borderLeftColor: activo.color ?? 'var(--color-brand, #0a7c82)',
+          }}
+        >
+          {activo.titulo}
+        </div>
+      )}
+    </DragOverlay>
+    </DndContext>
+  )
+}
+
+// Tarjeta de pendiente. El ⋮⋮ es el ÚNICO activador táctil: así la columna se
+// sigue scrolleando con el dedo sobre la tarjeta, y se arrastra tomando el
+// handle. `touch-action: none` vive solo en ese glifo, nunca en la tarjeta.
+function PendienteCard({
+  pe,
+  pending,
+  startTransition,
+  today,
+  moveOptions,
+  arrastrandose,
+}: {
+  pe: PendienteView
+  pending: boolean
+  startTransition: StartTransitionFn
+  today: string
+  moveOptions: DiaTab[]
+  arrastrandose: boolean
+}) {
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners } = useDraggable({
+    id: `pend:${pe.id}`,
+    data: { kind: 'pend', id: pe.id, titulo: pe.titulo } satisfies ItemActivo,
+  })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`cursor-grab rounded-lg border border-dashed px-3 py-2.5 active:cursor-grabbing ${
+        pe.urgente ? 'border-danger/40' : 'border-hair'
+      } ${arrastrandose ? 'opacity-40' : ''}`}
+    >
+      <div className="flex items-baseline gap-2.5">
+        <span
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          aria-label={`Arrastrar ${pe.titulo}`}
+          className="relative -ml-1 shrink-0 cursor-grab select-none px-0.5 text-sm leading-none text-faint before:absolute before:-inset-2.5 before:content-[''] active:cursor-grabbing"
+          style={{ touchAction: 'none' }}
+        >
+          ⋮⋮
+        </span>
+        <span className="num shrink-0 text-[0.6875rem] text-muted">
+          {pe.estimadoMin != null ? hhmm(pe.estimadoMin) : '—'}
+        </span>
+        <span className="min-w-0 flex-1 text-ink">
+          {pe.urgente && <span className="text-danger">★ </span>}
+          {pe.titulo}
+        </span>
+        <button
+          disabled={pending}
+          onClick={() => startTransition(() => void scheduleTaskAction(pe.id, today))}
+          className="shrink-0 text-xs font-semibold text-brand hover:text-brand-strong disabled:opacity-40"
+        >
+          + Hoy
+        </button>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-[0.6875rem]">
+        {pe.proyecto && <span className="min-w-0 truncate text-faint">{pe.proyecto}</span>}
+        <span className="ml-auto flex shrink-0 items-center gap-1">
+          <select
+            disabled={pending}
+            defaultValue=""
+            aria-label="Agendar el pendiente a otro día"
+            onChange={(e) => {
+              const fecha = e.target.value
+              e.target.value = ''
+              if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
+            }}
+            className="rounded border border-hair bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
+          >
+            <option value="" disabled>
+              Agendar a…
+            </option>
+            {moveOptions
+              .filter((t) => t.fecha !== today)
+              .map((t) => (
+                <option key={t.fecha} value={t.fecha}>
+                  {t.abr} {t.num}
+                </option>
+              ))}
+          </select>
+          <ConfirmarQuitar
+            disabled={pending}
+            onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
+            titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
+            className="rounded px-1.5 py-0.5 text-[0.625rem] font-bold text-faint hover:bg-danger-soft hover:text-danger"
+            armedClassName="rounded bg-danger px-1.5 py-0.5 text-[0.625rem] font-bold text-white"
+          />
+        </span>
+      </div>
     </div>
   )
 }
@@ -1196,13 +1372,9 @@ function MenuBloque({
         ⋯
       </button>
       {abierto && (
-        // draggable={false} + stopPropagation: la fila contenedora es draggable y
-        // sin esto arrastrar dentro de un input del menú inicia el drag del bloque.
-        <div
-          draggable={false}
-          onDragStart={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-hair bg-surface p-1 shadow-lg"
-        >
+        // Ya no hace falta blindar el menú contra el drag de la fila: con
+        // dnd-kit el arrastre solo nace del handle ⋮⋮, no de la fila entera.
+        <div className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-hair bg-surface p-1 shadow-lg">
           {children(() => setAbierto(false))}
         </div>
       )}
@@ -1254,6 +1426,7 @@ function FilaBloque({
   terminada,
   esActual,
   onAbrirMinuta,
+  arrastrandose,
 }: {
   block: DayBlockView
   tick: number | null
@@ -1267,10 +1440,25 @@ function FilaBloque({
   // superficie blanca, igual que la franja de AHORA lo nombra arriba.
   esActual: boolean
   onAbrirMinuta: (b: DayBlockView) => void
+  arrastrandose: boolean
 }) {
+  // Los hooks van ANTES de la salida temprana de las juntas de Outlook: una
+  // junta no arrastra ni recibe, y eso se expresa con `disabled`, no dejando de
+  // llamar el hook.
+  const isTarea = b.tipo === 'tarea'
+  const { setNodeRef: setDragRef, setActivatorNodeRef, attributes, listeners } = useDraggable({
+    id: `block:${b.id}`,
+    disabled: b.externa || !!b.runningSince,
+    data: { kind: 'block', id: b.id, titulo: b.titulo, color: b.proyecto?.color ?? null } satisfies ItemActivo,
+  })
+  // Soltar OTRO bloque sobre esta fila lo coloca antes que ella.
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `fila:${b.id}`,
+    disabled: b.externa || !isTarea || b.done,
+  })
+
   const candidataMinuta = esCandidataMinuta(b)
   const nudgeMinuta = candidataMinuta && terminada && !b.minutaId
-  const isTarea = b.tipo === 'tarea'
   const seconds = isTarea ? liveSeconds(b, tick) : 0
   const over = isTarea && seconds > b.planMin * 60
   const apagado = b.done || terminada
@@ -1385,24 +1573,38 @@ function FilaBloque({
 
   return (
     <div
-      draggable={!b.runningSince}
-      onDragStart={(e) => e.dataTransfer.setData('text/plain', `block:${b.id}`)}
-      onDragOver={(e) => {
-        if (isTarea && !b.done) e.preventDefault()
+      ref={(node) => {
+        setDragRef(node)
+        setDropRef(node)
       }}
-      onDrop={(e) => {
-        const data = e.dataTransfer.getData('text/plain')
-        if (data.startsWith('block:') && isTarea && !b.done) {
-          e.preventDefault()
-          e.stopPropagation()
-          const draggedId = data.slice(6)
-          if (draggedId !== b.id) startTransition(() => void reorderDayAction(selectedDay, draggedId, b.id))
-        }
-      }}
-      className={`hair cursor-grab py-2.5 active:cursor-grabbing ${fondo}`}
+      className={`hair group py-2.5 ${fondo} ${isOver ? 'ring-1 ring-inset ring-brand' : ''} ${
+        arrastrandose ? 'opacity-40' : ''
+      }`}
     >
       <div className={REJILLA_FILA}>
-        {rango}
+        <span className="flex items-center gap-1">
+          {/* El activador táctil: `touch-action: none` vive SOLO aquí, para que
+              el resto de la fila —y con ella la página— siga scrolleando con el
+              dedo en el iPad. Discreto en desktop (aparece al pasar el mouse),
+              siempre visible en touch, donde no hay hover que lo revele. El
+              pseudo-elemento le da ~32 px de área de toque sin ocupar un solo
+              píxel más de alto: el glifo se ve igual, deja de fallarse. */}
+          <span
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            aria-label={`Arrastrar ${b.titulo}`}
+            className={`relative -ml-1.5 shrink-0 select-none px-0.5 text-xs leading-none text-faint transition-opacity before:absolute before:-inset-2.5 before:content-[''] ${
+              b.runningSince
+                ? 'cursor-default opacity-20'
+                : 'cursor-grab opacity-40 active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100'
+            }`}
+            style={{ touchAction: 'none' }}
+          >
+            ⋮⋮
+          </span>
+          {rango}
+        </span>
 
         <span className="flex min-w-0 items-center gap-2">
           {b.proyecto && <PuntoProyecto proyecto={b.proyecto} />}
