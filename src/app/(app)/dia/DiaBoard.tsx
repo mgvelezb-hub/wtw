@@ -318,7 +318,7 @@ function BarraEstadoDia({
   const arrastradas = esHoy ? p.stranded.length : 0
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-hair bg-surface px-4 py-2.5 text-[0.781rem] text-muted lg:px-7">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-edge bg-surface px-4 py-2.5 text-[0.781rem] text-muted lg:px-7">
       {/* El h1 de la página: la fecha. El rango completo de la semana ya no
           necesita 2xl de tipografía — es contexto, no titular. */}
       <h1 className="font-semibold text-ink">{fechaCorta(p.selectedDay)}</h1>
@@ -576,7 +576,7 @@ export function DiaBoard(p: DiaBoardProps) {
           />
         </div>
 
-        <div className="px-4 lg:px-7">
+        <div className="mx-4 bloque p-4 lg:mx-7">
           <AhoraFranja
             blocks={activos}
             tick={tick}
@@ -592,7 +592,7 @@ export function DiaBoard(p: DiaBoardProps) {
             manda el orden del DOM — así queda inmediatamente después tanto en la
             columna de lg como en el flex apilado de abajo. */}
         {esHoy && p.briefing && (
-          <div className="px-4 lg:px-7">
+          <div className="mx-4 bloque p-4 lg:mx-7">
             <BriefingCard briefing={p.briefing} />
           </div>
         )}
@@ -609,7 +609,7 @@ export function DiaBoard(p: DiaBoardProps) {
              en ese instante. Ahora es un renglón colapsable —cerrado por
              default— y quien lo abre es el contador "N arrastradas" de la barra
              de estado. Los dos botones siguen aquí, intactos. */
-          <section id="arrastradas" className="order-2 px-4 text-sm lg:px-7">
+          <section id="arrastradas" className="order-2 mx-4 bloque p-4 text-sm lg:mx-7">
             <div className="flex flex-wrap items-baseline gap-2">
               <h2 className="lbl text-warn">
                 {p.stranded.length} arrastrada{p.stranded.length > 1 ? 's' : ''} de días anteriores
@@ -656,7 +656,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </section>
         )}
 
-        <ZonaDrop id="timeline" clase="order-2 px-4 lg:px-7" activaClase="bg-brand-soft/40">
+        <ZonaDrop id="timeline" clase="order-2 mx-4 bloque p-4 lg:mx-7" activaClase="bg-brand-soft/40">
           {/* Único indicador de capacidad del día: el renglón Planeado/Real/Libres
               absorbió la card grande de "Capacidad de hoy". Dos tarjetas midiendo
               lo mismo se contradecían visualmente. */}
@@ -823,14 +823,15 @@ export function DiaBoard(p: DiaBoardProps) {
         </ZonaDrop>
       </div>
 
-      {/* Contexto: se consulta, no se opera. Misma superficie paper que el resto
-          de la página (en desktop el bloque blanco desentonaba contra el crema —
-          feedback de Mau 2026-08-23): la separa el hairline, no el fondo. Una
-          columna pegajosa con su propio scroll para que Wins y Pendientes sigan
-          a la vista mientras la timeline de la izquierda se recorre. */}
-      <div className="contents lg:sticky lg:top-0 lg:block lg:h-dvh lg:space-y-8 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-hair lg:bg-paper lg:px-6 lg:py-7">
-        <div className="order-1 grid gap-8 px-4 md:grid-cols-2 lg:grid-cols-1 lg:px-0">
-          <section>
+      {/* Contexto: se consulta, no se opera. Superficie blanca propia sobre el
+          fondo gris claro, delimitada por su borde: el problema del crema no era
+          el contraste, era que TODO fuera cálido y nada se distinguiera
+          (feedback de Mau 2026-08-24). Columna pegajosa con su propio scroll
+          para que Wins y Pendientes sigan a la vista mientras la timeline de la
+          izquierda se recorre. */}
+      <div className="contents lg:sticky lg:top-0 lg:block lg:h-dvh lg:space-y-4 lg:overflow-y-auto lg:overscroll-contain lg:border-l lg:border-edge lg:bg-paper lg:px-5 lg:py-6">
+        <div className="order-1 grid gap-4 px-4 md:grid-cols-2 lg:grid-cols-1 lg:px-0">
+          <section className="bloque p-4">
             <h2 className="lbl flex items-center gap-1.5">
               Wins de la semana
               <AyudaContextual
@@ -868,7 +869,7 @@ export function DiaBoard(p: DiaBoardProps) {
             </ol>
           </section>
 
-          <section>
+          <section className="bloque p-4">
             <h2 className="lbl flex flex-wrap items-baseline gap-x-1.5">
               Capacidad de la semana
               <span className="text-xs font-normal normal-case tracking-normal text-faint">
@@ -900,7 +901,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </section>
         </div>
 
-        <ZonaDrop seccion id="pendientes" clase="order-3 px-4 lg:px-0" activaClase="ring-1 ring-inset ring-brand">
+        <ZonaDrop seccion id="pendientes" clase="order-3 mx-4 bloque p-4 lg:mx-0" activaClase="ring-1 ring-inset ring-brand">
           <div className="flex items-baseline justify-between gap-2">
             <h3 className="lbl flex items-center gap-1.5">
               Pendientes <span className="num">({p.pendientes.length})</span>
@@ -1036,7 +1037,7 @@ function PendienteCard({
               e.target.value = ''
               if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
             }}
-            className="rounded border border-hair bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
+            className="rounded border border-edge bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
           >
             <option value="" disabled>
               Agendar a…
@@ -1374,7 +1375,7 @@ function MenuBloque({
       {abierto && (
         // Ya no hace falta blindar el menú contra el drag de la fila: con
         // dnd-kit el arrastre solo nace del handle ⋮⋮, no de la fila entera.
-        <div className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-hair bg-surface p-1 shadow-lg">
+        <div className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-edge bg-surface p-1 shadow-lg">
           {children(() => setAbierto(false))}
         </div>
       )}
@@ -1741,7 +1742,7 @@ function FilaBloque({
                         if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
                       }}
                       aria-label="Mover el bloque a otro día"
-                      className="ml-auto w-24 rounded border border-hair bg-surface px-1 py-0.5 text-[0.6875rem] font-medium text-muted"
+                      className="ml-auto w-24 rounded border border-edge bg-surface px-1 py-0.5 text-[0.6875rem] font-medium text-muted"
                     >
                       <option value="" disabled>
                         Día…

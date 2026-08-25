@@ -276,7 +276,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         </p>
       )}
 
-      <section className="rounded-xl border border-hair bg-surface p-4">
+      <section className="rounded-xl border border-edge bg-surface p-4">
         {draft.paso === 0 && (
           <PasoReflejar
             ctx={ctx}
@@ -927,7 +927,7 @@ function PasoVaciar({
         <select
           value={nuevoProy}
           onChange={(e) => setNuevoProy(e.target.value)}
-          className="rounded border border-hair bg-surface px-1 py-1 text-xs text-muted"
+          className="rounded border border-edge bg-surface px-1 py-1 text-xs text-muted"
         >
           <option value="">Sin proyecto</option>
           {proyectos.map((p) => (
@@ -969,7 +969,7 @@ function PasoVaciar({
               value={it.winPosicion ?? ''}
               aria-label={`Win de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { winPosicion: e.target.value ? Number(e.target.value) : undefined })}
-              className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+              className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
             >
               <option value="">Sin Win</option>
               {wins.map((w, i) => (
@@ -986,7 +986,7 @@ function PasoVaciar({
                 aria-label={`Competencia de ${it.titulo}`}
                 onChange={(e) => onItem(it.ref, { competenciaId: e.target.value || undefined })}
                 className={`w-full rounded border px-1 py-0.5 text-xs ${
-                  it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-hair bg-surface text-muted'
+                  it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-edge bg-surface text-muted'
                 }`}
               >
                 <option value="">Sin competencia</option>
@@ -1088,7 +1088,7 @@ function PasoBloquear({
               value={it.fecha ?? ''}
               aria-label={`Día de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { fecha: e.target.value || undefined })}
-              className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+              className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
             >
               <option value="">Sin día</option>
               {capacidad.dias.map((d) => (

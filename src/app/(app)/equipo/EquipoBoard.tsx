@@ -36,7 +36,7 @@ export function EquipoBoard({ reports }: { reports: Report[] }) {
             if (nombreRef.current) nombreRef.current.value = ''
           })
         }}
-        className="flex gap-2 rounded-lg border border-hair bg-surface p-3"
+        className="flex gap-2 rounded-lg border border-edge bg-surface p-3"
       >
         <input ref={nombreRef} placeholder="Nombre" disabled={pending} className="flex-1 rounded-md border border-hair px-3 py-2 text-sm" />
         <input ref={emailRef} type="email" placeholder="correo@vpconsulting.mx" disabled={pending} className="flex-1 rounded-md border border-hair px-3 py-2 text-sm" />

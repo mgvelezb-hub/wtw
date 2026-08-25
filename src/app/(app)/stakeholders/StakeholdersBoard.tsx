@@ -157,7 +157,7 @@ export function StakeholdersBoard({
           <h2 className="lbl">Matriz de poder e interés</h2>
           <button
             onClick={() => setNuevoAbierto((v) => !v)}
-            className="rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+            className="rounded-md border border-edge bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
           >
             {nuevoAbierto ? 'Cancelar' : '+ Stakeholder'}
           </button>
@@ -269,20 +269,20 @@ function FormaNuevo({
           onChange={(e) => setNombre(e.target.value)}
           placeholder="Nombre"
           aria-label="Nombre del stakeholder"
-          className="min-w-40 flex-1 rounded border border-hair bg-surface px-2 py-1 text-sm text-ink"
+          className="min-w-40 flex-1 rounded border border-edge bg-surface px-2 py-1 text-sm text-ink"
         />
         <input
           value={puesto}
           onChange={(e) => setPuesto(e.target.value)}
           placeholder="Puesto"
           aria-label="Puesto"
-          className="min-w-32 flex-1 rounded border border-hair bg-surface px-2 py-1 text-sm text-ink"
+          className="min-w-32 flex-1 rounded border border-edge bg-surface px-2 py-1 text-sm text-ink"
         />
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           aria-label="Proyecto"
-          className="rounded border border-hair bg-surface px-1 py-1 text-xs text-muted"
+          className="rounded border border-edge bg-surface px-1 py-1 text-xs text-muted"
         >
           <option value="">Sin proyecto</option>
           {proyectos.map((p) => (
@@ -300,7 +300,7 @@ function FormaNuevo({
             value={poder}
             onChange={(e) => setPoder(Number(e.target.value))}
             aria-label="Poder"
-            className="rounded border border-hair bg-surface px-1 py-0.5"
+            className="rounded border border-edge bg-surface px-1 py-0.5"
           >
             {ESCALA.map((e) => (
               <option key={e.valor} value={e.valor}>
@@ -315,7 +315,7 @@ function FormaNuevo({
             value={interes}
             onChange={(e) => setInteres(Number(e.target.value))}
             aria-label="Interés"
-            className="rounded border border-hair bg-surface px-1 py-0.5"
+            className="rounded border border-edge bg-surface px-1 py-0.5"
           >
             {ESCALA.map((e) => (
               <option key={e.valor} value={e.valor}>
@@ -330,7 +330,7 @@ function FormaNuevo({
             value={postura}
             onChange={(e) => setPostura(e.target.value as StakeholderPostura)}
             aria-label="Postura"
-            className="rounded border border-hair bg-surface px-1 py-0.5"
+            className="rounded border border-edge bg-surface px-1 py-0.5"
           >
             {POSTURAS.map((p) => (
               <option key={p} value={p}>
@@ -348,7 +348,7 @@ function FormaNuevo({
             onChange={(e) => setCadencia(e.target.value)}
             placeholder="—"
             aria-label="Cadencia en días"
-            className="num w-14 rounded border border-hair bg-surface px-1 py-0.5 text-ink"
+            className="num w-14 rounded border border-edge bg-surface px-1 py-0.5 text-ink"
           />
           días
         </label>
@@ -359,7 +359,7 @@ function FormaNuevo({
         onChange={(e) => setQueNecesita(e.target.value)}
         placeholder="Qué necesita ESTA persona para considerar el proyecto un éxito"
         aria-label="Qué necesita"
-        className="w-full rounded border border-hair bg-surface px-2 py-1 text-sm text-ink"
+        className="w-full rounded border border-edge bg-surface px-2 py-1 text-sm text-ink"
       />
 
       <button
@@ -457,7 +457,7 @@ function Ficha({
 
       {abierto && (
         <div className="mt-3 space-y-3 border-t border-hair pt-3">
-          <div className="space-y-2 rounded-lg border border-hair bg-surface p-2">
+          <div className="space-y-2 rounded-lg border border-edge bg-surface p-2">
             <p className="text-xs font-bold text-brand-deep">Registrar contacto</p>
             <div className="flex flex-wrap gap-1">
               <input
@@ -465,13 +465,13 @@ function Ficha({
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
                 aria-label={`Fecha de contacto con ${s.nombre}`}
-                className="num rounded border border-hair bg-surface px-1 py-0.5 text-xs text-ink"
+                className="num rounded border border-edge bg-surface px-1 py-0.5 text-xs text-ink"
               />
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as InteraccionTipo)}
                 aria-label={`Tipo de contacto con ${s.nombre}`}
-                className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+                className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
               >
                 {TIPOS.map((t) => (
                   <option key={t} value={t}>
@@ -484,7 +484,7 @@ function Ficha({
                 onChange={(e) => setNota(e.target.value)}
                 placeholder="Qué se habló"
                 aria-label={`Nota del contacto con ${s.nombre}`}
-                className="min-w-40 flex-1 rounded border border-hair bg-surface px-2 py-0.5 text-xs text-ink"
+                className="min-w-40 flex-1 rounded border border-edge bg-surface px-2 py-0.5 text-xs text-ink"
               />
             </div>
             {/* Qué movió el contacto, en las cuatro variables de Maister. El default
@@ -496,7 +496,7 @@ function Ficha({
                 onChange={(e) => setVariable(e.target.value as VariableConfianza | '')}
                 aria-label={`Variable de confianza del contacto con ${s.nombre}`}
                 className={`flex-1 rounded border px-1 py-0.5 text-xs ${
-                  variable ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-hair bg-surface text-muted'
+                  variable ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-edge bg-surface text-muted'
                 }`}
               >
                 <option value="">Solo contacto — no construyó confianza</option>
@@ -516,7 +516,7 @@ function Ficha({
                 className={`rounded-md border px-2 py-0.5 text-xs ${
                   incumplimiento
                     ? 'border-danger bg-danger font-bold text-white'
-                    : 'border-hair bg-surface text-muted hover:border-danger/50 hover:text-danger'
+                    : 'border-edge bg-surface text-muted hover:border-danger/50 hover:text-danger'
                 }`}
               >
                 {incumplimiento ? '✓ fue un incumplimiento' : 'fue un incumplimiento'}
@@ -529,7 +529,7 @@ function Ficha({
                 onChange={(e) => setCompetencyId(e.target.value)}
                 aria-label={`Competencia que acredita el contacto con ${s.nombre}`}
                 className={`w-full rounded border px-1 py-0.5 text-xs ${
-                  competencyId ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-hair bg-surface text-muted'
+                  competencyId ? 'border-brand-strong/40 bg-brand-strong/5 text-brand-deep' : 'border-edge bg-surface text-muted'
                 }`}
               >
                 <option value="">No cuenta como evidencia</option>
@@ -595,7 +595,7 @@ function Ficha({
                 disabled={pending}
                 onChange={(e) => onAccion(() => actualizarStakeholderAction(s.id, { poder: Number(e.target.value) }))}
                 aria-label={`Poder de ${s.nombre}`}
-                className="rounded border border-hair bg-surface px-1 py-0.5"
+                className="rounded border border-edge bg-surface px-1 py-0.5"
               >
                 {ESCALA.map((e) => (
                   <option key={e.valor} value={e.valor}>
@@ -611,7 +611,7 @@ function Ficha({
                 disabled={pending}
                 onChange={(e) => onAccion(() => actualizarStakeholderAction(s.id, { interes: Number(e.target.value) }))}
                 aria-label={`Interés de ${s.nombre}`}
-                className="rounded border border-hair bg-surface px-1 py-0.5"
+                className="rounded border border-edge bg-surface px-1 py-0.5"
               >
                 {ESCALA.map((e) => (
                   <option key={e.valor} value={e.valor}>
@@ -654,7 +654,7 @@ function Ficha({
                   onAccion(() => actualizarStakeholderAction(s.id, { postura: e.target.value as StakeholderPostura }))
                 }
                 aria-label={`Postura de ${s.nombre}`}
-                className="rounded border border-hair bg-surface px-1 py-0.5"
+                className="rounded border border-edge bg-surface px-1 py-0.5"
               >
                 {POSTURAS.map((p) => (
                   <option key={p} value={p}>
@@ -679,7 +679,7 @@ function Ficha({
                   )
                 }
                 aria-label={`Cadencia de ${s.nombre}`}
-                className="num w-14 rounded border border-hair bg-surface px-1 py-0.5 text-ink"
+                className="num w-14 rounded border border-edge bg-surface px-1 py-0.5 text-ink"
               />
               días
             </label>
@@ -690,7 +690,7 @@ function Ficha({
                 disabled={pending}
                 onChange={(e) => onAccion(() => actualizarStakeholderAction(s.id, { projectId: e.target.value || null }))}
                 aria-label={`Proyecto de ${s.nombre}`}
-                className="rounded border border-hair bg-surface px-1 py-0.5"
+                className="rounded border border-edge bg-surface px-1 py-0.5"
               >
                 <option value="">Sin proyecto</option>
                 {proyectos.map((p) => (

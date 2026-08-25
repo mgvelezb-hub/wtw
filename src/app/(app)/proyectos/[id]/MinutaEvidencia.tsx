@@ -86,7 +86,7 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
   }
 
   return (
-    <div className="mt-2 rounded-lg border border-hair bg-surface p-2">
+    <div className="mt-2 rounded-lg border border-edge bg-surface p-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase text-brand-deep">Evidencia de desarrollo</p>
         <button onClick={() => setAbierto(false)} className="text-[11px] font-bold text-faint">

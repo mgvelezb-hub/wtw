@@ -302,7 +302,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
       <div className={`flex min-h-dvh flex-col bg-paper lg:flex-row ${pending ? 'opacity-90' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-col">
           {/* ── Barra superior ─────────────────────────────────────────────── */}
-          <div className="flex h-12 shrink-0 flex-wrap items-center gap-3 border-b border-hair bg-surface px-4 sm:px-6">
+          <div className="flex h-12 shrink-0 flex-wrap items-center gap-3 border-b border-edge bg-surface px-4 sm:px-6">
             <div className="flex overflow-hidden rounded-md border border-hair text-xs font-semibold">
               <Link href={`/dia?dia=${v.diaSeleccionado}`} className="px-3 py-1.5 text-muted hover:text-brand">
                 Día
@@ -370,7 +370,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
 
               {/* Grid de horas */}
               <div
-                className={`grid ${columnas} overflow-hidden rounded-tl-[10px] border border-hair bg-surface`}
+                className={`grid ${columnas} overflow-hidden rounded-tl-[10px] border border-edge bg-surface`}
                 style={{ height: altoGrid }}
               >
                 <div className="flex flex-col border-r border-hair">
@@ -439,7 +439,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               {/* Franja Flex: lo que tiene día pero no hora. Soltar aquí agenda al
                   día sin comprometer una hora — que es exactamente lo que un
                   bloque flex significa. */}
-              <div className={`grid ${columnas} border-x border-b border-hair bg-surface`}>
+              <div className={`grid ${columnas} border-x border-b border-edge bg-surface`}>
                 <div className="lbl flex items-start justify-end border-r border-hair px-1.5 py-2 text-[9px]">Flex</div>
                 {v.dias.map((d) => (
                   <CeldaDrop
@@ -486,7 +486,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
 
         {/* ── Bandeja ───────────────────────────────────────────────────────── */}
         <BandejaAside>
-          <section className="flex flex-col gap-2.5">
+          <section className="bloque flex flex-col gap-2.5 p-3.5">
             <div className="flex items-baseline justify-between">
               <span className="lbl">
                 Bandeja <span className="num">({v.bandeja.length})</span>
@@ -512,7 +512,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
             />
           </section>
 
-          <section className="flex flex-col gap-2.5">
+          <section className="bloque flex flex-col gap-2.5 p-3.5">
             <span className="lbl">Wins</span>
             {v.wins.length === 0 ? (
               <p className="text-xs text-warn">
@@ -554,7 +554,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
             )}
           </section>
 
-          <section className="mt-auto flex flex-col gap-1.5 border-t border-hair pt-4 text-xs text-muted">
+          <section className="bloque mt-auto flex flex-col gap-1.5 p-3.5 text-xs text-muted">
             <span className="lbl">Leyenda</span>
             {proyectos.map(([nombre, color]) => (
               <span key={nombre} className="flex items-center gap-2">
@@ -602,7 +602,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
             <div className="fixed inset-0 z-40" onClick={() => setMenuJunta(null)} aria-hidden />
             <div
               role="menu"
-              className="fixed z-50 w-60 rounded-lg border border-hair bg-surface p-1 shadow-lg"
+              className="fixed z-50 w-60 rounded-lg border border-edge bg-surface p-1 shadow-lg"
               style={{ top: menuJunta.y, left: menuJunta.x }}
             >
               <button
@@ -715,7 +715,7 @@ function BandejaAside({ children }: { children: React.ReactNode }) {
   return (
     <aside
       ref={setNodeRef}
-      className={`flex w-full shrink-0 flex-col gap-5 border-hair bg-paper p-5 lg:w-[260px] lg:border-l xl:w-[300px] ${
+      className={`flex w-full shrink-0 flex-col gap-3.5 border-edge bg-paper p-4 lg:w-[260px] lg:border-l xl:w-[300px] ${
         isOver ? 'ring-1 ring-inset ring-brand' : ''
       }`}
     >
@@ -916,7 +916,7 @@ function Tendencias({
   const isoWeeks = cronologico.map((h) => h.isoWeek)
 
   return (
-    <section className="hair mt-3 py-2 pr-4">
+    <section className="bloque mt-3 p-3.5">
       <button
         type="button"
         onClick={onToggle}

@@ -251,7 +251,7 @@ export function MinutaDrawer({
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
       <div className="flex-1 bg-black/30" onClick={onClose} />
-      <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-hair bg-surface p-5 shadow-xl">
+      <div className="flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-edge bg-surface p-5 shadow-xl">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="lbl text-brand-strong">Minuta de junta</p>

@@ -119,7 +119,7 @@ export function AyudaContextual({
             // `normal-case tracking-normal font-normal`: el portal ya no hereda
             // del <h2> uppercase, pero el reset se conserva por si algún día el
             // popover vuelve a montarse en línea.
-            className="fixed z-50 rounded-lg border border-hair bg-surface p-3 text-left font-normal normal-case tracking-normal shadow-lg"
+            className="fixed z-50 rounded-lg border border-edge bg-surface p-3 text-left font-normal normal-case tracking-normal shadow-lg"
           >
             <span className="block text-xs font-bold text-brand-deep">{titulo}</span>
             <span className="mt-1 block text-xs font-normal leading-relaxed text-muted">{children}</span>

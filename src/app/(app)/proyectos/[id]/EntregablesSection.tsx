@@ -46,7 +46,7 @@ function ImpactoForm({
   }
 
   return (
-    <div className="mt-2 space-y-1.5 rounded-lg border border-hair bg-surface p-2">
+    <div className="mt-2 space-y-1.5 rounded-lg border border-edge bg-surface p-2">
       <input
         autoFocus
         value={baseline}

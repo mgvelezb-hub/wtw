@@ -24,12 +24,21 @@
    - ink / muted / faint: texto principal / secundario / terciario.
    - hair: la línea de 1px que separa en lugar de las cajas con sombra. */
 @theme {
-  --color-paper: #f4efe3;
+  /* El fondo dejó de ser crema (#f4efe3): en monitor, una superficie cálida a
+     pantalla completa aplana todo y las áreas dejan de distinguirse entre sí
+     (feedback de Mau, 2026-08-24). Ahora `paper` es un gris muy claro con sesgo
+     teal —el mismo sesgo del acento, no un gris de fábrica— y las superficies de
+     trabajo van en blanco puro. La jerarquía la da el contraste entre los dos,
+     reforzado por `edge`. */
+  --color-paper: #eef2f2;
   --color-surface: #ffffff;
   --color-ink: #1a2323;
   --color-muted: #5c6b6a;
   --color-faint: #9fb0ae;
   --color-hair: #dce4e2;
+  /* Borde de bloque: más marcado que `hair` (que separa filas DENTRO de un
+     bloque). `edge` es lo que delimita un área de otra. */
+  --color-edge: #ccdad8;
 }
 
 /* Gramática de color — un color, un significado. Tokens Tailwind v4 (@theme
@@ -93,6 +102,15 @@ body {
 }
 @utility hair {
   border-top: 1px solid var(--color-hair);
+}
+
+/* Bloque delimitado ("scorecard"): un área de trabajo con frontera propia sobre
+   el fondo. Sustituye a la card con sombra del diseño viejo — la separación la
+   da el borde y el cambio de superficie, no una sombra flotante. */
+@utility bloque {
+  background: var(--color-surface);
+  border: 1px solid var(--color-edge);
+  border-radius: 10px;
 }
 
 /* Los controles de formulario no heredan color de forma confiable en todos los

@@ -119,7 +119,7 @@ export function InboxBoard({
           e.preventDefault()
           submit()
         }}
-        className="space-y-3 rounded-lg border border-hair bg-surface p-4"
+        className="space-y-3 rounded-lg border border-edge bg-surface p-4"
       >
         <input
           type="text"
@@ -304,7 +304,7 @@ export function InboxBoard({
         {/* El estado vacío enseña, no informa: "sin actividades" es cierto y no
             sirve de nada la primera vez que alguien abre la pantalla. */}
         {tasks.length === 0 && (
-          <li className="rounded-lg border border-dashed border-hair bg-surface p-4 text-sm">
+          <li className="rounded-lg border border-dashed border-edge bg-surface p-4 text-sm">
             <p className="font-semibold text-muted">Nada pendiente por triagear.</p>
             <p className="mt-1 text-xs leading-relaxed text-muted">
               Aquí se acumula lo que aparece entre juntas y correos, antes de decidir qué día lo haces. Captúralo arriba

@@ -31,7 +31,7 @@ const UMBRAL = 3
 // Vocabulario visual del lenguaje "instrumento": los controles son la misma
 // pieza en toda la página, así que viven como constantes en vez de repetirse.
 const BTN_SECUNDARIO =
-  'inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-hair bg-surface px-4 text-[13px] font-semibold text-brand-deep transition-colors hover:border-brand hover:text-brand disabled:opacity-40'
+  'inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-edge bg-surface px-4 text-[13px] font-semibold text-brand-deep transition-colors hover:border-brand hover:text-brand disabled:opacity-40'
 const ICONO_RECURSO: Record<string, string> = {
   libro: '📕',
   curso: '🎓',
@@ -45,7 +45,7 @@ const BTN_PRIMARIO =
 const BTN_MINI =
   'rounded-md border border-hair px-2 py-1 text-[11px] font-semibold text-muted transition-colors hover:border-brand hover:text-brand disabled:opacity-40'
 const CAMPO =
-  'w-full rounded-lg border border-hair bg-surface px-3 py-2 text-sm text-ink transition-colors focus:border-brand focus:outline-none'
+  'w-full rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-ink transition-colors focus:border-brand focus:outline-none'
 
 function horas(min: number): string {
   if (min <= 0) return '0h'
@@ -343,7 +343,7 @@ function FilaReactivo({ r }: { r: ReactivoPatron }): React.ReactElement {
 
 function TablaReactivos({ patron }: { patron: PatronNivel }): React.ReactElement {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-hair bg-surface">
+    <div className="overflow-hidden rounded-[10px] border border-edge bg-surface">
       <div className={`${COLUMNAS} border-b border-hair bg-paper/60 px-4 py-2.5 md:px-5`}>
         <span className="lbl">#</span>
         <span className="lbl">Reactivo de {patron.nombre}</span>

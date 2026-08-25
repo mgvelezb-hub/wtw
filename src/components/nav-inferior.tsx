@@ -77,9 +77,9 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
             role="dialog"
             aria-modal="true"
             aria-label="Todas las secciones"
-            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-hair bg-surface pb-4 shadow-[0_-4px_16px_rgba(26,35,35,0.08)] sm:hidden"
+            className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-edge bg-surface pb-4 shadow-[0_-4px_16px_rgba(26,35,35,0.08)] sm:hidden"
           >
-            <div className="sticky top-0 flex items-center justify-between border-b border-hair bg-surface px-4 py-3">
+            <div className="sticky top-0 flex items-center justify-between border-b border-edge bg-surface px-4 py-3">
               <p className="text-sm font-bold text-brand-deep">Todas las secciones</p>
               <button
                 type="button"
@@ -134,7 +134,7 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
           sin eso el home indicator queda encima de los dos tabs de en medio. */}
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-hair bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
       >
         <div className="flex items-stretch">
           {principales.map((it) => {

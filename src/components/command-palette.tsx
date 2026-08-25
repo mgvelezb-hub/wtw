@@ -182,7 +182,7 @@ export function CommandPalette({ grupos, proyectos }: { grupos: Grupo[]; proyect
         aria-label="Ir a"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={alTeclearPanel}
-        className="mx-auto mt-24 w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border border-hair bg-surface shadow-lg"
+        className="mx-auto mt-24 w-[calc(100%-2rem)] max-w-lg overflow-hidden rounded-lg border border-edge bg-surface shadow-lg"
       >
         <div className="flex items-center gap-2 border-b border-hair px-3">
           <input

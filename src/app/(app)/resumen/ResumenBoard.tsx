@@ -92,7 +92,7 @@ export function ResumenBoard({
         </p>
       </header>
 
-      <section className="rounded-lg border border-hair bg-surface p-4">
+      <section className="rounded-lg border border-edge bg-surface p-4">
         <h2 className="lbl">Alcance</h2>
         <div className="mt-2 flex flex-wrap gap-1">
           {ALCANCES.map((a) => (
@@ -116,7 +116,7 @@ export function ResumenBoard({
               value={minutaId}
               onChange={(e) => setMinutaId(e.target.value)}
               aria-label="Junta"
-              className="w-full rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-ink"
+              className="w-full rounded-md border border-edge bg-surface px-2 py-1.5 text-sm text-ink"
             >
               {minutas.length === 0 && <option value="">Sin minutas capturadas</option>}
               {minutas.map((m) => (
@@ -147,7 +147,7 @@ export function ResumenBoard({
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 aria-label="Proyecto (opcional)"
-                className="rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-muted"
+                className="rounded-md border border-edge bg-surface px-2 py-1.5 text-sm text-muted"
               >
                 <option value="">Todos los proyectos</option>
                 {proyectos.map((p) => (
@@ -184,7 +184,7 @@ export function ResumenBoard({
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               aria-label="Proyecto"
-              className="w-full rounded-md border border-hair bg-surface px-2 py-1.5 text-sm text-ink"
+              className="w-full rounded-md border border-edge bg-surface px-2 py-1.5 text-sm text-ink"
             >
               {proyectos.length === 0 && <option value="">Sin proyectos activos</option>}
               {proyectos.map((p) => (
@@ -221,7 +221,7 @@ export function ResumenBoard({
                   void navigator.clipboard.writeText(texto)
                   if (artifactId) startTransition(() => void marcarResumenEnviadoAction(artifactId))
                 }}
-                className="rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep"
+                className="rounded-md border border-edge bg-surface px-3 py-1 text-xs font-bold text-brand-deep"
               >
                 Copiar
               </button>
@@ -252,7 +252,7 @@ export function ResumenBoard({
             onChange={(e) => setTexto(e.target.value)}
             rows={22}
             aria-label="Texto del resumen"
-            className="mt-2 w-full rounded-md border border-hair bg-surface px-3 py-2 font-mono text-xs text-ink"
+            className="mt-2 w-full rounded-md border border-edge bg-surface px-3 py-2 font-mono text-xs text-ink"
           />
           <p className="mt-1 text-[11px] text-faint">
             Lo que edites se guarda aparte: el borrador original nunca se sobrescribe.

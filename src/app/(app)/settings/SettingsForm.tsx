@@ -23,7 +23,7 @@ export function SettingsForm({ user }: { user: SettingsUser }) {
     <form action={formAction} className="mx-auto max-w-md space-y-6 p-4">
       <h1 className="text-2xl font-semibold text-ink">Ajustes</h1>
 
-      <div className="space-y-4 rounded-lg border border-hair bg-surface p-6">
+      <div className="space-y-4 rounded-lg border border-edge bg-surface p-6">
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">
             <span className="text-muted">Horario inicio</span>
@@ -79,7 +79,7 @@ export function SettingsForm({ user }: { user: SettingsUser }) {
       <button
         type="submit"
         formAction={logoutAction}
-        className="w-full rounded-md border border-hair bg-surface px-4 py-2 text-sm font-medium text-brand-deep hover:bg-paper"
+        className="w-full rounded-md border border-edge bg-surface px-4 py-2 text-sm font-medium text-brand-deep hover:bg-paper"
       >
         Cerrar sesión
       </button>

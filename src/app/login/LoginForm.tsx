@@ -8,7 +8,7 @@ export function LoginForm() {
 
   return (
     <main className="min-h-dvh flex items-center justify-center bg-paper px-4">
-      <form action={formAction} className="w-full max-w-sm space-y-4 rounded-lg border border-hair bg-surface p-8">
+      <form action={formAction} className="w-full max-w-sm space-y-4 rounded-lg border border-edge bg-surface p-8">
         <div>
           <h1 className="text-2xl font-semibold text-ink">WTW App</h1>
           <p className="text-sm text-muted">Tu semana, ganada por diseño</p>

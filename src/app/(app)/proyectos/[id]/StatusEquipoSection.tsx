@@ -129,7 +129,7 @@ export function StatusEquipoSection({
     <section className="hair pt-6">
       <h2 className="lbl mb-2">Status para equipo</h2>
 
-      <div className="rounded-lg border border-hair bg-surface p-3">
+      <div className="rounded-lg border border-edge bg-surface p-3">
         <button
           type="button"
           onClick={alGenerar}
@@ -172,7 +172,7 @@ export function StatusEquipoSection({
                 type="button"
                 onClick={alGuardarBorrador}
                 disabled={pending}
-                className="rounded-md border border-hair bg-surface px-3 py-1.5 text-sm font-medium text-brand-deep disabled:opacity-50"
+                className="rounded-md border border-edge bg-surface px-3 py-1.5 text-sm font-medium text-brand-deep disabled:opacity-50"
               >
                 Guardar borrador editado
               </button>

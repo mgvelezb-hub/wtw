@@ -192,7 +192,7 @@ export function CierreBoard({
               setFilas((f) => [...f, { key: `n${f.length}${Date.now()}`, causa: 'bomberazo', minutos: 30 }])
               setGuardado(false)
             }}
-            className="rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
+            className="rounded-md border border-edge bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft"
           >
             + Desvío
           </button>
@@ -205,13 +205,13 @@ export function CierreBoard({
         )}
 
         {filas.map((f) => (
-          <div key={f.key} className="space-y-1 rounded-lg border border-hair bg-surface p-2">
+          <div key={f.key} className="space-y-1 rounded-lg border border-edge bg-surface p-2">
             <div className="flex flex-wrap items-center gap-1">
               <select
                 value={f.causa}
                 aria-label="Causa del desvío"
                 onChange={(e) => set(f.key, { causa: e.target.value as DesvioCausa })}
-                className="min-w-48 flex-1 rounded border border-hair bg-surface px-1 py-1 text-sm text-ink"
+                className="min-w-48 flex-1 rounded border border-edge bg-surface px-1 py-1 text-sm text-ink"
               >
                 {CAUSAS.map((c) => (
                   <option key={c} value={c}>
@@ -249,7 +249,7 @@ export function CierreBoard({
                   value={f.stakeholderId ?? ''}
                   aria-label="De quién vino la urgencia"
                   onChange={(e) => set(f.key, { stakeholderId: e.target.value || undefined })}
-                  className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+                  className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
                 >
                   <option value="">¿De quién vino?</option>
                   {cierre.stakeholders.map((s) => (
@@ -264,7 +264,7 @@ export function CierreBoard({
                   value={f.taskId ?? ''}
                   aria-label="Tarea afectada"
                   onChange={(e) => set(f.key, { taskId: e.target.value || undefined })}
-                  className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+                  className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
                 >
                   <option value="">Sin tarea específica</option>
                   {cierre.tareas.map((t) => (
@@ -395,7 +395,7 @@ export function CierreBoard({
                   setMovidos(await pasarPendientesAction(cierre.fecha))
                 })
               }
-              className="mt-2 rounded-md border border-hair bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft disabled:opacity-40"
+              className="mt-2 rounded-md border border-edge bg-surface px-3 py-1 text-xs font-bold text-brand-deep hover:bg-brand-soft disabled:opacity-40"
             >
               {pending ? 'Moviendo…' : `Pasar ${cierre.pendientesPorMover} al siguiente día hábil`}
             </button>
@@ -511,14 +511,14 @@ function PromoverDesvio({
         onChange={(e) => setTitulo(e.target.value)}
         placeholder="Qué hiciste, como se escribiría una tarea"
         aria-label="Título del trabajo"
-        className="w-full rounded border border-hair bg-surface px-2 py-0.5 text-xs text-ink"
+        className="w-full rounded border border-edge bg-surface px-2 py-0.5 text-xs text-ink"
       />
       <div className="flex flex-wrap items-center gap-1">
         <select
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           aria-label="Proyecto del trabajo"
-          className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+          className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
         >
           {proyectos.map((p) => (
             <option key={p.id} value={p.id}>
@@ -530,7 +530,7 @@ function PromoverDesvio({
           value={alcance}
           onChange={(e) => setAlcance(e.target.value as 'aliado' | 'sow')}
           aria-label="Alcance del trabajo"
-          className="rounded border border-hair bg-surface px-1 py-0.5 text-xs text-muted"
+          className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
         >
           <option value="aliado">Fuera del SOW (aliado)</option>
           <option value="sow">Dentro del SOW</option>
@@ -543,7 +543,7 @@ function PromoverDesvio({
             onChange={(e) => setDolor(e.target.value)}
             placeholder="Qué dolor del cliente atendió (requerido)"
             aria-label="Dolor del cliente"
-            className="w-full rounded border border-hair bg-surface px-2 py-0.5 text-xs text-ink"
+            className="w-full rounded border border-edge bg-surface px-2 py-0.5 text-xs text-ink"
           />
           {proyecto && !proyecto.tieneTarifa && (
             <p className="text-[11px] text-danger">

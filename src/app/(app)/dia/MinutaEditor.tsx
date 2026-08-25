@@ -130,7 +130,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         aria-label="Tamaño de fuente"
         value={(editor.getAttributes('textStyle').fontSize as string) || '14px'}
         onChange={(e) => editor.chain().focus().setFontSize(e.target.value).run()}
-        className="rounded border border-hair bg-surface px-1 py-0.5 text-xs"
+        className="rounded border border-edge bg-surface px-1 py-0.5 text-xs"
       >
         {TAMANOS.map((t) => (
           <option key={t.valor} value={t.valor}>
@@ -144,7 +144,7 @@ function Toolbar({ editor }: { editor: Editor }) {
         aria-label="Color de texto"
         value={(editor.getAttributes('textStyle').color as string) || '#171717'}
         onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-        className="rounded border border-hair bg-surface px-1 py-0.5 text-xs"
+        className="rounded border border-edge bg-surface px-1 py-0.5 text-xs"
       >
         {COLORES.map((c) => (
           <option key={c.valor} value={c.valor}>
