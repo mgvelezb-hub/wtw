@@ -1,6 +1,7 @@
 'use client'
 
-import { type ReactNode, useEffect, useRef, useState, useTransition } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import {
   DndContext,
@@ -36,6 +37,7 @@ import {
   startDayAction,
 } from './actions'
 import { createManualEntryAction } from './timeentry-actions'
+import { colocarMenu, ANCHO_MENU, type PosicionMenu } from './menu-geometria'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
 import { AyudaContextual } from '@/components/ayuda-contextual'
@@ -1321,6 +1323,18 @@ const FILA_MENU_DANGER =
 // React que se cierra con Escape, con clic afuera o cuando un ítem actúa. Los
 // controles destructivos que viven dentro siguen usando ConfirmarQuitar (dos
 // clics), así que el menú NUNCA ejecuta algo irreversible con un solo clic.
+// El menú vive en un PORTAL con `position: fixed`, no como hijo absoluto de la
+// fila. Dos razones, y la segunda es la que lo rompía en el último bloque del
+// día:
+//   1. La lista del día está dentro de contenedores con overflow, que recortan
+//      cualquier hijo absoluto que se salga (mismo defecto que tuvo el popover
+//      del "?", ver src/components/ayuda-contextual.tsx).
+//   2. Abría SIEMPRE hacia abajo (`top-full`), así que en las últimas filas caía
+//      fuera de la pantalla. Ahora se voltea hacia arriba cuando no cabe abajo,
+//      y en cualquier caso se acota al viewport con scroll propio.
+//
+// La aritmética de dónde cae vive en ./menu-geometria.ts y se prueba sin
+// navegador; aquí solo se mide el botón y el panel.
 function MenuBloque({
   children,
   disabled,
@@ -1333,12 +1347,44 @@ function MenuBloque({
   className?: string
 }) {
   const [abierto, setAbierto] = useState(false)
-  const ref = useRef<HTMLDivElement | null>(null)
+  const [pos, setPos] = useState<PosicionMenu | null>(null)
+  const boton = useRef<HTMLButtonElement | null>(null)
+  const panel = useRef<HTMLDivElement | null>(null)
+
+  // Se recalcula en scroll y resize mientras está abierto: con `fixed`, si la
+  // página scrollea el botón se mueve y el menú no.
+  useLayoutEffect(() => {
+    if (!abierto) return
+
+    function colocar() {
+      const r = boton.current?.getBoundingClientRect()
+      if (!r) return
+      setPos(
+        colocarMenu(
+          { top: r.top, bottom: r.bottom, right: r.right },
+          panel.current?.offsetHeight ?? 0,
+          { ancho: window.innerWidth, alto: window.innerHeight }
+        )
+      )
+    }
+
+    colocar()
+    window.addEventListener('scroll', colocar, true)
+    window.addEventListener('resize', colocar)
+    return () => {
+      window.removeEventListener('scroll', colocar, true)
+      window.removeEventListener('resize', colocar)
+    }
+  }, [abierto])
 
   useEffect(() => {
     if (!abierto) return
     function alHacerClicAfuera(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAbierto(false)
+      const t = e.target as Node
+      // El panel ya no es descendiente del botón en el DOM: hay que preguntarle
+      // a los dos por separado o el primer clic dentro del menú lo cierra.
+      if (boton.current?.contains(t) || panel.current?.contains(t)) return
+      setAbierto(false)
     }
     function alTeclear(e: KeyboardEvent) {
       if (e.key === 'Escape') setAbierto(false)
@@ -1352,8 +1398,9 @@ function MenuBloque({
   }, [abierto])
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
+        ref={boton}
         type="button"
         disabled={disabled}
         aria-haspopup="true"
@@ -1372,13 +1419,27 @@ function MenuBloque({
       >
         ⋯
       </button>
-      {abierto && (
-        // Ya no hace falta blindar el menú contra el drag de la fila: con
-        // dnd-kit el arrastre solo nace del handle ⋮⋮, no de la fila entera.
-        <div className="absolute right-0 top-full z-30 mt-1 w-60 space-y-0.5 rounded-lg border border-edge bg-surface p-1 shadow-lg">
-          {children(() => setAbierto(false))}
-        </div>
-      )}
+      {abierto &&
+        createPortal(
+          // Se monta antes de tener posición para poder MEDIRLO y decidir si
+          // abre hacia arriba; hasta entonces va oculto, no desplazado, para que
+          // no se vea saltar. `useLayoutEffect` cierra el ciclo antes del paint.
+          <div
+            ref={panel}
+            role="menu"
+            style={{
+              top: pos?.top ?? 0,
+              left: pos?.left ?? 0,
+              maxHeight: pos?.maxHeight,
+              width: ANCHO_MENU,
+              visibility: pos ? 'visible' : 'hidden',
+            }}
+            className="fixed z-50 space-y-0.5 overflow-y-auto rounded-lg border border-edge bg-surface p-1 shadow-lg"
+          >
+            {children(() => setAbierto(false))}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
