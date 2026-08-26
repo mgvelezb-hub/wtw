@@ -37,6 +37,8 @@ import {
   startDayAction,
 } from './actions'
 import { createManualEntryAction, corregirTiempoMedidoAction } from './timeentry-actions'
+import { crearActividadDelDiaAction, sugerirDuracionAction } from './nueva-actividad-actions'
+import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
 import { colocarMenu, ANCHO_MENU, type PosicionMenu } from './menu-geometria'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
@@ -91,7 +93,7 @@ function parseMinutos(raw: string): number | null {
   return n > 0 && n <= 1440 ? n : null
 }
 
-type Win = { posicion: number; titulo: string; estatus: string }
+type Win = { id: string; posicion: number; titulo: string; estatus: string }
 type DiaTab = { fecha: string; abr: string; num: string }
 type StartTransitionFn = (fn: () => void) => void
 
@@ -916,6 +918,14 @@ export function DiaBoard(p: DiaBoardProps) {
             </h3>
             <span className="text-xs text-faint">arrastra al día</span>
           </div>
+          <NuevaActividad
+            fecha={p.selectedDay}
+            wins={p.wins}
+            proyectos={p.proyectosActivos}
+            factorUsado={p.factorUsado}
+            pending={pending}
+            startTransition={startTransition}
+          />
           {/* Desde lg la columna entera ya tiene su propio scroll: un segundo
               scroll anidado aquí adentro pelearía con el de afuera. */}
           <div className="mt-2.5 max-h-[32rem] space-y-2 overflow-y-auto text-[0.8125rem] lg:max-h-none lg:overflow-visible">
@@ -1323,6 +1333,172 @@ const FILA_MENU_DANGER =
 // React que se cierra con Escape, con clic afuera o cuando un ítem actúa. Los
 // controles destructivos que viven dentro siguen usando ConfirmarQuitar (dos
 // clics), así que el menú NUNCA ejecuta algo irreversible con un solo clic.
+// Capturar sin salir del día. Antes había que irse a /inbox y volver, y cuando
+// algo cae a media mañana —una junta que suelta trabajo— salir del día es justo
+// lo que hace que no se registre. Lo que no se registra no entra en la carga
+// contra la que se mide el sobre-compromiso.
+//
+// Arranca colapsado: es una acción ocasional, y un formulario siempre abierto en
+// la columna de pendientes compite con lo que sí se mira todos los días.
+const TIPOS_TRABAJO = ['deck', 'analisis', 'junta', 'gestion', 'comunicacion', 'otro'] as const
+
+function NuevaActividad({
+  fecha,
+  wins,
+  proyectos,
+  factorUsado,
+  pending,
+  startTransition,
+}: {
+  fecha: string
+  wins: Win[]
+  proyectos: ProyectoActivoView[]
+  factorUsado: number
+  pending: boolean
+  startTransition: StartTransitionFn
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [titulo, setTitulo] = useState('')
+  const [projectId, setProjectId] = useState('')
+  const [winId, setWinId] = useState('')
+  const [herramienta, setHerramienta] = useState('')
+  const [tipoTrabajo, setTipoTrabajo] = useState('')
+  const [minutos, setMinutos] = useState('')
+  const [sugiriendo, setSugiriendo] = useState(false)
+  const [nota, setNota] = useState<string | null>(null)
+
+  function limpiar() {
+    setTitulo(''); setProjectId(''); setWinId(''); setHerramienta(''); setTipoTrabajo(''); setMinutos(''); setNota(null)
+  }
+
+  async function sugerir() {
+    setSugiriendo(true)
+    setNota(null)
+    const r = await sugerirDuracionAction(titulo, herramienta || undefined, proyectos.find((p) => p.id === projectId)?.nombre)
+    setSugiriendo(false)
+    if (r.ok) { setMinutos(String(r.estimadoMin)); setNota(r.nota ?? null) } else setNota(r.error)
+  }
+
+  function guardar(agendar: boolean) {
+    const est = minutos.trim() === '' ? undefined : Number(minutos)
+    startTransition(() => {
+      void crearActividadDelDiaAction({
+        titulo,
+        fecha,
+        agendar,
+        projectId: projectId || undefined,
+        winId: winId || undefined,
+        herramienta: herramienta || undefined,
+        tipoTrabajo: (tipoTrabajo || undefined) as never,
+        estimadoMin: Number.isFinite(est) ? est : undefined,
+      })
+    })
+    limpiar()
+    setAbierto(false)
+  }
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAbierto(true)}
+        className="mt-2.5 w-full rounded-md border border-dashed border-hair py-2 text-xs font-semibold text-muted hover:border-brand hover:text-brand-deep"
+      >
+        + Nueva actividad
+      </button>
+    )
+  }
+
+  const est = Number(minutos)
+  const ajustado = Number.isFinite(est) && est > 0 ? Math.round(est * factorUsado) : null
+
+  return (
+    <div className="mt-2.5 space-y-2 rounded-lg border border-edge bg-paper p-2.5">
+      <input
+        autoFocus
+        value={titulo}
+        onChange={(e) => setTitulo(e.target.value)}
+        placeholder="¿Qué hay que hacer?"
+        className="w-full rounded border border-hair bg-surface px-2 py-1.5 text-[0.8125rem]"
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <select value={projectId} onChange={(e) => setProjectId(e.target.value)} aria-label="Proyecto" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
+          <option value="">Proyecto…</option>
+          {proyectos.map((pr) => <option key={pr.id} value={pr.id}>{pr.nombre}</option>)}
+        </select>
+
+        <select value={winId} onChange={(e) => setWinId(e.target.value)} aria-label="Win de la semana" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
+          <option value="">Sin Win</option>
+          {wins.map((w) => <option key={w.id} value={w.id}>{w.posicion}. {w.titulo.slice(0, 30)}</option>)}
+        </select>
+
+        <select value={herramienta} onChange={(e) => setHerramienta(e.target.value)} aria-label="Herramienta" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
+          <option value="">Herramienta…</option>
+          {HERRAMIENTAS.map((h) => <option key={h} value={h}>{h}</option>)}
+        </select>
+
+        <select value={tipoTrabajo} onChange={(e) => setTipoTrabajo(e.target.value)} aria-label="Clase de trabajo" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
+          <option value="">Clase…</option>
+          {TIPOS_TRABAJO.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          value={minutos}
+          onChange={(e) => setMinutos(e.target.value)}
+          placeholder="min"
+          inputMode="numeric"
+          aria-label="Minutos estimados"
+          className="w-16 rounded border border-hair bg-surface px-2 py-1 text-xs num"
+        />
+        <button
+          type="button"
+          disabled={sugiriendo || titulo.trim() === ''}
+          onClick={() => void sugerir()}
+          title="Estimar con la IA, usando tus tareas ya medidas como referencia"
+          className="rounded border border-hair px-2 py-1 text-xs font-medium text-muted hover:border-brand hover:text-brand-deep disabled:opacity-40"
+        >
+          {sugiriendo ? 'estimando…' : '✨ Sugerir'}
+        </button>
+        {/* El ajustado se muestra ANTES de guardar: el factor deja de ser un
+            número abstracto de la cabecera y se vuelve la consecuencia visible
+            de lo que se está a punto de comprometer. */}
+        {ajustado !== null && (
+          <span className="text-xs text-faint">
+            → <span className="num">{ajustado}</span> min con factor {factorUsado}
+          </span>
+        )}
+      </div>
+
+      {nota && <p className="text-xs leading-relaxed text-faint">{nota}</p>}
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={pending || titulo.trim() === ''}
+          onClick={() => guardar(true)}
+          className="rounded-md bg-brand-deep px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+        >
+          Agendar en este día
+        </button>
+        <button
+          type="button"
+          disabled={pending || titulo.trim() === ''}
+          onClick={() => guardar(false)}
+          className="rounded-md border border-hair px-2.5 py-1.5 text-xs font-medium text-muted hover:border-brand hover:text-brand-deep disabled:opacity-40"
+        >
+          A pendientes
+        </button>
+        <button type="button" onClick={() => { limpiar(); setAbierto(false) }} className="ml-auto text-xs text-faint hover:text-ink">
+          cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // El menú vive en un PORTAL con `position: fixed`, no como hijo absoluto de la
 // fila. Dos razones, y la segunda es la que lo rompía en el último bloque del
 // día:

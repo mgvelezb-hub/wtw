@@ -51,7 +51,7 @@ export default async function DiaPage({ searchParams }: { searchParams: Promise<
       rango={`${rangoInicio} – ${rangoFin}`}
       factorUsado={Number(view.week.factorUsado)}
       desbloqueador={view.week.desbloqueador}
-      wins={view.week.wins.map((w) => ({ posicion: w.posicion, titulo: w.titulo, estatus: w.estatus }))}
+      wins={view.week.wins.map((w) => ({ id: w.id, posicion: w.posicion, titulo: w.titulo, estatus: w.estatus }))}
       trabajable={view.capacidad.trabajableTotal}
       carga={view.cargaSemHoras}
       colchon={view.capacidad.trabajablePlaneable - view.cargaSemHoras}
