@@ -36,7 +36,7 @@ import {
   undoBlockDoneAction,
   startDayAction,
 } from './actions'
-import { createManualEntryAction } from './timeentry-actions'
+import { createManualEntryAction, corregirTiempoMedidoAction } from './timeentry-actions'
 import { colocarMenu, ANCHO_MENU, type PosicionMenu } from './menu-geometria'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
@@ -1765,6 +1765,31 @@ function FilaBloque({
                       onSubmit={(min) => {
                         cerrar()
                         startTransition(() => void setBlockDurationAction(b.id, Number(min)))
+                      }}
+                      className="ml-auto text-faint hover:text-brand-deep"
+                    />
+                  </div>
+                )}
+
+                {/* A diferencia del resto del menú, esta fila NO se condiciona a
+                    `!b.done` ni a `enVivo`: un cronómetro olvidado se descubre
+                    cuando la tarea ya está terminada, y a veces días después.
+                    Negarle la corrección justo entonces es lo que obligaba a
+                    entrar por la base de datos. */}
+                {isTarea && b.accumulatedSeconds > 0 && !b.runningSince && (
+                  <div className={FILA_MENU}>
+                    <span>✎ Corregir medido</span>
+                    <CampoEnLinea
+                      icono="⏱"
+                      titulo="Cuánto duró de verdad esta tarea (minutos)"
+                      valorInicial={String(Math.round(b.accumulatedSeconds / 60))}
+                      placeholder="min"
+                      ancho="w-14"
+                      parse={parseMinutos}
+                      disabled={pending}
+                      onSubmit={(min) => {
+                        cerrar()
+                        startTransition(() => void corregirTiempoMedidoAction(b.taskId!, Number(min)))
                       }}
                       className="ml-auto text-faint hover:text-brand-deep"
                     />

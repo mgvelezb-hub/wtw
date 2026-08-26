@@ -321,5 +321,47 @@ export async function createManualEntry(taskId: string, userId: string, seconds:
 export async function editEntry(entryId: string, userId: string, seconds: number) {
   const entry = await prisma.timeEntry.findUnique({ where: { id: entryId } })
   if (!entry || entry.userId !== userId) throw new Error('entry no encontrado')
-  return prisma.timeEntry.update({ where: { id: entryId }, data: { seconds, manual: true } })
+  return prisma.timeEntry.update({
+    where: { id: entryId },
+    // `stoppedAt` se mueve con `seconds`: dejarlo en su hora vieja dejaba el
+    // registro contradiciéndose —231 minutos de reloj, 61 de duración— y quien
+    // lo leyera después no sabría a cuál creerle.
+    data: { seconds, stoppedAt: new Date(entry.startedAt.getTime() + seconds * 1000), manual: true },
+  })
+}
+
+// Corrige el tiempo MEDIDO de una tarea, no lo planeado. El caso que la motiva
+// es el cronómetro olvidado: se arranca de verdad y se para horas después, y uno
+// se da cuenta cuando la tarea ya está terminada.
+//
+// Recibe el TOTAL que debió medir la tarea, no un delta: es lo que Mau sabe
+// ("fueron como una hora"), y evita que tenga que restar de cabeza.
+//
+// `startedAt` nunca se toca. El arranque sí fue real, y de él depende que el
+// tramo cuente como fuera de jornada en el semáforo JD-R: moverlo borraría la
+// señal de erosión de frontera, que es justo lo que no se debe perder al
+// corregir la duración.
+export async function setMeasuredMinutes(taskId: string, userId: string, seconds: number) {
+  if (seconds < 0) throw new Error('El tiempo medido no puede ser negativo.')
+  const task = await assertOwnedTask(taskId, userId)
+
+  if (task.timeEntries.some((e) => e.stoppedAt === null)) {
+    throw new Error('El cronómetro sigue corriendo en esta tarea — párala antes de corregir el tiempo.')
+  }
+
+  const tramos = [...task.timeEntries].sort((a, b) => a.startedAt.getTime() - b.startedAt.getTime())
+  if (tramos.length === 0) throw new Error('Esta tarea no tiene tiempo medido que corregir.')
+
+  // Se ajusta SOLO el último tramo: el olvidado es el último, y repartir el
+  // error entre todos ensuciaría tramos que sí se midieron bien.
+  const ultimo = tramos[tramos.length - 1]
+  const previos = tramos.slice(0, -1).reduce((s, e) => s + e.seconds, 0)
+  const restante = seconds - previos
+  if (restante < 0) {
+    throw new Error(
+      `Los tramos anteriores de esta tarea ya suman ${Math.round(previos / 60)} min, así que el total no puede ser menor.`
+    )
+  }
+
+  return editEntry(ultimo.id, userId, restante)
 }
