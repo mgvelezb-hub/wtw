@@ -21,6 +21,8 @@ type BitacoraSerializada = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
   minutosTotales: number
   desde: string | null
+  delegadas: Array<{ id: string; titulo: string; aQuien: string; proyecto: string | null; minutosAhorrados: number }>
+  minutosDelegados: number
 }
 
 // Espejo local de UMBRAL_PATRON (service.ts). No se importa el valor porque
@@ -1053,6 +1055,35 @@ export function DesarrolloBoard({
                 ))}
               </ul>
             </>
+          )}
+
+          {/* La otra cara, y apunta a la conclusión contraria sobre el mismo
+              escalafón: arriba es trabajo que Mau hizo y no debió —falta equipo—;
+              aquí es trabajo que ya soltó, que es la conducta de Gerente en sí
+              misma. Se muestran juntas y separadas a propósito. */}
+          {bitacora.delegadas.length > 0 && (
+            <div className="mt-4 border-t border-edge pt-3">
+              <p className="text-sm text-ink">
+                <strong className="num font-semibold">{horas(bitacora.minutosDelegados)}</strong> ya delegados ·{' '}
+                {bitacora.delegadas.length} {bitacora.delegadas.length === 1 ? 'tarea' : 'tareas'}
+              </p>
+              <p className="mt-1 text-xs text-muted">
+                Trabajo que salió de tu semana porque lo hace alguien más. Esto no es el caso para pedir un reporte: es
+                evidencia de que ya operas como {view.nivelObjetivo ?? 'Gerente'}.
+              </p>
+              <ul className="mt-2">
+                {bitacora.delegadas.map((t) => (
+                  <li key={t.id} className="flex items-baseline justify-between gap-2 border-t border-hair py-1.5 text-sm">
+                    <span className="min-w-0 text-ink">
+                      {t.titulo}
+                      {t.proyecto && <span className="ml-1 text-xs text-faint">· {t.proyecto}</span>}
+                      <span className="ml-1 text-xs text-muted">— {t.aQuien}</span>
+                    </span>
+                    <span className="num shrink-0 text-xs text-muted">{horas(t.minutosAhorrados)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </Seccion>
 

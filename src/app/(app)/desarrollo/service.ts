@@ -419,6 +419,13 @@ export type BitacoraDelegacion = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
   minutosTotales: number
   desde: Date | null
+  // Las dos caras de la delegación, y apuntan a conclusiones opuestas sobre el
+  // mismo escalafón: `tareas` es trabajo que Mau hizo y no debió (evidencia de
+  // que falta equipo), `delegadas` es trabajo que ya soltó (evidencia de que
+  // opera como gerente). Sumarlas en un solo número borraría justamente la
+  // distinción que el caso de promoción necesita.
+  delegadas: Array<{ id: string; titulo: string; aQuien: string; proyecto: string | null; minutosAhorrados: number }>
+  minutosDelegados: number
 }
 
 export async function getBitacoraDelegacion(userId: string): Promise<BitacoraDelegacion> {
@@ -439,10 +446,28 @@ export async function getBitacoraDelegacion(userId: string): Promise<BitacoraDel
     proyecto: t.project?.nombre ?? null,
   }))
 
+  const delegadasRaw = await prisma.task.findMany({
+    where: { userId, estatus: 'delegada' },
+    include: { project: { select: { nombre: true } } },
+    orderBy: { updatedAt: 'desc' },
+  })
+
+  const delegadas = delegadasRaw.map((t) => ({
+    id: t.id,
+    titulo: t.titulo,
+    aQuien: t.delegadoA ?? 'sin nombre',
+    proyecto: t.project?.nombre ?? null,
+    // Lo AJUSTADO y no lo crudo: es el tiempo que de verdad se habría llevado
+    // de la semana de Mau, que es la magnitud de lo que soltó.
+    minutosAhorrados: t.ajustadoMin ?? t.estimadoMin ?? 0,
+  }))
+
   return {
     tareas: mapeadas,
     minutosTotales: mapeadas.reduce((s, t) => s + t.minutosReales, 0),
     desde: tareas.length > 0 ? tareas[tareas.length - 1].createdAt : null,
+    delegadas,
+    minutosDelegados: delegadas.reduce((s, t) => s + t.minutosAhorrados, 0),
   }
 }
 

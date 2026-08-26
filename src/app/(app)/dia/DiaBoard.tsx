@@ -38,6 +38,7 @@ import {
 } from './actions'
 import { createManualEntryAction, corregirTiempoMedidoAction } from './timeentry-actions'
 import { crearActividadDelDiaAction, sugerirDuracionAction } from './nueva-actividad-actions'
+import { delegarTareaAction, deshacerDelegacionAction } from './actions'
 import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
 import { colocarMenu, ANCHO_MENU, type PosicionMenu } from './menu-geometria'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
@@ -433,6 +434,9 @@ function MetaBloque({ b }: { b: DayBlockView }) {
     )
   if (b.gerente) partes.push(<span key="ge">→ Gerente</span>)
   if (b.delegable) partes.push(<span key="de">↧ Delegable</span>)
+  // El nombre y no solo "delegada": el punto de que siga visible es saber a quién
+  // perseguir, no que quede constancia de que salió de la carga.
+  if (b.delegada) partes.push(<span key="dg">↦ {b.delegadoA ?? 'delegada'}</span>)
   if (b.proyecto?.tipo === 'interno' && !b.aliado) partes.push(<span key="in">Interno</span>)
   if (partes.length === 0) return null
   return (
@@ -2018,6 +2022,41 @@ function FilaBloque({
                         ))}
                     </select>
                   </div>
+                )}
+
+                {/* Delegar de verdad, distinto de marcar delegable: esta saca la
+                    tarea de la carga de Mau. Se pide el nombre en el mismo gesto
+                    porque sin a-quién no hay a quién darle seguimiento. */}
+                {isTarea && !b.delegada && !b.done && (
+                  <div className={FILA_MENU}>
+                    <span>↦ Delegar a</span>
+                    <CampoEnLinea
+                      icono="✎"
+                      titulo="¿Quién la va a hacer? Sale de tu carga y sigue visible como compromiso suyo"
+                      placeholder="nombre"
+                      ancho="w-20"
+                      parse={(raw) => (raw.trim() === '' ? null : raw.trim())}
+                      disabled={pending}
+                      onSubmit={(quien) => {
+                        cerrar()
+                        startTransition(() => void delegarTareaAction(b.taskId!, String(quien)))
+                      }}
+                      className="ml-auto text-faint hover:text-brand-deep"
+                    />
+                  </div>
+                )}
+
+                {isTarea && b.delegada && (
+                  <BotonMenu
+                    disabled={pending}
+                    titulo="Regresa la tarea a tu carga y a tu factor"
+                    onClick={() => {
+                      cerrar()
+                      startTransition(() => void deshacerDelegacionAction(b.taskId!))
+                    }}
+                  >
+                    ↤ La hago yo después de todo
+                  </BotonMenu>
                 )}
 
                 {isTarea && (

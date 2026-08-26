@@ -28,6 +28,8 @@ export type DayBlockView = {
   aliado: boolean // agrega valor al cliente fuera de SOW
   gerente: boolean // aporta a competencias del escalafón
   delegable: boolean // la hizo Mau pero debió hacerla un perfil más junior — bitácora de delegación
+  delegada: boolean // la hace alguien más: visible en el día, fuera de la carga
+  delegadoA: string | null
   fueraDeJornada: boolean // el reflow de juntas lo empujó después de horarioFin
   bloqueante: boolean // false: junta informativa (ej. compartida solo para visibilidad) — no resta capacidad
   calendarEventId: string | null // id crudo (sin prefijo) del CalendarEvent — para crear/buscar su Minuta
@@ -105,6 +107,8 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       aliado: task?.alcance === 'aliado',
       gerente: (task?.competencias?.length ?? 0) > 0,
       delegable: task?.delegable ?? false,
+      delegada: task?.estatus === 'delegada',
+      delegadoA: task?.delegadoA ?? null,
       fueraDeJornada:
         b.tipo === 'tarea' &&
         b.inicio !== 'flex' &&
@@ -135,6 +139,8 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     aliado: false,
     gerente: false,
     delegable: false,
+    delegada: false,
+    delegadoA: null,
     fueraDeJornada: false,
     bloqueante: e.bloqueante,
     calendarEventId: e.id,
@@ -224,7 +230,12 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
         : Promise.resolve(null),
     ])
 
-  const planeadoMin = blocks.filter((b) => b.tipo === 'tarea').reduce((s, b) => s + b.planMin, 0)
+  // Las delegadas no suman: esas horas ya no son de Mau. Siguen visibles en el
+  // día como compromiso de un tercero, pero fuera de su carga y, por lo tanto,
+  // fuera del factor —que se calcula contra lo planeado.
+  const planeadoMin = blocks
+    .filter((b) => b.tipo === 'tarea' && !b.delegada)
+    .reduce((s, b) => s + b.planMin, 0)
   const realMin = blocks.reduce((s, b) => s + b.accumulatedSeconds, 0) / 60
   const factorDia = planeadoMin > 0 && realMin > 0 ? realMin / planeadoMin : null
 
@@ -232,7 +243,10 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
   const libresHoy = diaCap ? diaCap.horasLibres : 0
   const capacidadHoy = libresHoy - planeadoMin / 60
 
-  const cargaSemMin = week?.tasks.reduce((s, t) => s + (t.ajustadoMin ?? t.estimadoMin ?? 0), 0) ?? 0
+  const cargaSemMin =
+    week?.tasks
+      .filter((t) => t.estatus !== 'delegada')
+      .reduce((s, t) => s + (t.ajustadoMin ?? t.estimadoMin ?? 0), 0) ?? 0
 
   const pendientes: PendienteView[] = pendientesRaw.map((t) => ({
     id: t.id,

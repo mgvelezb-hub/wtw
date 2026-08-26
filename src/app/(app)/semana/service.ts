@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { cuentaCarga } from '@/lib/delegacion'
 import { getWeek } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { senalesSobrecarga } from '@/lib/carga-sostenible'
@@ -119,7 +120,9 @@ export async function getLienzoSemana(
       // Doble candado de propiedad: la semana tiene que ser del usuario. Un
       // bloque de otro usuario con la misma fecha no entra al lienzo.
       where: { week: { userId }, fecha: { gte: inicio, lte: fin } },
-      include: { task: { select: { id: true, winId: true, project: { select: { nombre: true, color: true } } } } },
+      include: {
+        task: { select: { id: true, winId: true, estatus: true, delegadoA: true, project: { select: { nombre: true, color: true } } } },
+      },
       orderBy: [{ fecha: 'asc' }, { orden: 'asc' }],
     }),
     prisma.calendarEvent.findMany({
@@ -203,7 +206,7 @@ export async function getLienzoSemana(
         : Math.max(0, toMin(ov?.fin ?? user.horarioFin) - toMin(ov?.inicio ?? user.horarioInicio) - comidaMin)
 
     const planeadoMin =
-      blocksRaw.filter((b) => iso(b.fecha) === fecha).reduce((s, b) => s + b.planMin, 0) +
+      blocksRaw.filter((b) => iso(b.fecha) === fecha && cuentaCarga(b)).reduce((s, b) => s + b.planMin, 0) +
       eventos
         .filter((e) => iso(e.fecha) === fecha && e.bloqueante)
         .reduce((s, e) => s + Math.max(0, toMin(e.fin) - toMin(e.inicio)), 0)

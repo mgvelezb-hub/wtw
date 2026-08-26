@@ -34,6 +34,10 @@ enum TaskStatus {
   in_progress
   done
   deferred
+  // Delegada de verdad: la hace alguien más. Distinta de `delegable`, que es la
+  // bitácora de "la hice YO y debió hacerla un perfil más junior". Una sale de
+  // la carga de Mau; la otra es el caso de negocio para pedir ese perfil.
+  delegada
 }
 
 enum WeekStatus {
@@ -237,6 +241,9 @@ model Task {
   // tres expectativas de Gerente.
   delegable     Boolean      @default(false)
   delegableNota String? // a que perfil, y por que no se delego
+  // A quién se delegó, cuando estatus = delegada. Sin nombre la delegación no
+  // es seguimiento de nadie: es solo trabajo que desapareció de la vista.
+  delegadoA     String?
   herramienta   String? // Excel, PowerPoint, Python, Power BI, AnyLogic... determina complejidad/estimación
   tipoTrabajo   TipoTrabajo? // clase de referencia para el factor de realismo (ver enum)
   dodItems      DodItem[]

@@ -6,6 +6,7 @@ import { startTimer, stopTimer, cancelTimer } from '@/app/api/v1/timer/service'
 import { syncCalendar } from '@/app/api/v1/calendar/service'
 import { prisma } from '@/lib/prisma'
 import { toggleDodItem, discardDodItem, markTaskDone, undoTaskDone, markBlockDone, undoBlockDone } from './service'
+import { delegarTarea, deshacerDelegacion } from './delegacion-service'
 
 async function userId(): Promise<string> {
   const session = await verifySession()
@@ -70,4 +71,25 @@ export async function startDayAction() {
   const result = await syncCalendar(uid)
   revalidatePath('/dia')
   return result
+}
+
+// Delegar de verdad: sale de la carga de Mau pero sigue visible como compromiso
+// de un tercero. Distinto de marcarDelegableAction, que es la bitácora de "la
+// hice yo y debió hacerla alguien más junior".
+export async function delegarTareaAction(taskId: string, delegadoA: string) {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+  await delegarTarea(taskId, session.userId, delegadoA)
+  revalidatePath('/dia')
+  revalidatePath('/semana')
+  revalidatePath('/desarrollo')
+}
+
+export async function deshacerDelegacionAction(taskId: string) {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+  await deshacerDelegacion(taskId, session.userId)
+  revalidatePath('/dia')
+  revalidatePath('/semana')
+  revalidatePath('/desarrollo')
 }

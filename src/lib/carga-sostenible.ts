@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { BLOQUE_CUENTA_CARGA } from './delegacion'
 import { isoWeekOf } from '@/lib/dates'
 import { isoWeekAnterior } from '@/app/(app)/semana/nueva/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
@@ -87,7 +88,7 @@ async function senalSobrecompromiso(userId: string, hoy: Date): Promise<Senal> {
     evaluadas++
 
     const [agg, capacidad] = await Promise.all([
-      prisma.block.aggregate({ where: { weekId: week.id }, _sum: { planMin: true } }),
+      prisma.block.aggregate({ where: { weekId: week.id, ...BLOQUE_CUENTA_CARGA }, _sum: { planMin: true } }),
       capacityForWeek(userId, isoWeek),
     ])
     const cargaMin = agg._sum.planMin ?? 0
