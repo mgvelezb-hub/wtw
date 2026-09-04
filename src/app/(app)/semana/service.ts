@@ -5,7 +5,7 @@ import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { senalesSobrecarga } from '@/lib/carga-sostenible'
 import { getHistorico, type HistoricoWeek } from '@/app/(app)/historico/service'
 import { weekRangeFull, esFinDeSemana, todayStr } from '@/lib/dates'
-import { toMin, etiquetaHora, posicionarBloque, type Ubicacion } from './lienzo'
+import { toMin, etiquetaHora, posicionarBloque, repartirCarriles, type Ubicacion } from './lienzo'
 
 // ── Objetos planos al cliente (regla 2) ──────────────────────────────────────
 
@@ -28,6 +28,10 @@ export type LienzoBloque = {
   ubicacion: Ubicacion
   topMin: number | null
   durMin: number
+  /** Columna dentro del grupo de traslape (0 = la de la izquierda). */
+  carril: number
+  /** Cuántas columnas tiene su grupo. 1 = el bloque ocupa el ancho completo. */
+  carriles: number
 }
 
 export type LienzoDia = {
@@ -182,6 +186,8 @@ export async function getLienzoSemana(
       bloqueante: true,
       done: b.done,
       proyecto: b.task?.project ? { nombre: b.task.project.nombre, color: b.task.project.color } : null,
+      carril: 0,
+      carriles: 1,
       ...pos,
     }
   })
@@ -202,6 +208,8 @@ export async function getLienzoSemana(
       bloqueante: e.bloqueante,
       done: false,
       proyecto: null,
+      carril: 0,
+      carriles: 1,
       ...pos,
     })
   }
@@ -214,6 +222,27 @@ export async function getLienzoSemana(
     ...eventos.map((e) => iso(e.fecha)),
     ...overrides.filter((o) => o.inicio).map((o) => iso(o.fecha)),
   ])
+
+  // Los que se dibujan en el grid reparten ancho por día: dos bloques que
+  // comparten hora van lado a lado en vez de apilarse e imprimir texto sobre
+  // texto. Se calcula DESPUÉS de unir juntas y tareas, porque una junta de
+  // Outlook encimada con trabajo es una colisión igual de real.
+  const enGridPorFecha = new Map<string, LienzoBloque[]>()
+  for (const b of bloques) {
+    if (b.ubicacion !== 'grid' || b.topMin === null) continue
+    const lista = enGridPorFecha.get(b.fecha)
+    if (lista) lista.push(b)
+    else enGridPorFecha.set(b.fecha, [b])
+  }
+  for (const lista of enGridPorFecha.values()) {
+    const carriles = repartirCarriles(lista.map((b) => ({ id: b.id, topMin: b.topMin!, durMin: b.durMin })))
+    for (const b of lista) {
+      const c = carriles.get(b.id)
+      if (!c) continue
+      b.carril = c.carril
+      b.carriles = c.carriles
+    }
+  }
 
   const dias: LienzoDia[] = []
   for (let i = 0; i < 7; i++) {

@@ -60,11 +60,21 @@ function colorDe(b: LienzoBloque): string {
   return b.proyecto?.color ?? BRAND
 }
 
+// Separación entre carriles vecinos, en px. Los bloques de un grupo de
+// traslape se tocan sin este aire y se leen como uno solo partido.
+const AIRE_CARRIL = 2
+
 function estiloBloque(b: LienzoBloque, destacado: boolean): CSSProperties {
   const color = colorDe(b)
+  // El ancho se reparte entre los carriles del grupo de traslape (el service lo
+  // calcula con `repartirCarriles`). Con `carriles: 1` esto da el ancho
+  // completo, que es el caso normal: la mayoría de los días no colisionan.
+  const ancho = 100 / b.carriles
   return {
     top: (b.topMin ?? 0) * PX_POR_MIN,
     height: Math.max(MIN_ALTO_BLOQUE_PX, b.durMin * PX_POR_MIN),
+    left: `calc(${b.carril * ancho}% + ${b.carril === 0 ? 4 : AIRE_CARRIL}px)`,
+    width: `calc(${ancho}% - ${b.carriles === 1 ? 8 : AIRE_CARRIL * 2}px)`,
     backgroundColor: b.externa ? FONDO_EXTERNA : `${color}1f`,
     borderLeftColor: color,
     boxShadow: destacado ? `0 0 0 2px ${BRAND} inset` : undefined,
@@ -760,7 +770,7 @@ function BloqueEnGrid({
         touchAction: b.externa ? undefined : 'none',
       }}
       title={`${b.inicio}–${b.fin} · ${b.titulo}`}
-      className={`group absolute inset-x-1 overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
+      className={`group absolute overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
         b.externa ? 'z-0 cursor-default text-muted' : 'z-10 cursor-grab text-ink active:cursor-grabbing'
       } ${b.done ? 'opacity-50 line-through' : ''} ${
         informativa ? 'border border-l-[3px] border-dashed border-faint opacity-60' : ''

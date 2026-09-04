@@ -98,3 +98,63 @@ export function durDesdeResize(durMinInicial: number, deltaPx: number): number {
   const snap = Math.round(cruda / RESIZE_SNAP_MIN) * RESIZE_SNAP_MIN
   return Math.max(RESIZE_SNAP_MIN, snap)
 }
+
+// ── Carriles: repartir el ancho entre bloques que se traslapan ───────────────
+//
+// El lienzo pintaba todos los bloques de un día con `absolute inset-x-1`, o sea
+// al ancho completo de la columna, así que dos que compartían hora se apilaban
+// uno sobre otro y el texto se imprimía sobre el texto. En un lunes con tres
+// colisiones no se podía leer ninguna de las actividades — en la pantalla que
+// existe para responder "¿cabe la semana?".
+//
+// El reparto es por GRUPO de colisión, no por día: dos que se enciman en la
+// mañana no adelgazan al de la tarde que no colisiona con nadie. Y un carril se
+// reutiliza en cuanto el bloque que lo ocupaba terminó, así que una sola
+// colisión no parte el día entero en tres columnas.
+//
+// Aritmética pura, como el resto de este módulo: se prueba sin DOM.
+
+export type Tramo = { id: string; topMin: number; durMin: number }
+export type Carril = { carril: number; carriles: number }
+
+export function repartirCarriles(tramos: Tramo[]): Map<string, Carril> {
+  const orden = [...tramos].sort((a, b) => a.topMin - b.topMin || b.durMin - a.durMin)
+  const salida = new Map<string, Carril>()
+
+  // Un grupo es una cadena de traslapes: se corta cuando empieza un bloque
+  // después de que TODO lo anterior del grupo terminó. Dentro del grupo, cada
+  // uno va al primer carril cuyo último ocupante ya acabó.
+  let grupo: Array<{ id: string; carril: number }> = []
+  let finDeCarril: number[] = []
+  let finDelGrupo = -1
+
+  function cerrarGrupo(): void {
+    const carriles = finDeCarril.length
+    for (const g of grupo) salida.set(g.id, { carril: g.carril, carriles })
+    grupo = []
+    finDeCarril = []
+    finDelGrupo = -1
+  }
+
+  for (const t of orden) {
+    const fin = t.topMin + t.durMin
+    // Tocarse de punta a punta (09:00–10:00 y 10:00–11:00) NO es traslape:
+    // tratarlo como colisión partiría el día de quien agenda pegado, que es lo
+    // normal.
+    if (grupo.length > 0 && t.topMin >= finDelGrupo) cerrarGrupo()
+
+    let carril = finDeCarril.findIndex((f) => f <= t.topMin)
+    if (carril === -1) {
+      carril = finDeCarril.length
+      finDeCarril.push(fin)
+    } else {
+      finDeCarril[carril] = fin
+    }
+
+    grupo.push({ id: t.id, carril })
+    finDelGrupo = Math.max(finDelGrupo, fin)
+  }
+  if (grupo.length > 0) cerrarGrupo()
+
+  return salida
+}

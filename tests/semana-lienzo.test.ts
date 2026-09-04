@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
 import { getLienzoSemana } from '@/app/(app)/semana/service'
-import { posicionarBloque, horaDesdeOffset, PX_POR_HORA } from '@/app/(app)/semana/lienzo'
+import { posicionarBloque, horaDesdeOffset, repartirCarriles, PX_POR_HORA } from '@/app/(app)/semana/lienzo'
 
 const TEST_EMAIL = 'test-lienzo@vp.mx'
 const OTRO_EMAIL = 'test-lienzo-otro@vp.mx'
@@ -289,5 +289,137 @@ describe('getLienzoSemana · fin de semana', () => {
     const b = v!.bloques.find((x) => x.titulo === 'Guardia planeada')!
     expect(b.ubicacion).toBe('grid')
     expect(v!.fueraDeJornada.map((f) => f.titulo)).not.toContain('Guardia planeada')
+  })
+})
+
+// El lienzo apilaba los bloques que se traslapan en la misma columna, uno
+// encima del otro con `absolute inset-x-1`: el texto se imprimía sobre el
+// texto. En un lunes real con tres colisiones no se podía leer ninguna de las
+// actividades, en la pantalla que existe para responder "¿cabe la semana?".
+describe('repartirCarriles · el traslape se reparte, no se apila', () => {
+  it('sin traslape todo ocupa el ancho completo', () => {
+    const r = repartirCarriles([
+      { id: 'a', topMin: 0, durMin: 60 },
+      { id: 'b', topMin: 60, durMin: 60 },
+    ])
+    expect(r.get('a')).toEqual({ carril: 0, carriles: 1 })
+    expect(r.get('b')).toEqual({ carril: 0, carriles: 1 })
+  })
+
+  it('dos que se traslapan se ponen lado a lado', () => {
+    const r = repartirCarriles([
+      { id: 'a', topMin: 0, durMin: 90 },
+      { id: 'b', topMin: 60, durMin: 60 },
+    ])
+    expect(r.get('a')).toEqual({ carril: 0, carriles: 2 })
+    expect(r.get('b')).toEqual({ carril: 1, carriles: 2 })
+  })
+
+  it('tres encimados dan tres carriles', () => {
+    const r = repartirCarriles([
+      { id: 'a', topMin: 0, durMin: 180 },
+      { id: 'b', topMin: 30, durMin: 120 },
+      { id: 'c', topMin: 60, durMin: 60 },
+    ])
+    expect(r.get('a')!.carriles).toBe(3)
+    expect([r.get('a')!.carril, r.get('b')!.carril, r.get('c')!.carril]).toEqual([0, 1, 2])
+  })
+
+  it('un carril se REUSA cuando el bloque anterior ya terminó', () => {
+    // a y b colisionan; c empieza después de que a terminó, así que c vuelve al
+    // carril 0 en vez de abrir un tercero. Sin esto, una mañana con una sola
+    // colisión adelgazaría todo el día a un tercio de ancho.
+    const r = repartirCarriles([
+      { id: 'a', topMin: 0, durMin: 60 },
+      { id: 'b', topMin: 30, durMin: 120 },
+      { id: 'c', topMin: 60, durMin: 30 },
+    ])
+    expect(r.get('c')!.carril).toBe(0)
+    expect(r.get('c')!.carriles).toBe(2)
+  })
+
+  it('el ancho se reparte por GRUPO de colisión, no por día entero', () => {
+    // Dos que colisionan en la mañana y uno solo en la tarde: el de la tarde
+    // conserva el ancho completo. Repartir por día castigaría a los bloques que
+    // no colisionan con nadie.
+    const r = repartirCarriles([
+      { id: 'am1', topMin: 0, durMin: 60 },
+      { id: 'am2', topMin: 30, durMin: 60 },
+      { id: 'pm', topMin: 300, durMin: 60 },
+    ])
+    expect(r.get('am1')!.carriles).toBe(2)
+    expect(r.get('am2')!.carriles).toBe(2)
+    expect(r.get('pm')).toEqual({ carril: 0, carriles: 1 })
+  })
+
+  it('tocarse de punta a punta no es traslape', () => {
+    // 09:00–10:00 y 10:00–11:00 son contiguos. Tratarlos como colisión partiría
+    // en dos el día de quien agenda pegado, que es lo normal.
+    const r = repartirCarriles([
+      { id: 'a', topMin: 0, durMin: 60 },
+      { id: 'b', topMin: 60, durMin: 60 },
+    ])
+    expect(r.get('b')).toEqual({ carril: 0, carriles: 1 })
+  })
+
+  it('el orden de entrada no cambia el reparto', () => {
+    const entrada = [
+      { id: 'c', topMin: 60, durMin: 60 },
+      { id: 'a', topMin: 0, durMin: 90 },
+      { id: 'b', topMin: 30, durMin: 30 },
+    ]
+    const r = repartirCarriles(entrada)
+    expect(r.get('a')!.carril).toBe(0)
+    expect(r.get('b')!.carril).toBe(1)
+    expect(r.get('c')!.carriles).toBe(2)
+  })
+})
+
+describe('getLienzoSemana · carriles', () => {
+  it('dos bloques encimados el mismo día llegan a la vista con carril y total', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    const a = await bloque(week.id, MARTES, '09:00', '11:00', 120, 'Cierre del business case')
+    const b = await bloque(week.id, MARTES, '09:30', '10:30', 60, 'Repaso antes del comité')
+    const solo = await bloque(week.id, MARTES, '16:00', '17:00', 60, 'Sin colisión')
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+    const de = (id: string) => v!.bloques.find((x) => x.id === id)!
+
+    expect(de(a.id)).toMatchObject({ carril: 0, carriles: 2 })
+    expect(de(b.id)).toMatchObject({ carril: 1, carriles: 2 })
+    // El de la tarde no paga el ancho de una colisión de la mañana.
+    expect(de(solo.id)).toMatchObject({ carril: 0, carriles: 1 })
+  })
+
+  it('los carriles se cuentan por día: el martes no adelgaza al miércoles', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    await bloque(week.id, MARTES, '09:00', '11:00', 120, 'Martes A')
+    await bloque(week.id, MARTES, '09:30', '10:30', 60, 'Martes B')
+    const mie = await bloque(week.id, '2026-07-08', '09:00', '10:00', 60, 'Miércoles solo')
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+    expect(v!.bloques.find((x) => x.id === mie.id)).toMatchObject({ carril: 0, carriles: 1 })
+  })
+
+  it('una junta de Outlook comparte carril con las tareas: la colisión es real', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    const tarea = await bloque(week.id, MARTES, '12:00', '13:00', 60, 'Trabajo')
+    await prisma.calendarEvent.create({
+      data: {
+        userId: user.id,
+        externalId: 'evt-colision',
+        fecha: new Date(MARTES),
+        inicio: '12:30',
+        fin: '13:30',
+        titulo: 'Comité',
+      },
+    })
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+    expect(v!.bloques.find((x) => x.id === tarea.id)!.carriles).toBe(2)
+    expect(v!.bloques.find((x) => x.externa)!.carriles).toBe(2)
   })
 })
