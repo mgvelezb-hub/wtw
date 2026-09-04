@@ -1,6 +1,18 @@
 # Spike: ¿envolver la PWA en Capacitor?
 
-**Fecha:** 2026-09-04 · **Estado:** cerrado con recomendación de NO hacerlo todavía
+**Fecha:** 2026-09-04 · **Estado:** ⚠️ **REABIERTO el mismo día por decisión de Mau**
+
+> **Leer esto antes que el resto.** Este spike se cerró con "no hacerlo todavía" porque su
+> motivo original (las notificaciones) lo resolvió Web Push. Horas después Mau decidió que el
+> siguiente frente es **migrar la app a una build nativa de iOS**, y que el push web se queda
+> sin encender porque ahí se resuelve mejor. Su decisión es anterior a este razonamiento y lo
+> reemplaza: **la recomendación de abajo ya no aplica.** Lo que sigue sirviendo es lo que este
+> documento midió — los detonantes, los costos y, sobre todo, la lista honesta de lo que NO se
+> midió, que es por donde arranca el frente nuevo.
+>
+> Decisión de alcance todavía por tomar (es de Mau): wrapper sobre lo que ya existe, o nativo
+> de verdad en SwiftUI contra `/api/v1/*`. Los tres detonantes de abajo apuntan a widget más
+> notificaciones locales, y eso no exige reescribir la UI.
 
 ## La pregunta
 
