@@ -4,7 +4,7 @@ import { getWeek } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { senalesSobrecarga } from '@/lib/carga-sostenible'
 import { getHistorico, type HistoricoWeek } from '@/app/(app)/historico/service'
-import { weekRange, todayStr } from '@/lib/dates'
+import { weekRangeFull, esFinDeSemana, todayStr } from '@/lib/dates'
 import { toMin, etiquetaHora, posicionarBloque, type Ubicacion } from './lienzo'
 
 // ── Objetos planos al cliente (regla 2) ──────────────────────────────────────
@@ -41,6 +41,10 @@ export type LienzoDia = {
   jornadaMin: number
   /** planeado / jornada, en %. >100 = el día ya no cabe en sí mismo. */
   pct: number
+  /** Sábado o domingo. La columna solo existe si hay trabajo ahí. */
+  finDeSemana: boolean
+  /** Fin de semana sin horario declarado: no hay rejilla de horas que respetar. */
+  sinJornada: boolean
 }
 
 export type BandejaItem = {
@@ -96,7 +100,7 @@ export type LienzoSemana = {
   tendencias: HistoricoWeek[]
 }
 
-const ABR = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie']
+const ABR = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 const MES_ABR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
 function iso(d: Date): string {
@@ -108,7 +112,7 @@ export async function getLienzoSemana(
   isoWeek: string,
   hoy: string = todayStr()
 ): Promise<LienzoSemana | null> {
-  const { inicio, fin } = weekRange(isoWeek)
+  const { inicio, fin } = weekRangeFull(isoWeek)
 
   const [week, user, blocksRaw, eventos, overrides, pendientes, capacidad, sobrecarga, tendencias] = await Promise.all([
     getWeek(userId, isoWeek),
@@ -151,8 +155,20 @@ export async function getLienzoSemana(
   const horas: string[] = []
   for (let m = jornadaInicioMin; m < jornadaFinMin; m += 60) horas.push(etiquetaHora(m))
 
+  const overridePorFecha = new Map(overrides.map((o) => [iso(o.fecha), o]))
+
+  // Un día de fin de semana no tiene jornada, así que cualquier hora en él es
+  // fuera de jornada — la misma regla que usa `carga-sostenible.fueraDeJornada`
+  // para la señal de erosión de frontera. La excepción es un DayOverride que
+  // DECLARA horario: si Mau dijo que ese sábado trabaja, el bloque se pinta en
+  // el grid como cualquier otro y no cuenta como erosión.
+  function sinJornada(fecha: string): boolean {
+    if (!esFinDeSemana(fecha)) return false
+    return !overridePorFecha.get(fecha)?.inicio
+  }
+
   const bloques: LienzoBloque[] = blocksRaw.map((b) => {
-    const pos = posicionarBloque(b.inicio, b.fin, b.planMin, jornadaInicioMin, jornadaFinMin)
+    const pos = posicionarBloque(b.inicio, b.fin, b.planMin, jornadaInicioMin, jornadaFinMin, sinJornada(iso(b.fecha)))
     return {
       id: b.id,
       fecha: iso(b.fecha),
@@ -172,7 +188,7 @@ export async function getLienzoSemana(
 
   for (const e of eventos) {
     const durMin = Math.max(0, toMin(e.fin) - toMin(e.inicio))
-    const pos = posicionarBloque(e.inicio, e.fin, durMin, jornadaInicioMin, jornadaFinMin)
+    const pos = posicionarBloque(e.inicio, e.fin, durMin, jornadaInicioMin, jornadaFinMin, sinJornada(iso(e.fecha)))
     bloques.push({
       id: `cal-${e.id}`,
       fecha: iso(e.fecha),
@@ -190,18 +206,27 @@ export async function getLienzoSemana(
     })
   }
 
-  const overridePorFecha = new Map(overrides.map((o) => [iso(o.fecha), o]))
+  // Fechas con algo registrado: lo que decide si la columna de sábado o domingo
+  // aparece. Un fin de semana limpio no ensancha el lienzo con dos columnas
+  // vacías; uno trabajado no se puede esconder.
+  const conTrabajo = new Set<string>([
+    ...blocksRaw.map((b) => iso(b.fecha)),
+    ...eventos.map((e) => iso(e.fecha)),
+    ...overrides.filter((o) => o.inicio).map((o) => iso(o.fecha)),
+  ])
+
   const dias: LienzoDia[] = []
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(inicio)
     d.setUTCDate(d.getUTCDate() + i)
     const fecha = iso(d)
+    if (i >= 5 && !conTrabajo.has(fecha)) continue
     const ov = overridePorFecha.get(fecha)
 
     // Día bloqueado por override sin horario (festivo, viaje): jornada 0 — el
     // meter se pinta lleno en cuanto haya un solo minuto planeado ahí.
     const jornadaMin =
-      ov && !ov.inicio
+      (ov && !ov.inicio) || sinJornada(fecha)
         ? 0
         : Math.max(0, toMin(ov?.fin ?? user.horarioFin) - toMin(ov?.inicio ?? user.horarioInicio) - comidaMin)
 
@@ -219,6 +244,8 @@ export async function getLienzoSemana(
       planeadoMin,
       jornadaMin,
       pct: jornadaMin > 0 ? (planeadoMin / jornadaMin) * 100 : planeadoMin > 0 ? 100 : 0,
+      finDeSemana: esFinDeSemana(fecha),
+      sinJornada: sinJornada(fecha),
     })
   }
 
@@ -240,7 +267,9 @@ export async function getLienzoSemana(
 
   const cargaMin = week.tasks.reduce((s, t) => s + (t.ajustadoMin ?? t.estimadoMin ?? 0), 0)
 
-  const finDate = new Date(fin)
+  // El rango se lee del último día VISIBLE, no del domingo del calendario: una
+  // semana sin trabajo de fin de semana sigue diciendo "6 – 10 Jul".
+  const finDate = new Date(`${dias[dias.length - 1].fecha}T00:00:00Z`)
   const rango = `${inicio.getUTCDate()} – ${finDate.getUTCDate()} ${MES_ABR[finDate.getUTCMonth()]}`
 
   return {

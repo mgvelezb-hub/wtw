@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isoWeekOf, weekRange, todayStr } from '@/lib/dates'
+import { isoWeekOf, weekRange, weekRangeFull, esFinDeSemana, todayStr } from '@/lib/dates'
 
 describe('isoWeekOf', () => {
   it('calcula semana ISO con año correcto', () => {
@@ -19,6 +19,31 @@ describe('weekRange', () => {
   it('cruza años correctamente', () => {
     const { inicio } = weekRange('2026-W01')
     expect(inicio.toISOString().slice(0, 10)).toBe('2025-12-29')
+  })
+})
+
+describe('weekRangeFull', () => {
+  // `weekRange` es la JORNADA (lun–vie) y de eso viven capacidad y planeación.
+  // El lienzo necesita la semana CALENDARIO: el trabajo de sábado y domingo es
+  // la evidencia más fuerte de erosión de frontera, y con el rango lun–vie
+  // nunca se cargaba — el lienzo listaba 6 bloques fuera de jornada mientras el
+  // % de la señal JD-R decía 61%, porque esa sí lee TimeEntry directo.
+  it('devuelve lunes y domingo de la semana ISO', () => {
+    const { inicio, fin } = weekRangeFull('2026-W27')
+    expect(inicio.toISOString().slice(0, 10)).toBe('2026-06-29')
+    expect(fin.toISOString().slice(0, 10)).toBe('2026-07-05')
+  })
+  it('comparte el lunes con weekRange', () => {
+    expect(weekRangeFull('2026-W01').inicio.toISOString()).toBe(weekRange('2026-W01').inicio.toISOString())
+  })
+})
+
+describe('esFinDeSemana', () => {
+  it('reconoce sábado y domingo por la fecha AAAA-MM-DD', () => {
+    expect(esFinDeSemana('2026-07-04')).toBe(true) // sábado
+    expect(esFinDeSemana('2026-07-05')).toBe(true) // domingo
+    expect(esFinDeSemana('2026-07-03')).toBe(false) // viernes
+    expect(esFinDeSemana('2026-07-06')).toBe(false) // lunes
   })
 })
 

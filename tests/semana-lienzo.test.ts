@@ -192,3 +192,102 @@ describe('getLienzoSemana', () => {
     expect(v!.dias.find((d) => d.fecha === MARTES)!.planeadoMin).toBe(60)
   })
 })
+
+// El lienzo era ciego al fin de semana: `weekRange` da lun–vie, así que los
+// bloques de sábado y domingo ni se cargaban — justo donde vive la evidencia
+// más fuerte de erosión de frontera, y la razón por la que el lienzo listaba 6
+// bloques fuera de jornada mientras la señal JD-R decía 61%.
+describe('getLienzoSemana · fin de semana', () => {
+  const SABADO = '2026-07-11'
+  const DOMINGO = '2026-07-12'
+
+  it('sin trabajo registrado, la semana sigue siendo de lunes a viernes', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    await bloque(week.id, MARTES, '10:00', '11:00', 60)
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+
+    expect(v!.dias.map((d) => d.abr)).toEqual(['Lun', 'Mar', 'Mié', 'Jue', 'Vie'])
+  })
+
+  it('un bloque en sábado abre la columna del sábado, y solo esa', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    const sab = await bloque(week.id, SABADO, '11:00', '13:00', 120, 'Deck del comité')
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+
+    expect(v!.dias.map((d) => d.abr)).toEqual(['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'])
+    const columna = v!.dias.find((d) => d.abr === 'Sáb')!
+    expect(columna.fecha).toBe(SABADO)
+    expect(columna.finDeSemana).toBe(true)
+    expect(v!.bloques.map((b) => b.id)).toContain(sab.id)
+  })
+
+  it('una junta de Outlook en domingo también abre la columna', async () => {
+    const user = await usuario(TEST_EMAIL)
+    await semana(user.id)
+    await prisma.calendarEvent.create({
+      data: {
+        userId: user.id,
+        externalId: 'evt-dom',
+        fecha: new Date(DOMINGO),
+        inicio: '17:00',
+        fin: '18:00',
+        titulo: 'Llamada con el cliente',
+      },
+    })
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+    expect(v!.dias.map((d) => d.abr)).toEqual(['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Dom'])
+  })
+
+  // Congruencia con `carga-sostenible.fueraDeJornada`, que cuenta TODO minuto
+  // de fin de semana como fuera de jornada sin importar la hora. Si el lienzo
+  // pintara el sábado 11:00 dentro del grid, diría que ese trabajo fue normal.
+  it('en fin de semana no hay jornada: todo bloque con hora queda fuera', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    await bloque(week.id, SABADO, '11:00', '13:00', 120, 'Deck del comité')
+    await bloque(week.id, DOMINGO, 'flex', 'flex', 45, 'Correo del domingo')
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+
+    const sab = v!.bloques.find((b) => b.titulo === 'Deck del comité')!
+    expect(sab.ubicacion).toBe('fuera')
+    expect(v!.fueraDeJornada.map((f) => f.abr)).toContain('Sáb')
+
+    // Flex se mantiene flex: un bloque sin hora en domingo no finge una hora
+    // que nadie comprometió, va al chip bajo su columna.
+    expect(v!.bloques.find((b) => b.titulo === 'Correo del domingo')!.ubicacion).toBe('flex')
+
+    const columnaSab = v!.dias.find((d) => d.abr === 'Sáb')!
+    expect(columnaSab.jornadaMin).toBe(0)
+    expect(columnaSab.planeadoMin).toBe(120)
+    expect(columnaSab.pct).toBe(100) // sin jornada, un solo minuto ya llena el meter
+  })
+
+  it('un DayOverride con horario declara jornada real en fin de semana', async () => {
+    const user = await usuario(TEST_EMAIL)
+    const week = await semana(user.id)
+    await prisma.dayOverride.create({
+      data: { userId: user.id, fecha: new Date(SABADO), inicio: '10:00', fin: '14:00' },
+    })
+    await bloque(week.id, SABADO, '11:00', '12:00', 60, 'Guardia planeada')
+
+    const v = await getLienzoSemana(user.id, ISO_WEEK, LUNES)
+    const columna = v!.dias.find((d) => d.abr === 'Sáb')!
+
+    // 10:00–14:00 menos la hora de comida configurada = 180 min.
+    expect(columna.jornadaMin).toBe(180)
+    expect(columna.pct).toBeCloseTo(33.33, 1)
+
+    // Un sábado con horario DECLARADO no es erosión de frontera: Mau dijo que
+    // ese día trabaja, así que el bloque se pinta en el grid como cualquier
+    // otro y no se lista como fuera de jornada.
+    const b = v!.bloques.find((x) => x.titulo === 'Guardia planeada')!
+    expect(b.ubicacion).toBe('grid')
+    expect(v!.fueraDeJornada.map((f) => f.titulo)).not.toContain('Guardia planeada')
+  })
+})

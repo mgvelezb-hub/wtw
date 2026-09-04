@@ -55,7 +55,12 @@ export function posicionarBloque(
   fin: string,
   planMin: number,
   jornadaInicioMin: number,
-  jornadaFinMin: number
+  jornadaFinMin: number,
+  // Día sin jornada (sábado o domingo sin horario declarado): la hora existe,
+  // pero ninguna hora de ese día está DENTRO de una jornada. Todo cae fuera —
+  // es la misma regla de `carga-sostenible.fueraDeJornada`, y es el punto:
+  // pintar el sábado 11:00 dentro del grid diría que ese trabajo fue normal.
+  sinJornada = false
 ): Posicion {
   if (inicio === 'flex' || fin === 'flex') {
     return { ubicacion: 'flex', topMin: null, durMin: planMin }
@@ -63,6 +68,9 @@ export function posicionarBloque(
   const inicioMin = toMin(inicio)
   const finMin = toMin(fin)
   const durMin = finMin > inicioMin ? finMin - inicioMin : planMin
+  if (sinJornada) {
+    return { ubicacion: 'fuera', topMin: null, durMin }
+  }
   if (inicioMin < jornadaInicioMin || inicioMin + durMin > jornadaFinMin) {
     return { ubicacion: 'fuera', topMin: null, durMin }
   }

@@ -286,7 +286,12 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
     startTransition(() => void capturarEnBandejaAction(titulo))
   }
 
-  const columnas = 'grid-cols-[48px_repeat(5,minmax(0,1fr))]'
+  // Las columnas ya no son 5 fijas: sábado y domingo aparecen solo si hay
+  // trabajo registrado ahí, así que el template se arma en runtime (una clase
+  // Tailwind interpolada no la vería el compilador).
+  const columnas = { gridTemplateColumns: `48px repeat(${v.dias.length}, minmax(0, 1fr))` }
+  // Con 6 o 7 columnas el lienzo necesita más ancho antes de empezar a comprimir.
+  const anchoMin = v.dias.length > 5 ? 'min-w-[760px] xl:min-w-[860px]' : 'min-w-[640px] xl:min-w-[720px]'
 
   return (
     <DndContext
@@ -343,15 +348,21 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
 
           {/* ── Lienzo ──────────────────────────────────────────────────────── */}
           <div className="min-w-0 flex-1 overflow-x-auto p-4 pr-0">
-            <div className="min-w-[640px] xl:min-w-[720px]">
+            <div className={anchoMin}>
               {/* Cabecera de días: nombre, número y el meter de carga del día.
                   También es zona de drop "a este día, sin hora". */}
-              <div className={`mb-1.5 grid ${columnas}`}>
+              <div className="mb-1.5 grid" style={columnas}>
                 <div />
                 {v.dias.map((d) => (
                   <CeldaDrop key={d.fecha} id={`head:${d.fecha}`} activaClase="bg-brand-soft" clase="rounded-md px-2 py-0.5">
                     <div className="flex items-baseline gap-1.5">
-                      <span className={`font-semibold ${d.esHoy ? 'text-brand-deep' : 'text-ink'}`}>{d.abr}</span>
+                      <span
+                        className={`font-semibold ${
+                          d.esHoy ? 'text-brand-deep' : d.finDeSemana ? 'text-warn' : 'text-ink'
+                        }`}
+                      >
+                        {d.abr}
+                      </span>
                       <span className={`num text-[11px] ${d.esHoy ? 'text-brand-deep' : 'text-faint'}`}>
                         {d.num}
                         {d.esHoy ? ' · hoy' : ''}
@@ -370,8 +381,8 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
 
               {/* Grid de horas */}
               <div
-                className={`grid ${columnas} overflow-hidden rounded-tl-[10px] border border-edge bg-surface`}
-                style={{ height: altoGrid }}
+                className="grid overflow-hidden rounded-tl-[10px] border border-edge bg-surface"
+                style={{ ...columnas, height: altoGrid }}
               >
                 <div className="flex flex-col border-r border-hair">
                   {v.horas.map((h) => (
@@ -386,7 +397,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
                 </div>
 
                 {v.dias.map((d) => (
-                  <ColumnaDia key={d.fecha} fecha={d.fecha} esHoy={d.esHoy}>
+                  <ColumnaDia key={d.fecha} fecha={d.fecha} esHoy={d.esHoy} sinJornada={d.sinJornada}>
                     {enGrid
                       .filter((b) => b.fecha === d.fecha)
                       .map((b) => (
@@ -439,7 +450,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               {/* Franja Flex: lo que tiene día pero no hora. Soltar aquí agenda al
                   día sin comprometer una hora — que es exactamente lo que un
                   bloque flex significa. */}
-              <div className={`grid ${columnas} border-x border-b border-edge bg-surface`}>
+              <div className="grid border-x border-b border-edge bg-surface" style={columnas}>
                 <div className="lbl flex items-start justify-end border-r border-hair px-1.5 py-2 text-[9px]">Flex</div>
                 {v.dias.map((d) => (
                   <CeldaDrop
@@ -693,17 +704,36 @@ function CeldaDrop({
   )
 }
 
-function ColumnaDia({ fecha, esHoy, children }: { fecha: string; esHoy: boolean; children: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `col:${fecha}` })
+function ColumnaDia({
+  fecha,
+  esHoy,
+  sinJornada = false,
+  children,
+}: {
+  fecha: string
+  esHoy: boolean
+  sinJornada?: boolean
+  children: React.ReactNode
+}) {
+  // Un día sin jornada no acepta drop por hora: no hay rejilla contra la que
+  // redondear, y agendar "sábado 11:00" fingiría una jornada de sábado. Ese día
+  // se agenda por la cabecera o por la franja Flex, que es lo honesto — el
+  // compromiso es con el día, no con una hora de un día que no se trabaja.
+  const { setNodeRef, isOver } = useDroppable({ id: `col:${fecha}`, disabled: sinJornada })
   return (
     <div
       ref={setNodeRef}
       className={`relative border-r last:border-r-0 ${isOver ? 'ring-1 ring-inset ring-brand' : ''}`}
       style={{
         borderColor: LINEA_HORA,
-        background: esHoy ? `#f8fbfa ${FONDO_COLUMNA}` : FONDO_COLUMNA,
+        background: sinJornada ? '#faf7f2' : esHoy ? `#f8fbfa ${FONDO_COLUMNA}` : FONDO_COLUMNA,
       }}
     >
+      {sinJornada && (
+        <span className="lbl pointer-events-none absolute inset-x-0 top-2 text-center text-[9px] text-warn">
+          Sin jornada
+        </span>
+      )}
       {children}
     </div>
   )

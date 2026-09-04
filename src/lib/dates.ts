@@ -18,6 +18,26 @@ export function weekRange(isoWeek: string): { inicio: Date; fin: Date } {
   return { inicio: monday, fin: friday }
 }
 
+// La semana CALENDARIO: lunes a domingo. `weekRange` devuelve la jornada
+// (lun–vie) porque de ahí salen capacidad y planeación, y eso está bien; pero
+// el lienzo tiene que poder VER el sábado y el domingo. Mientras cargó lun–vie,
+// el trabajo de fin de semana no existía para el lienzo aunque la señal de
+// erosión de frontera —que lee TimeEntry directo— sí lo contaba: el lienzo
+// listaba 6 bloques fuera de jornada y el % decía 61%.
+export function weekRangeFull(isoWeek: string): { inicio: Date; fin: Date } {
+  const { inicio } = weekRange(isoWeek)
+  const domingo = new Date(inicio)
+  domingo.setUTCDate(inicio.getUTCDate() + 6)
+  return { inicio, fin: domingo }
+}
+
+// Sábado o domingo, leído de una fecha AAAA-MM-DD (no de un Date con zona: las
+// fechas del lienzo ya vienen normalizadas a día calendario).
+export function esFinDeSemana(fecha: string): boolean {
+  const dia = new Date(`${fecha}T00:00:00Z`).getUTCDay()
+  return dia === 0 || dia === 6
+}
+
 const USER_TZ = 'America/Mexico_City'
 
 // "en-CA" formatea como AAAA-MM-DD. México va UTC-6, así que usar
