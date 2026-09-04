@@ -1,6 +1,6 @@
 # Spike: ¿envolver la PWA en Capacitor?
 
-**Fecha:** 2026-09-04 · **Estado:** ⚠️ **REABIERTO el mismo día por decisión de Mau**
+**Fecha:** 2026-09-04 · **Estado:** ✅ **EJECUTADO el mismo día** — resultados en `2026-09-04-spike-capacitor-resultados.md` (rama `spike/capacitor-ios`)
 
 > **Leer esto antes que el resto.** Este spike se cerró con "no hacerlo todavía" porque su
 > motivo original (las notificaciones) lo resolvió Web Push. Horas después Mau decidió que el

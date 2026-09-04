@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Cascarón iOS (Capacitor): proyecto Xcode, pods y el JS que copia el CLI.
+    "ios/**",
+    "native/**",
   ]),
 ]);
 

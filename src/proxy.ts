@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { decrypt } from '@/lib/session'
 
-const PUBLIC_ROUTES = ['/login']
+// /nativo es el diagnóstico del cascarón iOS: se prueba sin sesión.
+const PUBLIC_ROUTES = ['/login', '/nativo']
 const AUTH_ROUTE = '/login'
 
 export default async function proxy(req: NextRequest) {

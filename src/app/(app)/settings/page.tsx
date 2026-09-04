@@ -2,6 +2,7 @@ import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { SettingsForm } from './SettingsForm'
 import { RecordatoriosPanel } from './Recordatorios'
+import { NativoPanel } from './Nativo'
 import { clavePublica, pushConfigurado, leerRecordatorios } from '@/lib/push'
 import { tickUnicoActivo } from '@/lib/recordatorios'
 
@@ -35,6 +36,9 @@ export default async function SettingsPage() {
           dispositivos={dispositivos}
           tickUnico={tickUnicoActivo(process.env)}
         />
+        <div className="mt-4">
+          <NativoPanel />
+        </div>
       </div>
     </main>
   )

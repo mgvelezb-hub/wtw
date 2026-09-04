@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WTW — sin conexión</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center;
+         background: #eef2f2; color: #1c2a2a;
+         font: 17px/1.45 "IBM Plex Sans", system-ui, -apple-system, sans-serif; }
+  main { max-width: 28rem; padding: 2rem; background: #fff; border: 1px solid #ccdad8;
+         border-radius: 10px; }
+  h1 { font-size: 1.25rem; margin: 0 0 .5rem; }
+  p { margin: 0 0 1rem; color: #4d5c5c; }
+  button { font: inherit; padding: .6rem 1rem; border: 1px solid #ccdad8;
+           border-radius: 8px; background: #fff; color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Sin conexión</h1>
+  <p>WTW necesita red para cargar. Lo que ya cronometraste sigue guardado en el servidor.</p>
+  <button id="reintentar">Reintentar</button>
+</main>
+<script>
+  // Esta página vive en capacitor://localhost; recargarla solo la vuelve a
+  // mostrar. Capacitor inyecta la URL del servidor remoto en cada página, y
+  // a ella hay que regresar. El literal es el respaldo por si la inyección
+  // no llegó (nunca debería, pero un botón que no hace nada es peor).
+  document.getElementById('reintentar').onclick = function () {
+    location.href = window.WEBVIEW_SERVER_URL || 'https://wtw-app-henna.vercel.app'
+  }
+</script>
+</body>
+</html>
