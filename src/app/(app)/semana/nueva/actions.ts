@@ -1,11 +1,13 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createWeekPayload } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
-import { isoWeekOf } from '@/lib/dates'
-import { componerReflexion, validarCarga } from './service'
+import { isoWeekAPlanear, diaSemanaMx } from '@/lib/dates'
+import { componerReflexion, validarCarga, isoWeekValida } from './service'
+import { borrarSemana } from './borrar'
 import { factorPorClase } from '@/lib/factor-clase'
 import { factorDeClase } from '@/lib/tipo-trabajo'
 import type { TipoTrabajo } from '@prisma/client'
@@ -34,6 +36,8 @@ export type NuevaSemanaTask = {
 }
 
 export type CrearSemanaInput = {
+  /** Semana que se está planeando. Sin ella se usa la que ENTRA, no la actual. */
+  isoWeek?: string
   reflexion?: string
   // La cuarta pregunta del AAR del paso 1. Llega aparte del recap y se une a él
   // aquí (`componerReflexion`): el cliente no decide el formato de lo que se
@@ -59,7 +63,12 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
   const ajustado = (min: number, tipo?: TipoTrabajo) =>
     Math.round(min * factorDeClase(tipo, factoresClase, factorUsado))
 
-  const isoWeek = isoWeekOf(new Date())
+  // La semana viene del planeador (que la recibió por searchParam) y se valida
+  // aquí: `isoWeekOf(new Date())` fijaba la semana EN CURSO, así que planear la
+  // que entra escribía el plan en la semana equivocada. El default es la que
+  // entra, el mismo que usa `contextoPlaneacion`.
+  const ahora = new Date()
+  const isoWeek = isoWeekValida(input.isoWeek) ?? isoWeekAPlanear(ahora, diaSemanaMx(ahora))
 
   // El tope de carga se revalida en el servidor y no solo en el wizard: el botón
   // deshabilitado es una cortesía de UI, la restricción es esta. Se calcula con
@@ -138,4 +147,19 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
   // semana sí se creaba, pero el usuario se quedaba en el planeador con un mensaje
   // de error falso y el draft restaurado. La navegación la hace el cliente con
   // router.push cuando esto resuelve sin lanzar.
+}
+
+// Envoltura de sesión de `borrarSemana`: resuelve quién eres, delega la lógica
+// y revalida. La lógica vive en `./borrar` para poder probarla sin sesión.
+export async function borrarSemanaAction(isoWeek: string): Promise<{ ok: true } | { error: string }> {
+  const session = await verifySession()
+  if (!session) throw new Error('no autenticado')
+
+  const r = await borrarSemana(session.userId, isoWeek)
+  if ('ok' in r) {
+    revalidatePath('/semana')
+    revalidatePath('/semana/nueva')
+    revalidatePath('/dia')
+  }
+  return r
 }

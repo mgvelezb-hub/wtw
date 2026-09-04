@@ -19,8 +19,14 @@ import { deleteTestUser } from './helpers/cleanup'
 const TEST_EMAIL = 'test-planeador-aar@vp.mx'
 
 // La semana W31 de 2026 corre del 27 al 31 de julio; la W32 arranca el 3 de
-// agosto. Planear "hoy 5-ago" hace de la W31 la semana anterior.
+// agosto. Estos escenarios planean la W32 con el 5-ago como "hoy", así que la
+// W31 es la semana anterior y su cierre es el insumo del AAR.
+//
+// La semana va EXPLÍCITA porque el default de `contextoPlaneacion` es la semana
+// que ENTRA (planear en miércoles apunta a la W33): lo que se prueba aquí es el
+// AAR, no qué semana se planea por default.
 const HOY_W32 = new Date('2026-08-05T12:00:00Z')
+const PLANEANDO_W32 = '2026-W32'
 
 beforeEach(() => deleteTestUser(TEST_EMAIL))
 
@@ -58,7 +64,7 @@ describe('paso 1 · AAR sobre datos objetivos', () => {
       },
     })
 
-    const ctx = await contextoPlaneacion(user.id, HOY_W32)
+    const ctx = await contextoPlaneacion(user.id, HOY_W32, PLANEANDO_W32)
 
     expect(ctx.anterior?.desvios.diasReconciliados).toBe(2)
     expect(ctx.anterior?.desvios.totalMin).toBe(240)
@@ -81,7 +87,7 @@ describe('paso 1 · AAR sobre datos objetivos', () => {
       },
     })
 
-    const ctx = await contextoPlaneacion(user.id, HOY_W32)
+    const ctx = await contextoPlaneacion(user.id, HOY_W32, PLANEANDO_W32)
 
     expect(ctx.anterior?.desvios.diasReconciliados).toBe(0)
     expect(ctx.anterior?.desvios.totalMin).toBe(0)
@@ -109,7 +115,7 @@ describe('paso 1 · AAR sobre datos objetivos', () => {
     await prisma.weekRisk.update({ where: { id: riesgos[0].id }, data: { ocurrio: true, defensaFunciono: true } })
     await prisma.weekRisk.update({ where: { id: riesgos[1].id }, data: { ocurrio: true, defensaFunciono: false } })
 
-    const ctx = await contextoPlaneacion(user.id, HOY_W32)
+    const ctx = await contextoPlaneacion(user.id, HOY_W32, PLANEANDO_W32)
 
     expect(ctx.anterior?.premortem).toEqual({
       predichos: 3,
@@ -123,7 +129,7 @@ describe('paso 1 · AAR sobre datos objetivos', () => {
     const user = await usuario()
     await createWeekPayload(user.id, { isoWeek: '2026-W31', factorUsado: 1.4, wins: [], tasks: [], blocks: [] })
 
-    const ctx = await contextoPlaneacion(user.id, HOY_W32)
+    const ctx = await contextoPlaneacion(user.id, HOY_W32, PLANEANDO_W32)
 
     expect(ctx.anterior?.desvios.dominante).toBeNull()
     expect(ctx.anterior?.desvios.porCausa).toEqual([])

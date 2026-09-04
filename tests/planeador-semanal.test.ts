@@ -70,7 +70,7 @@ describe('extraerJSON', () => {
 describe('contextoPlaneacion', () => {
   it('sin semana anterior devuelve anterior=null y no truena', async () => {
     const user = await usuario()
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.anterior).toBeNull()
     expect(ctx.yaPlaneada).toBe(false)
@@ -84,7 +84,7 @@ describe('contextoPlaneacion', () => {
     // Una tarea ya planeada NO es backlog: no debe aparecer en el vaciado.
     await prisma.task.create({ data: { userId: user.id, titulo: 'ya planeada', estatus: 'planned' } })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.backlog.map((t) => t.titulo)).toEqual(['urge', 'normal'])
   })
@@ -114,7 +114,7 @@ describe('contextoPlaneacion', () => {
     })
     await prisma.win.updateMany({ where: { weekId: week.id, posicion: 2 }, data: { estatus: 'fallido' } })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.anterior?.isoWeek).toBe('2026-W31')
     expect(ctx.anterior?.planMin).toBe(168)
@@ -135,7 +135,7 @@ describe('contextoPlaneacion', () => {
       blocks: [],
     })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.anterior?.planMin).toBe(0)
     expect(ctx.anterior?.factorLogrado).toBeNull()
@@ -237,7 +237,7 @@ describe('medición incompleta', () => {
       data: { userId: user.id, taskId: una.id, startedAt: new Date('2026-08-01T09:00:00Z'), seconds: 32 * 60 },
     })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.anterior?.tareasConTiempo).toBe(1)
     expect(ctx.anterior?.medicionIncompleta).toBe(true)
@@ -259,7 +259,7 @@ describe('medición incompleta', () => {
       data: { userId: user.id, taskId: t.id, startedAt: new Date('2026-08-01T09:00:00Z'), seconds: 84 * 60 },
     })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     expect(ctx.anterior?.medicionIncompleta).toBe(false)
     expect(ctx.anterior?.factorLogrado).toBe(1)
@@ -283,7 +283,7 @@ describe('cascarón de semana creado por Mi Día', () => {
       data: { weekId: shell.id, fecha: new Date('2026-08-10'), inicio: '10:00', fin: '11:00', tipo: 'junta', titulo: 'Junta de Outlook', planMin: 60, orden: 0 },
     })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-10T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-10T12:00:00Z'), '2026-W33')
 
     expect(ctx.yaPlaneada).toBe(false)
   })
@@ -371,7 +371,7 @@ describe('vaciado con trabajo arrastrado', () => {
     await prisma.task.update({ where: { id: terminada.id }, data: { estatus: 'done' } })
     await prisma.task.create({ data: { userId: user.id, titulo: 'del backlog', estatus: 'backlog' } })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
 
     const titulos = ctx.backlog.map((t) => t.titulo)
     expect(titulos).toContain('sigue viva')
@@ -383,7 +383,7 @@ describe('vaciado con trabajo arrastrado', () => {
     expect(ctx.backlog.find((t) => t.titulo === 'del backlog')?.origen).toBe('backlog')
   })
 
-  it('no ofrece lo que ya está planeado en la semana en curso', async () => {
+  it('no ofrece lo que ya está planeado en la semana QUE SE PLANEA', async () => {
     const user = await usuario()
     await createWeekPayload(user.id, {
       isoWeek: '2026-W32',
@@ -393,9 +393,16 @@ describe('vaciado con trabajo arrastrado', () => {
       blocks: [],
     })
 
-    const ctx = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'))
+    // Planeando W32: lo que ya vive en W32 no se re-ofrece, o el vaciado lo
+    // duplicaría.
+    const mismaSemana = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W32')
+    expect(mismaSemana.backlog.map((t) => t.titulo)).not.toContain('ya en esta semana')
 
-    expect(ctx.backlog.map((t) => t.titulo)).not.toContain('ya en esta semana')
+    // Planeando W33, esa misma tarea sin terminar SÍ entra, y como arrastrada:
+    // es trabajo vivo que hay que decidir si pasa a la semana que entra. Eso es
+    // exactamente para lo que existe el origen 'arrastrada'.
+    const siguiente = await contextoPlaneacion(user.id, new Date('2026-08-05T12:00:00Z'), '2026-W33')
+    expect(siguiente.backlog.find((t) => t.titulo === 'ya en esta semana')?.origen).toBe('arrastrada')
   })
 
   it('adoptar una arrastrada la mueve de semana en vez de duplicarla', async () => {
@@ -535,5 +542,141 @@ describe('clase de trabajo en el planeador', () => {
 
     const adoptada = await prisma.task.findUniqueOrThrow({ where: { id: delBacklog.id } })
     expect(adoptada.tipoTrabajo).toBe('analisis')
+  })
+})
+
+// El planeador solo podía planear la semana EN CURSO (`isoWeekOf(hoy)`),
+// mientras el push del ritual del domingo apunta a la que entra: el ritual
+// central del producto era imposible desde la UI, y el domingo terminaba en un
+// muro que nombraba dos acciones que no ofrecía.
+describe('la semana que el planeador planea', () => {
+  const DOMINGO = new Date('2026-09-06T23:00:00Z') // 17:00 en México
+  const MARTES = new Date('2026-09-08T18:00:00Z')
+
+  it('el domingo por la tarde planea la semana que ARRANCA, no la que termina', async () => {
+    const user = await usuario()
+    const ctx = await contextoPlaneacion(user.id, DOMINGO)
+    // 2026-W36 es la semana que termina ese domingo; W37 la que arranca al día
+    // siguiente. Sin esto, el planeador comprobaba el plan de la semana que ya
+    // se está viviendo, la encontraba planeada y servía el muro.
+    expect(ctx.isoWeek).toBe('2026-W37')
+    expect(ctx.isoWeekEnCurso).toBe('2026-W36')
+  })
+
+  it('a media semana sigue apuntando a la que entra', async () => {
+    const user = await usuario()
+    const ctx = await contextoPlaneacion(user.id, MARTES)
+    expect(ctx.isoWeek).toBe('2026-W38')
+  })
+
+  it('el lunes planea la semana en curso: quien planea el lunes planea el día que empieza', async () => {
+    const user = await usuario()
+    const ctx = await contextoPlaneacion(user.id, new Date('2026-09-07T15:00:00Z'))
+    expect(ctx.isoWeek).toBe('2026-W37')
+    expect(ctx.isoWeekEnCurso).toBe('2026-W37')
+  })
+
+  it('una semana pedida explícitamente gana sobre el default', async () => {
+    const user = await usuario()
+    const ctx = await contextoPlaneacion(user.id, DOMINGO, '2026-W40')
+    expect(ctx.isoWeek).toBe('2026-W40')
+  })
+
+  it('el recap del paso 1 es de la semana anterior a la que se planea', async () => {
+    const user = await usuario()
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W36',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Cerrar el business case' }],
+      tasks: [],
+      blocks: [],
+    })
+
+    const ctx = await contextoPlaneacion(user.id, DOMINGO)
+    // Planeando W37, el AAR mira W36 — la que de verdad acaba de terminar.
+    expect(ctx.anterior?.isoWeek).toBe('2026-W36')
+    expect(ctx.anterior?.wins.map((w) => w.titulo)).toEqual(['Cerrar el business case'])
+    // Y W37 sigue sin plan, así que el planeador NO se bloquea.
+    expect(ctx.yaPlaneada).toBe(false)
+  })
+
+  it('si la semana objetivo ya tiene plan, ofrece la siguiente como salida', async () => {
+    const user = await usuario()
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W37',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Ya planeada' }],
+      tasks: [],
+      blocks: [],
+    })
+
+    const ctx = await contextoPlaneacion(user.id, DOMINGO)
+    expect(ctx.yaPlaneada).toBe(true)
+    // El muro deja de ser un callejón: nombra a dónde ir.
+    expect(ctx.isoWeekSiguiente).toBe('2026-W38')
+  })
+})
+
+describe('borrarSemanaAction (la segunda salida del muro)', () => {
+  it('quita el plan pero devuelve al backlog las tareas con su historia', async () => {
+    const user = await usuario()
+    const conTiempo = await prisma.task.create({
+      data: { userId: user.id, titulo: 'Tiene cronómetro', estatus: 'backlog', estimadoMin: 60 },
+    })
+    await prisma.timeEntry.create({
+      data: { taskId: conTiempo.id, userId: user.id, seconds: 3600, startedAt: new Date(), stoppedAt: new Date() },
+    })
+
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W41',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Win a borrar' }],
+      tasks: [{ ref: 'n', titulo: 'Nacida en el ritual', estimadoMin: 30, dod: [] }],
+      adoptar: [{ id: conTiempo.id, estimadoMin: 60 }],
+      blocks: [{ fecha: '2026-10-06', inicio: 'flex', fin: 'flex', tipo: 'tarea', taskRef: 'n', titulo: 'B', planMin: 30 }],
+      riesgos: [{ riesgo: 'r', defensa: 'd' }],
+    })
+
+    const { borrarSemana } = await import('@/app/(app)/semana/nueva/borrar')
+    expect(await borrarSemana(user.id, '2026-W41')).toEqual({ ok: true })
+
+    // La semana y todo lo que solo existía dentro de ella se va.
+    expect(await prisma.week.findUnique({ where: { userId_isoWeek: { userId: user.id, isoWeek: '2026-W41' } } })).toBeNull()
+    expect(await prisma.win.count({ where: { titulo: 'Win a borrar' } })).toBe(0)
+    expect(await prisma.block.count({ where: { titulo: 'B' } })).toBe(0)
+
+    // Las tareas NO se destruyen: vuelven al backlog. Borrar horas medidas para
+    // poder replanear sería el peor intercambio en una app cuya tesis es que el
+    // número sea confiable.
+    const devuelta = await prisma.task.findUniqueOrThrow({ where: { id: conTiempo.id } })
+    expect(devuelta).toMatchObject({ estatus: 'backlog', weekId: null, winId: null })
+    expect(await prisma.timeEntry.count({ where: { taskId: conTiempo.id } })).toBe(1)
+    expect(await prisma.task.count({ where: { userId: user.id, titulo: 'Nacida en el ritual' } })).toBe(1)
+  })
+
+  it('no borra la semana de otro usuario', async () => {
+    const user = await usuario()
+    const otro = await prisma.user.create({
+      data: { email: 'test-planeador-otro@vp.mx', nombre: 'Otro', passwordHash: 'x' },
+    })
+    await createWeekPayload(otro.id, {
+      isoWeek: '2026-W41',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Ajena' }],
+      tasks: [],
+      blocks: [],
+    })
+
+    const { borrarSemana } = await import('@/app/(app)/semana/nueva/borrar')
+    expect(await borrarSemana(user.id, '2026-W41')).toEqual({ error: 'la semana 2026-W41 no existe' })
+    expect(await prisma.win.count({ where: { titulo: 'Ajena' } })).toBe(1)
+
+    await deleteTestUser('test-planeador-otro@vp.mx')
+  })
+
+  it('rechaza una semana con formato inventado sin tocar nada', async () => {
+    const user = await usuario()
+    const { borrarSemana } = await import('@/app/(app)/semana/nueva/borrar')
+    expect(await borrarSemana(user.id, 'ayer')).toEqual({ error: 'semana inválida' })
   })
 })

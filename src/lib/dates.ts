@@ -38,6 +38,18 @@ export function esFinDeSemana(fecha: string): boolean {
   return dia === 0 || dia === 6
 }
 
+// La semana que el ritual va a planear. El lunes es la semana EN CURSO —quien
+// planea el lunes por la mañana planea el día que empieza—; cualquier otro día
+// es la que arranca el próximo lunes. Sumar un día sin más fallaba en viernes y
+// sábado: ahí "mañana" sigue cayendo dentro de la misma semana ISO, así que el
+// aviso comprobaba el plan de la semana que ya se está viviendo y nunca salía.
+export function isoWeekAPlanear(ahora: Date, diaSemana: number): string {
+  if (diaSemana === 1) return isoWeekOf(ahora)
+  const d = new Date(ahora)
+  d.setUTCDate(d.getUTCDate() + ((8 - diaSemana) % 7 || 7))
+  return isoWeekOf(d)
+}
+
 const USER_TZ = 'America/Mexico_City'
 
 // "en-CA" formatea como AAAA-MM-DD. México va UTC-6, así que usar
@@ -60,4 +72,13 @@ export function nowMinutesMx(d: Date = new Date()): number {
   const h = Number(parts.find((p) => p.type === 'hour')!.value)
   const m = Number(parts.find((p) => p.type === 'minute')!.value)
   return h * 60 + m
+}
+
+// Día de la semana (0=domingo) en hora de México. Igual que `todayStr`: el
+// `getDay()` del proceso es UTC y a partir de las 18:00 locales ya contesta el
+// día siguiente, que es justo el momento en que se planea.
+export function diaSemanaMx(d: Date = new Date()): number {
+  const abr = new Intl.DateTimeFormat('en-GB', { timeZone: USER_TZ, weekday: 'short' }).format(d)
+  const dias: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  return dias[abr] ?? 0
 }

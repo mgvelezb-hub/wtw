@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { enviarAviso, leerRecordatorios, pushConfigurado, type Aviso } from '@/lib/push'
-import { avisosDelTick, isoWeekAPlanear, tickUnicoActivo, type Momento } from '@/lib/recordatorios'
+import { avisosDelTick, tickUnicoActivo, type Momento } from '@/lib/recordatorios'
+import { isoWeekAPlanear } from '@/lib/dates'
 import { getCierreDia } from '@/app/(app)/cierre/service'
 
 // Cron de recordatorios. Decide por persona: no hay una hora global, cada quien
@@ -55,7 +56,9 @@ async function avisoRitual(userId: string, ahora: Date, diaSemana: number): Prom
   return {
     titulo: `Sin plan para la ${isoWeek.replace('-W', ' · semana ')}`,
     cuerpo: 'El ritual son 10 minutos: reflejar, definir Wins, dimensionar y bloquear.',
-    ruta: '/semana/nueva',
+    // La semana va en la ruta: el planeador ya sabe planear la que se le pida,
+    // y así el aviso y su destino no pueden discrepar.
+    ruta: `/semana/nueva?semana=${isoWeek}`,
     tag: `ritual-${isoWeek}`,
   }
 }

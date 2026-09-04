@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { avisosDelTick, dentroDeVentana, isoWeekAPlanear, tickUnicoActivo } from '@/lib/recordatorios'
+import { avisosDelTick, dentroDeVentana, tickUnicoActivo } from '@/lib/recordatorios'
+import { isoWeekAPlanear } from '@/lib/dates'
 import { RECORDATORIOS_DEFAULT, leerRecordatorios } from '@/lib/push'
 
 describe('dentroDeVentana', () => {

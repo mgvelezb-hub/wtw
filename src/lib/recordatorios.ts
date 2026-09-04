@@ -1,5 +1,4 @@
 import type { Recordatorios } from './push'
-import { isoWeekOf } from './dates'
 
 // ¿Toca mandar el aviso en este tick del cron?
 //
@@ -61,16 +60,4 @@ export function avisosDelTick(
  */
 export function tickUnicoActivo(env: Record<string, string | undefined>): boolean {
   return env.RECORDATORIOS_TICK_UNICO !== '0'
-}
-
-// La semana que el ritual va a planear. El lunes es la semana EN CURSO —quien
-// planea el lunes por la mañana planea el día que empieza—; cualquier otro día
-// es la que arranca el próximo lunes. Sumar un día sin más fallaba en viernes y
-// sábado: ahí "mañana" sigue cayendo dentro de la misma semana ISO, así que el
-// aviso comprobaba el plan de la semana que ya se está viviendo y nunca salía.
-export function isoWeekAPlanear(ahora: Date, diaSemana: number): string {
-  if (diaSemana === 1) return isoWeekOf(ahora)
-  const d = new Date(ahora)
-  d.setUTCDate(d.getUTCDate() + ((8 - diaSemana) % 7 || 7))
-  return isoWeekOf(d)
 }

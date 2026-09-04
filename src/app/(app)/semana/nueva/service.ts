@@ -1,6 +1,6 @@
 import type { DesvioCausa } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
-import { isoWeekOf, weekRange } from '@/lib/dates'
+import { isoWeekOf, isoWeekAPlanear, diaSemanaMx, weekRange } from '@/lib/dates'
 import { capacityForWeek, type CapacidadSemana } from '@/app/api/v1/capacity/service'
 import { competenciasParaPlaneacion, type CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { getPatronDesvios } from '@/app/(app)/cierre/service'
@@ -86,8 +86,21 @@ export type PendienteBacklog = {
   origen: 'backlog' | 'arrastrada'
 }
 
+// Formato de semana ISO tal como lo escribe `isoWeekOf`: "2026-W37". Se valida
+// porque el valor puede llegar de la barra de direcciones.
+const RE_ISO_WEEK = /^\d{4}-W\d{2}$/
+
+export function isoWeekValida(valor: string | undefined | null): string | null {
+  return valor && RE_ISO_WEEK.test(valor) ? valor : null
+}
+
 export type ContextoPlaneacion = {
+  /** La semana que este ritual va a planear. */
   isoWeek: string
+  /** La semana que se está viviendo hoy. Distinta de `isoWeek` salvo el lunes. */
+  isoWeekEnCurso: string
+  /** La siguiente a la que se planea: la salida que ofrece el muro de "ya planeada". */
+  isoWeekSiguiente: string
   // true solo si la semana ya tiene PLAN (wins o tareas). Un registro de semana
   // vacío no cuenta: Mi Día crea cascarones para colgar juntas sincronizadas, y
   // bloquear por eso dejaba el planeador inservible justo el lunes.
@@ -113,6 +126,16 @@ export function isoWeekAnterior(isoWeek: string): string {
   const previo = new Date(inicio)
   previo.setUTCDate(previo.getUTCDate() - 7)
   return isoWeekOf(previo)
+}
+
+// La semana ISO siguiente a la dada. Espejo de `isoWeekAnterior`, y por la
+// misma razón: "2026-W52" + 1 es "2026-W53" o "2027-W01" según el año, y esa
+// tabla no la queremos mantener a mano.
+export function isoWeekSiguienteA(isoWeek: string): string {
+  const { inicio } = weekRange(isoWeek)
+  const proximo = new Date(inicio)
+  proximo.setUTCDate(proximo.getUTCDate() + 7)
+  return isoWeekOf(proximo)
 }
 
 function minutosReales(entries: Array<{ seconds: number }>): number {
@@ -199,8 +222,19 @@ async function recapDe(userId: string, isoWeek: string): Promise<RecapAnterior |
   }
 }
 
-export async function contextoPlaneacion(userId: string, hoy: Date = new Date()): Promise<ContextoPlaneacion> {
-  const isoWeek = isoWeekOf(hoy)
+export async function contextoPlaneacion(
+  userId: string,
+  hoy: Date = new Date(),
+  // Semana pedida explícitamente (`/semana/nueva?semana=2026-W40`). Sin ella se
+  // planea la que ENTRA, no la que se está viviendo: el ritual se hace el
+  // domingo por la tarde para la semana que arranca el lunes. Con `isoWeekOf`
+  // el planeador comprobaba el plan de la semana que ya iba de salida, la
+  // encontraba planeada y servía el muro — justo cuando el push del ritual
+  // acababa de despertar a alguien para hacerlo.
+  isoWeekPedida?: string
+): Promise<ContextoPlaneacion> {
+  const isoWeekEnCurso = isoWeekOf(hoy)
+  const isoWeek = isoWeekValida(isoWeekPedida) ?? isoWeekAPlanear(hoy, diaSemanaMx(hoy))
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
 
   const [previa, anterior, backlog, proyectos, capacidad, competencias, factoresClase, etiquetadas] = await Promise.all([
@@ -240,6 +274,8 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
 
   return {
     isoWeek,
+    isoWeekEnCurso,
+    isoWeekSiguiente: isoWeekSiguienteA(isoWeek),
     yaPlaneada: previa !== null && (previa._count.wins > 0 || previa._count.tasks > 0),
     factor: user.factorManual ? Number(user.factorManual) : 1.4,
     anterior,

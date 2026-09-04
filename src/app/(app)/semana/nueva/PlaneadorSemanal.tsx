@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { ContextoPlaneacion, RecapAnterior } from './service'
 import type { CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { balance, validarCarga, type Balance } from './service'
-import { crearSemanaAction, type NuevaSemanaTask } from './actions'
+import { crearSemanaAction, borrarSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
 import { medidaDe, refDeMedida } from './medidas'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO, factorDeClase } from '@/lib/tipo-trabajo'
@@ -142,6 +142,9 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   // avanza. Vive en estado y no en el draft porque es una interacción, no parte
   // del plan.
   const [avisoWins, setAvisoWins] = useState(false)
+  // Borrar un plan es destructivo: dos clics, el patrón que ya usa el resto de
+  // la app, en vez de un confirm() nativo.
+  const [borrando, setBorrando] = useState(false)
   const [pending, startTransition] = useTransition()
 
   // Escribir a localStorage sí es trabajo de efecto: sincroniza estado de React
@@ -244,16 +247,57 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   // bloqueo duro aquí convertiría el ritual en un formulario.
   const winsSinPlan = winsLlenos.filter((w) => w.siEntonces.trim() === '')
 
+  // El muro decía "primero cierra o borra la semana actual" y no ofrecía ni
+  // cerrar ni borrar: era un callejón, y justo el que encontraba quien llegaba
+  // aquí desde el recordatorio del ritual. Ahora nombra las salidas.
   if (ctx.yaPlaneada) {
     return (
-      <div className="rounded-xl border border-warn-border bg-warn-soft p-6">
-        <h1 className="text-lg font-bold text-warn">La semana {ctx.isoWeek} ya está planeada</h1>
-        <p className="mt-2 text-sm text-warn">
-          Para replanear, primero cierra o borra la semana actual. Así no se duplican tareas ni bloques.
+      <div className="bloque p-6">
+        <h1 className="text-lg font-bold text-ink">La semana {ctx.isoWeek} ya está planeada</h1>
+        <p className="mt-2 text-sm text-muted">
+          Replanear encima duplicaría wins, tareas y bloques. Estas son las salidas:
         </p>
-        <Link href="/semana" className="mt-4 inline-block rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white">
-          Ver mi semana
-        </Link>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            href={`/semana/nueva?semana=${ctx.isoWeekSiguiente}`}
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white"
+          >
+            Planear {ctx.isoWeekSiguiente} →
+          </Link>
+          <Link
+            href="/semana"
+            className="rounded-md border border-edge bg-surface px-4 py-2 text-sm font-semibold text-brand-deep"
+          >
+            Ver mi semana
+          </Link>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => {
+              if (!borrando) return setBorrando(true)
+              startTransition(async () => {
+                const r = await borrarSemanaAction(ctx.isoWeek)
+                setBorrando(false)
+                if ('error' in r) return setError(r.error)
+                router.refresh()
+              })
+            }}
+            className={`rounded-md px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
+              borrando ? 'bg-danger text-white' : 'text-danger hover:bg-danger-soft'
+            }`}
+          >
+            {borrando ? `Sí, borrar el plan de ${ctx.isoWeek}` : 'Borrar y replanear'}
+          </button>
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-faint">
+          Borrar quita los wins, los bloques y el pre-mortem de esa semana. Las tareas no se destruyen: las que tengan
+          tiempo medido o evidencia vuelven al backlog con su historia intacta.
+        </p>
+        {error && (
+          <p role="alert" className="mt-2 text-sm font-semibold text-danger">
+            {error}
+          </p>
+        )}
       </div>
     )
   }
@@ -504,6 +548,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                 try {
                   localStorage.removeItem(DRAFT_KEY)
                   await crearSemanaAction({
+                    isoWeek: ctx.isoWeek,
                     reflexion: draft.reflexion || undefined,
                     queCambias: draft.queCambias || undefined,
                     desbloqueador: draft.desbloqueador || undefined,
