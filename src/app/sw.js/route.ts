@@ -22,6 +22,50 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Web Push para los navegadores que todavía NO entienden Declarative Web Push.
+// El payload que manda \`lib/push.ts\` es el sobre declarativo (\`web_push: 8030\`),
+// que iOS 18.4+ y Safari pintan SIN ejecutar nada de esto; aquí solo se traduce
+// ese MISMO JSON, para no mantener dos formatos sincronizados.
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let datos;
+  try {
+    datos = event.data.json();
+  } catch (e) {
+    return;
+  }
+  const n = datos.notification;
+  if (!n || !n.title) return;
+  event.waitUntil(
+    self.registration.showNotification(n.title, {
+      body: n.body,
+      tag: n.tag,
+      icon: n.icon,
+      lang: n.lang,
+      data: { navigate: n.navigate },
+    })
+  );
+});
+
+// Si la app ya está abierta se reusa esa ventana: en el iPad, dos instancias de
+// la PWA compitiendo por el mismo estado es peor que no abrir nada.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const destino = event.notification.data && event.notification.data.navigate;
+  if (!destino) return;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
+      for (const cliente of lista) {
+        if ('focus' in cliente) {
+          cliente.navigate(destino);
+          return cliente.focus();
+        }
+      }
+      return self.clients.openWindow(destino);
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.mode === 'navigate') {

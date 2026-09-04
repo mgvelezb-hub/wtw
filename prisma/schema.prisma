@@ -170,6 +170,8 @@ model User {
   aprendizaje          LearningProgress[]
   cierres              DayReconciliation[]
   propuestasLiteratura PropuestaLiteratura[]
+  pushSubs             PushSub[]
+  recordatorios        Json?                 // { ritual: "dom 18:00" | null, cierre: "17:30" | null } — ver lib/push
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 }
@@ -834,4 +836,24 @@ model PropuestaLiteratura {
   fecha        DateTime @default(now())
 
   @@index([userId, fecha])
+}
+
+// Suscripción de Web Push de UN dispositivo (el iPad, el teléfono, el
+// escritorio). Una persona tiene varias y cada una caduca por su cuenta: el
+// endpoint es la identidad, y cuando el servicio de push responde 404/410 la
+// fila se borra — reintentar contra un endpoint muerto es lo que hace que las
+// notificaciones se acumulen y luego lleguen todas juntas.
+model PushSub {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  // Para saber qué dispositivo desuscribir desde Ajustes sin descifrar nada.
+  etiqueta  String?
+  createdAt DateTime @default(now())
+  usadoEn   DateTime?
+
+  @@index([userId])
 }
