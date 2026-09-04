@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import type { TipoTrabajo } from '@prisma/client'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
 import { TourPrimeraVez } from '@/components/tour-primera-vez'
-import { captureAction, discardAction } from './actions'
+import { captureAction, discardAction, etiquetarClasesAction } from './actions'
 
 type InboxItem = {
   id: string
@@ -21,18 +21,28 @@ type InboxItem = {
 // el histórico para volverse inflación.
 type Ajuste = { etiqueta: string; factor: number; previo: string }
 
+export type SugerenciaClase = {
+  id: string
+  titulo: string
+  tipo: TipoTrabajo | null
+  fuente: 'historico' | 'semilla' | null
+  porque: string | null
+}
+
 export function InboxBoard({
   tasks,
   proyectos,
   herramientas,
   factores,
   factoresClase,
+  sugerencias,
 }: {
   tasks: InboxItem[]
   proyectos: { id: string; nombre: string }[]
   herramientas: readonly string[]
   factores: Record<string, number>
   factoresClase: Record<TipoTrabajo, { factor: number | null; muestras: number }>
+  sugerencias: SugerenciaClase[]
 }) {
   const [pending, startTransition] = useTransition()
   const [titulo, setTitulo] = useState('')
@@ -42,6 +52,11 @@ export function InboxBoard({
   const [aliado, setAliado] = useState(false)
   const [estimadoMin, setEstimadoMin] = useState('')
   const [ajuste, setAjuste] = useState<Ajuste | null>(null)
+  // Clases del lote, editables antes de confirmar: la sugerencia se puede
+  // corregir tarea por tarea o descartar entera. Arranca de las sugerencias del
+  // servidor y no se re-deriva en el cliente.
+  const [lote, setLote] = useState<Record<string, TipoTrabajo | ''>>({})
+  const [loteAbierto, setLoteAbierto] = useState(false)
 
   const base = Number(estimadoMin)
   const baseValida = estimadoMin !== '' && Number.isFinite(base) && base > 0
@@ -271,6 +286,77 @@ export function InboxBoard({
           Agregar a pendientes
         </button>
       </form>
+
+      {/* ── Clases en lote ────────────────────────────────────────────────────
+          El factor por clase solo calibra si las tareas traen clase, y etiquetar
+          una por una es la disciplina PMO que esta app existe para no hacer a
+          mano. La sugerencia se propone; confirmar es del humano. */}
+      {sugerencias.length > 0 && (
+        <section className="bloque mb-4 p-3">
+          <button
+            onClick={() => setLoteAbierto((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 text-left"
+          >
+            <span className="text-sm font-semibold text-ink">
+              {sugerencias.length} {sugerencias.length === 1 ? 'pendiente' : 'pendientes'} sin clase de trabajo
+            </span>
+            <span className="lbl text-[10px] text-brand-deep">{loteAbierto ? 'Cerrar' : 'Etiquetar en lote'}</span>
+          </button>
+
+          {loteAbierto && (
+            <>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted">
+                La clase decide con qué factor se corrige la estimación al planear. Estas salen del título — de tu propio
+                histórico cuando hay una tarea parecida, del vocabulario base cuando no. Revisa y confirma.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {sugerencias.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center gap-2 py-1">
+                    <span className="min-w-0 flex-1 text-sm text-ink">
+                      {s.titulo}
+                      {s.porque && (
+                        <span className="ml-1 text-xs text-faint" title={`Se parece a "${s.porque}"`}>
+                          · como “{s.porque}”
+                        </span>
+                      )}
+                    </span>
+                    <select
+                      value={lote[s.id] ?? s.tipo ?? ''}
+                      aria-label={`Clase de ${s.titulo}`}
+                      onChange={(e) => setLote((l) => ({ ...l, [s.id]: e.target.value as TipoTrabajo | '' }))}
+                      className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-ink"
+                    >
+                      <option value="">No etiquetar</option>
+                      {TIPOS_TRABAJO.map((t) => (
+                        <option key={t} value={t}>
+                          {TIPO_TRABAJO_LABEL[t]}
+                        </option>
+                      ))}
+                    </select>
+                  </li>
+                ))}
+              </ul>
+              <button
+                disabled={pending}
+                onClick={() => {
+                  const pares = sugerencias
+                    .map((s) => ({ id: s.id, tipo: (lote[s.id] ?? s.tipo ?? '') as TipoTrabajo | '' }))
+                    .filter((p): p is { id: string; tipo: TipoTrabajo } => p.tipo !== '')
+                  if (pares.length === 0) return
+                  startTransition(async () => {
+                    await etiquetarClasesAction(pares)
+                    setLote({})
+                    setLoteAbierto(false)
+                  })
+                }}
+                className="mt-2 rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              >
+                Confirmar clases
+              </button>
+            </>
+          )}
+        </section>
+      )}
 
       <ul>
         {tasks.map((t) => (

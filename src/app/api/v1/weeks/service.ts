@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { weekRange } from '@/lib/dates'
-import type { Alcance, BlockType } from '@prisma/client'
+import type { Alcance, BlockType, TipoTrabajo } from '@prisma/client'
 
 // `siEntonces` es opcional en el contrato: POST /weeks y la skill /wtw-semana
 // crean Wins sin él y tienen que seguir funcionando. El paso 2 del planeador sí
@@ -23,6 +23,10 @@ type TaskInput = {
   // para decidir en qué se invierte la semana. Ver
   // docs/plans/2026-08-10-alineacion-council.md §Fase 2b, pieza 3.
   competenciaIds?: string[]
+  // Clase de referencia para el factor de realismo. Se decide al planear porque
+  // ahí es donde el factor de esa clase corrige la estimación; etiquetar después
+  // solo sirve para el histórico, no para el plan que se está escribiendo.
+  tipoTrabajo?: TipoTrabajo
 }
 
 type AdoptarInput = {
@@ -31,6 +35,7 @@ type AdoptarInput = {
   estimadoMin?: number
   ajustadoMin?: number
   competenciaIds?: string[]
+  tipoTrabajo?: TipoTrabajo
 }
 
 type BlockInput = {
@@ -111,6 +116,7 @@ async function createTasksAndBlocks(
         titulo: t.titulo,
         estimadoMin: t.estimadoMin,
         ajustadoMin: t.ajustadoMin,
+        tipoTrabajo: t.tipoTrabajo,
         deadline: t.deadline ? new Date(t.deadline) : undefined,
         alcance: t.alcance ?? 'sow',
         dolorCliente: t.dolorCliente,
@@ -201,6 +207,7 @@ export async function createWeekPayload(userId: string, payload: CreateWeekPaylo
           winId: a.winPosicion ? winByPosicion.get(a.winPosicion) : undefined,
           estimadoMin: a.estimadoMin,
           ajustadoMin: a.ajustadoMin,
+          tipoTrabajo: a.tipoTrabajo,
           estatus: 'planned',
         },
       })

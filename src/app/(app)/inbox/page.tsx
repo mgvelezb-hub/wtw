@@ -4,6 +4,7 @@ import {
   listProjectsForInbox,
   getHerramientaFactors,
   getFactoresPorClase,
+  sugerenciasDeClase,
   HERRAMIENTAS,
 } from './service'
 import { InboxBoard } from './InboxBoard'
@@ -12,11 +13,12 @@ export default async function InboxPage() {
   const session = await verifySession()
   if (!session) return null
 
-  const [tasks, proyectos, factores, factoresClase] = await Promise.all([
+  const [tasks, proyectos, factores, factoresClase, sugerencias] = await Promise.all([
     listInbox(session.userId),
     listProjectsForInbox(session.userId),
     getHerramientaFactors(session.userId),
     getFactoresPorClase(session.userId),
+    sugerenciasDeClase(session.userId),
   ])
 
   return (
@@ -36,6 +38,7 @@ export default async function InboxPage() {
         herramientas={HERRAMIENTAS}
         factores={factores}
         factoresClase={factoresClase}
+        sugerencias={sugerencias}
       />
     </main>
   )

@@ -4,6 +4,10 @@ import { isoWeekOf, weekRange } from '@/lib/dates'
 import { capacityForWeek, type CapacidadSemana } from '@/app/api/v1/capacity/service'
 import { competenciasParaPlaneacion, type CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { getPatronDesvios } from '@/app/(app)/cierre/service'
+import { factorPorClase } from '@/lib/factor-clase'
+import type { FactorClasePlano } from '@/lib/tipo-trabajo'
+import { sugerirClase, type TareaEtiquetada } from '@/lib/sugerir-clase'
+import type { TipoTrabajo } from '@prisma/client'
 
 // Contexto que alimenta los 5 pasos del ritual. Todo se calcula aquí, en el
 // servidor: la IA solo redacta y sugiere sobre estos números ya cerrados. Ver
@@ -72,6 +76,10 @@ export type PendienteBacklog = {
   herramienta: string | null
   deadline: string | null
   urgente: boolean
+  /** Clase ya guardada en la tarea. */
+  tipoTrabajo: TipoTrabajo | null
+  /** Clase sugerida cuando la tarea no trae: el planeador la propone marcada como sugerencia. */
+  tipoSugerido: TipoTrabajo | null
   // 'arrastrada' = venía planeada en una semana anterior y no se terminó. Sin
   // esto el vaciado salía vacío para quien trae trabajo sin cerrar: esas tareas
   // son `planned`, no `backlog`, y el ritual las habría hecho teclear de nuevo.
@@ -91,6 +99,10 @@ export type ContextoPlaneacion = {
   capacidad: CapacidadSemana
   // Catálogo para etiquetar qué competencia ejercita cada tarea (paso 3).
   competencias: CompetenciaPlaneacion[]
+  // Factor de realismo POR CLASE. El paso 3 estima con el factor de la clase de
+  // cada tarea y cae al global solo donde no hay muestras: medir por clase y
+  // planear con el promedio global era medir bien y corregir mal.
+  factoresClase: Partial<Record<TipoTrabajo, FactorClasePlano>>
 }
 
 // La semana ISO anterior a la dada. Se resuelve restando 7 días al inicio del
@@ -191,7 +203,7 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
   const isoWeek = isoWeekOf(hoy)
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
 
-  const [previa, anterior, backlog, proyectos, capacidad, competencias] = await Promise.all([
+  const [previa, anterior, backlog, proyectos, capacidad, competencias, factoresClase, etiquetadas] = await Promise.all([
     prisma.week.findUnique({
       where: { userId_isoWeek: { userId, isoWeek } },
       select: { _count: { select: { wins: true, tasks: true } } },
@@ -214,7 +226,17 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
     prisma.project.findMany({ where: { userId, estatus: 'activo' }, select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
     capacityForWeek(userId, isoWeek),
     competenciasParaPlaneacion(userId),
+    factorPorClase(userId),
+    // Vocabulario del propio usuario para sugerir la clase de lo que no la trae.
+    prisma.task.findMany({
+      where: { userId, tipoTrabajo: { not: null } },
+      select: { titulo: true, tipoTrabajo: true },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    }),
   ])
+
+  const historico = etiquetadas as TareaEtiquetada[]
 
   return {
     isoWeek,
@@ -229,11 +251,14 @@ export async function contextoPlaneacion(userId: string, hoy: Date = new Date())
       herramienta: t.herramienta,
       deadline: t.deadline ? t.deadline.toISOString().slice(0, 10) : null,
       urgente: t.urgente,
+      tipoTrabajo: t.tipoTrabajo,
+      tipoSugerido: t.tipoTrabajo ? null : (sugerirClase(t.titulo, historico)?.tipo ?? null),
       origen: t.estatus === 'backlog' ? ('backlog' as const) : ('arrastrada' as const),
     })),
     proyectos,
     capacidad,
     competencias,
+    factoresClase,
   }
 }
 

@@ -9,6 +9,8 @@ import { balance, validarCarga, type Balance } from './service'
 import { crearSemanaAction, type NuevaSemanaTask } from './actions'
 import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemAction } from './ai-actions'
 import { medidaDe, refDeMedida } from './medidas'
+import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO, factorDeClase } from '@/lib/tipo-trabajo'
+import type { TipoTrabajo } from '@prisma/client'
 
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
 const DRAFT_KEY = 'wtw_planeador_draft_v2'
@@ -35,6 +37,9 @@ type Item = {
   incluida: boolean
   arrastrada: boolean
   competenciaId?: string
+  tipoTrabajo?: TipoTrabajo
+  /** La clase venía sugerida (no la eligió el humano): se marca en la UI hasta que la confirme. */
+  tipoSugerido?: boolean
 }
 
 // `siEntonces` y `leverage` son nuevos: un draft guardado antes de este cambio
@@ -112,6 +117,11 @@ function draftInicial(ctx: ContextoPlaneacion): Draft {
       herramienta: t.herramienta,
       deadline: t.deadline,
       estimadoMin: t.estimadoMin ?? 0,
+      // La clase guardada gana; si no hay, entra la sugerida MARCADA como
+      // sugerencia — se aplica sola al ajuste pero se ve distinta hasta que Mau
+      // la confirme o la cambie.
+      tipoTrabajo: t.tipoTrabajo ?? t.tipoSugerido ?? undefined,
+      tipoSugerido: !t.tipoTrabajo && t.tipoSugerido !== null,
       // Las arrastradas entran preseleccionadas: es trabajo que ya empezaste y
       // sigue vivo. Los urgentes del backlog también.
       incluida: t.urgente || t.origen === 'arrastrada',
@@ -219,7 +229,13 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   // una carga más chica que la que iba a quedar escrita, y ahora que la carga
   // decide si la semana se puede cerrar, esa diferencia bloquearía en el
   // servidor algo que la pantalla declaró que cabía.
-  const cargaAjustada = Math.round(incluidas.reduce((s, it) => s + (it.estimadoMin > 0 ? it.estimadoMin : 30), 0) * ctx.factor)
+  // El ajuste va por clase: cada tarea se corrige con el factor de su tipo de
+  // trabajo, y cae al global donde esa clase no tiene muestras. Antes se
+  // multiplicaba la SUMA por el factor global, que diluye lo que ya se sabe: un
+  // deck que históricamente sale al doble se planeaba al 1.4 promedio.
+  const factorDe = (it: Item) => factorDeClase(it.tipoTrabajo, ctx.factoresClase, ctx.factor)
+  const ajustar = (it: Item) => Math.round((it.estimadoMin > 0 ? it.estimadoMin : 30) * factorDe(it))
+  const cargaAjustada = incluidas.reduce((s, it) => s + ajustar(it), 0)
   const bal = balance(cargaAjustada, ctx.capacidad)
   const carga = validarCarga(cargaAjustada, ctx.capacidad)
   const sinEstimar = incluidas.filter((it) => it.estimadoMin <= 0)
@@ -320,6 +336,11 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
 
         {draft.paso === 2 && (
           <PasoVaciar
+            factoresClase={ctx.factoresClase}
+            ajustar={ajustar}
+            onConfirmarSugerencias={() =>
+              setDraft((d) => ({ ...d, items: d.items.map((it) => (it.tipoSugerido ? { ...it, tipoSugerido: false } : it)) }))
+            }
             items={draft.items}
             wins={winsLlenos}
             factor={ctx.factor}
@@ -363,7 +384,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
           <PasoBloquear
             items={incluidas}
             capacidad={ctx.capacidad}
-            factor={ctx.factor}
+            ajustar={ajustar}
             bal={bal}
             cargando={cargandoIA === 'triage'}
             onItem={setItem}
@@ -373,7 +394,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   incluidas.map((it) => ({
                     id: it.ref,
                     titulo: it.titulo,
-                    ajustadoMin: Math.round(it.estimadoMin * ctx.factor),
+                    ajustadoMin: ajustar(it),
                     winPosicion: it.winPosicion,
                     deadline: it.deadline,
                   })),
@@ -477,6 +498,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                   dod: [],
                   fecha: it.fecha,
                   competenciaId: it.competenciaId,
+                  tipoTrabajo: it.tipoTrabajo,
                 }))
                 let creada = false
                 try {
@@ -856,6 +878,8 @@ function PasoVaciar({
   items,
   wins,
   factor,
+  factoresClase,
+  ajustar,
   proyectos,
   competencias,
   cargaAjustada,
@@ -863,12 +887,15 @@ function PasoVaciar({
   sinEstimar,
   onItem,
   onAgregar,
+  onConfirmarSugerencias,
   onIA,
   cargando,
 }: {
   items: Item[]
   wins: WinDraft[]
   factor: number
+  factoresClase: ContextoPlaneacion['factoresClase']
+  ajustar: (it: Item) => number
   proyectos: Array<{ id: string; nombre: string }>
   competencias: CompetenciaPlaneacion[]
   cargaAjustada: number
@@ -876,6 +903,7 @@ function PasoVaciar({
   sinEstimar: number
   onItem: (ref: string, cambio: Partial<Item>) => void
   onAgregar: (titulo: string, proyecto?: string) => void
+  onConfirmarSugerencias: () => void
   onIA: () => void
   cargando: boolean
 }): React.ReactElement {
@@ -894,6 +922,7 @@ function PasoVaciar({
 
   const incluidas = items.filter((it) => it.incluida)
   const etiquetadas = incluidas.filter((it) => it.competenciaId).length
+  const sugeridas = incluidas.filter((it) => it.tipoSugerido && it.tipoTrabajo).length
 
   return (
     <div className="space-y-3">
@@ -902,8 +931,19 @@ function PasoVaciar({
         <BotonIA onClick={onIA} cargando={cargando} texto={`Estimar ${sinEstimar || ''} con IA`} />
       </div>
       <p className="text-xs text-muted">
-        Estima el tiempo limpio. El factor {factor} se aplica solo: {horas(cargaAjustada)} ajustados de {horas(planeableMin)} planeables.
+        Estima el tiempo limpio. El factor se aplica solo, y por CLASE de trabajo donde ya hay histórico ({factor} en lo
+        demás): {horas(cargaAjustada)} ajustados de {horas(planeableMin)} planeables.
       </p>
+      {sugeridas > 0 && (
+        <p className="text-xs text-warn">
+          <strong>{sugeridas}</strong> {sugeridas === 1 ? 'clase sugerida' : 'clases sugeridas'} por el título (marcadas en
+          ámbar). Ya cuentan para el ajuste — revísalas o
+          <button onClick={onConfirmarSugerencias} className="ml-1 font-bold underline">
+            confirma todas
+          </button>
+          .
+        </p>
+      )}
       {grupos.length > 0 && (
         <p className="text-xs text-muted">
           Etiqueta qué competencia ejercita cada tarea: <strong>{etiquetadas}</strong> de {incluidas.length} incluidas.{' '}
@@ -978,6 +1018,41 @@ function PasoVaciar({
                 </option>
               ))}
             </select>
+            {/* Clase de trabajo: es lo que decide con qué factor se corrige esta
+                tarea, así que se muestra el factor que va a aplicar. Ámbar =
+                sugerida por el título, todavía sin confirmar. */}
+            {it.incluida && (
+              <span className="flex items-center gap-1">
+                <select
+                  value={it.tipoTrabajo ?? ''}
+                  aria-label={`Clase de trabajo de ${it.titulo}`}
+                  onChange={(e) =>
+                    onItem(it.ref, {
+                      tipoTrabajo: (e.target.value || undefined) as TipoTrabajo | undefined,
+                      tipoSugerido: false,
+                    })
+                  }
+                  className={`rounded border px-1 py-0.5 text-xs ${
+                    it.tipoSugerido && it.tipoTrabajo
+                      ? 'border-warn-border bg-warn-soft text-warn'
+                      : it.tipoTrabajo
+                        ? 'border-brand/40 bg-brand/5 text-brand-deep'
+                        : 'border-edge bg-surface text-muted'
+                  }`}
+                >
+                  <option value="">Sin clase</option>
+                  {TIPOS_TRABAJO.map((t) => (
+                    <option key={t} value={t}>
+                      {TIPO_TRABAJO_LABEL[t]}
+                    </option>
+                  ))}
+                </select>
+                <span className="num text-[10px] text-faint" title="Factor que aplica a esta tarea">
+                  ×{factorDeClase(it.tipoTrabajo, factoresClase, factor)} = {horas(ajustar(it))}
+                </span>
+              </span>
+            )}
+
             {/* Solo en las incluidas: etiquetar lo que se va a sacar de la semana
                 no dice nada, y la fila ya trae tres controles. */}
             {it.incluida && grupos.length > 0 && (
@@ -1013,7 +1088,7 @@ function PasoVaciar({
 function PasoBloquear({
   items,
   capacidad,
-  factor,
+  ajustar,
   bal,
   onItem,
   onIA,
@@ -1021,7 +1096,7 @@ function PasoBloquear({
 }: {
   items: Item[]
   capacidad: ContextoPlaneacion['capacidad']
-  factor: number
+  ajustar: (it: Item) => number
   bal: ReturnType<typeof balance>
   onItem: (ref: string, cambio: Partial<Item>) => void
   onIA: () => void
@@ -1057,7 +1132,7 @@ function PasoBloquear({
 
       <dl className="grid grid-cols-5 gap-1 text-center">
         {capacidad.dias.map((d) => {
-          const asignado = items.filter((it) => it.fecha === d.fecha).reduce((s, it) => s + Math.round(it.estimadoMin * factor), 0)
+          const asignado = items.filter((it) => it.fecha === d.fecha).reduce((s, it) => s + ajustar(it), 0)
           const libre = Math.round(d.horasLibres * 60)
           // Un día sobreasignado es una advertencia, no algo destructivo ni
           // atrasado: ámbar, que es lo que la gramática de color reserva para
@@ -1083,7 +1158,7 @@ function PasoBloquear({
         {items.map((it) => (
           <li key={it.ref} className="flex items-center gap-2 rounded-lg border border-hair p-2">
             <span className="min-w-0 flex-1 text-sm text-ink">{it.titulo}</span>
-            <span className="num text-xs text-muted">{horas(Math.round(it.estimadoMin * factor))}</span>
+            <span className="num text-xs text-muted">{horas(ajustar(it))}</span>
             <select
               value={it.fecha ?? ''}
               aria-label={`Día de ${it.titulo}`}

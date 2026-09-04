@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import type { Alcance, TipoTrabajo } from '@prisma/client'
 import { factorPorClase, type FactorClase } from '@/lib/factor-clase'
+import { sugerirClase, type TareaEtiquetada } from '@/lib/sugerir-clase'
 
 export const HERRAMIENTAS = [
   'Excel',
@@ -61,6 +62,61 @@ export async function getHerramientaFactors(userId: string): Promise<Record<stri
 // pasa tal cual al Client Component (regla 2: nunca un modelo de Prisma completo).
 export async function getFactoresPorClase(userId: string): Promise<Record<TipoTrabajo, FactorClase>> {
   return factorPorClase(userId)
+}
+
+// Sugerencia de clase para TODO lo que no la trae. El etiquetado uno por uno es
+// justamente la disciplina PMO que la app existe para no hacer a mano: sin un
+// camino en lote, el factor por clase se queda sin insumo y nunca calibra.
+export async function sugerenciasDeClase(
+  userId: string
+): Promise<Array<{ id: string; titulo: string; tipo: TipoTrabajo | null; fuente: 'historico' | 'semilla' | null; porque: string | null }>> {
+  const [sinClase, etiquetadas] = await Promise.all([
+    prisma.task.findMany({
+      where: { userId, estatus: 'backlog', tipoTrabajo: null },
+      select: { id: true, titulo: true },
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.task.findMany({
+      where: { userId, tipoTrabajo: { not: null } },
+      select: { titulo: true, tipoTrabajo: true },
+      orderBy: { createdAt: 'desc' },
+      take: 300,
+    }),
+  ])
+
+  // Van TODAS las tareas sin clase, no solo las que reciben sugerencia: la
+  // pantalla es el camino para etiquetar en lote, y esconder las que el
+  // heurístico no reconoce dejaría fuera justo lo que nadie va a etiquetar solo.
+  const historico = etiquetadas as TareaEtiquetada[]
+  return sinClase.map((t) => {
+    const s = sugerirClase(t.titulo, historico)
+    return { id: t.id, titulo: t.titulo, tipo: s?.tipo ?? null, fuente: s?.fuente ?? null, porque: s?.porque ?? null }
+  })
+}
+
+// Escribe las clases confirmadas. `updateMany` por clase en vez de una por
+// tarea: son hasta decenas de filas y el usuario ya aprobó el lote completo.
+// Cada update filtra por userId — nunca por id solo (regla 4).
+export async function etiquetarClases(
+  userId: string,
+  pares: Array<{ id: string; tipo: TipoTrabajo }>
+): Promise<number> {
+  const porTipo = new Map<TipoTrabajo, string[]>()
+  for (const p of pares) {
+    const lista = porTipo.get(p.tipo)
+    if (lista) lista.push(p.id)
+    else porTipo.set(p.tipo, [p.id])
+  }
+
+  let escritas = 0
+  for (const [tipo, ids] of porTipo) {
+    const { count } = await prisma.task.updateMany({
+      where: { id: { in: ids }, userId },
+      data: { tipoTrabajo: tipo },
+    })
+    escritas += count
+  }
+  return escritas
 }
 
 export async function createInboxTask(

@@ -6,6 +6,9 @@ import { createWeekPayload } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
 import { isoWeekOf } from '@/lib/dates'
 import { componerReflexion, validarCarga } from './service'
+import { factorPorClase } from '@/lib/factor-clase'
+import { factorDeClase } from '@/lib/tipo-trabajo'
+import type { TipoTrabajo } from '@prisma/client'
 
 export type NuevaSemanaWin = { titulo: string; dod?: string; siEntonces?: string }
 
@@ -26,6 +29,8 @@ export type NuevaSemanaTask = {
   fecha?: string
   // Competencia que esta tarea va a ejercitar, elegida en el paso 3.
   competenciaId?: string
+  // Clase de trabajo elegida (o aceptada de la sugerencia) en el paso 3.
+  tipoTrabajo?: TipoTrabajo
 }
 
 export type CrearSemanaInput = {
@@ -46,7 +51,13 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: session.userId } })
   const factorUsado = user.factorManual ? Number(user.factorManual) : 1.4
-  const ajustado = (min: number) => Math.round(min * factorUsado)
+  // El ajuste va POR CLASE: cada tarea se corrige con el factor de su tipo de
+  // trabajo y cae al global solo donde esa clase no tiene muestras suficientes.
+  // Se recalcula aquí y no se confía en lo que mandó el cliente, igual que el
+  // tope de carga: la pantalla propone, el servidor decide qué se escribe.
+  const factoresClase = await factorPorClase(session.userId)
+  const ajustado = (min: number, tipo?: TipoTrabajo) =>
+    Math.round(min * factorDeClase(tipo, factoresClase, factorUsado))
 
   const isoWeek = isoWeekOf(new Date())
 
@@ -54,7 +65,10 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
   // deshabilitado es una cortesía de UI, la restricción es esta. Se calcula con
   // el MISMO factor con el que se van a guardar los ajustadoMin, para que lo que
   // se valida sea exactamente lo que se escribe.
-  const cargaAjustadaMin = input.tasks.reduce((s, t) => s + ajustado(t.estimadoMin > 0 ? t.estimadoMin : 30), 0)
+  const cargaAjustadaMin = input.tasks.reduce(
+    (s, t) => s + ajustado(t.estimadoMin > 0 ? t.estimadoMin : 30, t.tipoTrabajo),
+    0
+  )
   const carga = validarCarga(cargaAjustadaMin, await capacityForWeek(session.userId, isoWeek))
   if (!carga.ok) throw new Error(carga.mensaje!)
 
@@ -90,7 +104,8 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
       projectNombre: t.projectNombre,
       winPosicion: t.winPosicion,
       estimadoMin: t.estimadoMin,
-      ajustadoMin: ajustado(t.estimadoMin),
+      ajustadoMin: ajustado(t.estimadoMin, t.tipoTrabajo),
+      tipoTrabajo: t.tipoTrabajo,
       dod: t.dod,
       competenciaIds: competenciasDe(t),
     })),
@@ -98,7 +113,8 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
       id: t.id!,
       winPosicion: t.winPosicion,
       estimadoMin: t.estimadoMin,
-      ajustadoMin: ajustado(t.estimadoMin),
+      ajustadoMin: ajustado(t.estimadoMin, t.tipoTrabajo),
+      tipoTrabajo: t.tipoTrabajo,
       competenciaIds: competenciasDe(t),
     })),
     // Bloques "flex": el ritual decide EN QUÉ DÍA va cada tarea, no a qué hora.
@@ -112,7 +128,7 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
         tipo: 'tarea' as const,
         taskRef: t.id ?? t.ref,
         titulo: t.titulo,
-        planMin: ajustado(t.estimadoMin),
+        planMin: ajustado(t.estimadoMin, t.tipoTrabajo),
       })),
   })
 

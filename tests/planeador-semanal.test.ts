@@ -459,3 +459,81 @@ describe('bloques duplicados al adoptar una arrastrada', () => {
     expect(bloques[0].fecha.toISOString().slice(0, 10)).toBe('2026-08-05')
   })
 })
+
+// El factor por clase se medía (Task.tipoTrabajo + factor-clase.ts) pero el
+// planeador seguía corrigiendo con el promedio global: medir bien y corregir
+// mal. Estas pruebas fijan las dos mitades que faltaban — que la clase llegue
+// al planeador (guardada o sugerida) y que se persista al crear la semana.
+describe('clase de trabajo en el planeador', () => {
+  async function tareaTerminada(userId: string, titulo: string, estimadoMin: number, medidoMin: number) {
+    const t = await prisma.task.create({
+      data: { userId, titulo, estatus: 'done', estimadoMin, tipoTrabajo: 'deck' },
+    })
+    await prisma.timeEntry.create({
+      data: { taskId: t.id, userId, seconds: medidoMin * 60, startedAt: new Date(), stoppedAt: new Date() },
+    })
+    return t
+  }
+
+  it('el contexto trae el factor de la clase que ya tiene muestras suficientes', async () => {
+    const user = await usuario()
+    // Tres decks planeados a 60 min que tomaron 120: factor de clase 2.0.
+    await tareaTerminada(user.id, 'Deck del comité', 60, 120)
+    await tareaTerminada(user.id, 'Deck de resultados', 60, 120)
+    await tareaTerminada(user.id, 'Deck de negociaciones', 60, 120)
+
+    const ctx = await contextoPlaneacion(user.id)
+    expect(ctx.factoresClase.deck).toMatchObject({ factor: 2, muestras: 3 })
+    // Sin muestras, la clase no propone corrección: el planeador cae al global.
+    expect(ctx.factoresClase.junta?.factor).toBeNull()
+  })
+
+  it('sugiere la clase del backlog con el vocabulario del propio usuario', async () => {
+    const user = await usuario()
+    await tareaTerminada(user.id, 'Deck del comité de negociaciones', 60, 120)
+    const pendiente = await prisma.task.create({
+      data: { userId: user.id, titulo: 'Deck del comité de septiembre', estatus: 'backlog' },
+    })
+
+    const ctx = await contextoPlaneacion(user.id)
+    const item = ctx.backlog.find((b) => b.id === pendiente.id)!
+    expect(item.tipoTrabajo).toBeNull()
+    expect(item.tipoSugerido).toBe('deck')
+  })
+
+  it('una tarea que YA trae clase no recibe sugerencia: no se pisa lo que el humano decidió', async () => {
+    const user = await usuario()
+    await prisma.task.create({
+      data: { userId: user.id, titulo: 'Deck del comité', estatus: 'backlog', tipoTrabajo: 'gestion' },
+    })
+
+    const ctx = await contextoPlaneacion(user.id)
+    expect(ctx.backlog[0]).toMatchObject({ tipoTrabajo: 'gestion', tipoSugerido: null })
+  })
+
+  it('createWeekPayload persiste la clase en tareas nuevas y adoptadas', async () => {
+    const user = await usuario()
+    const delBacklog = await prisma.task.create({
+      data: { userId: user.id, titulo: 'Modelo de costeo', estatus: 'backlog' },
+    })
+
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W40',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Cerrar el caso' }],
+      tasks: [
+        { ref: 'n1', titulo: 'Deck del foro', estimadoMin: 60, ajustadoMin: 120, tipoTrabajo: 'deck', dod: [] },
+      ],
+      adoptar: [{ id: delBacklog.id, estimadoMin: 90, ajustadoMin: 126, tipoTrabajo: 'analisis' }],
+      blocks: [],
+    })
+
+    const nueva = await prisma.task.findFirstOrThrow({ where: { userId: user.id, titulo: 'Deck del foro' } })
+    expect(nueva.tipoTrabajo).toBe('deck')
+    // El ajuste de la nueva salió del factor de su clase (2.0), no del global 1.4.
+    expect(nueva.ajustadoMin).toBe(120)
+
+    const adoptada = await prisma.task.findUniqueOrThrow({ where: { id: delBacklog.id } })
+    expect(adoptada.tipoTrabajo).toBe('analisis')
+  })
+})
