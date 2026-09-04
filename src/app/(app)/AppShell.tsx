@@ -2,13 +2,27 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type UIEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type UIEvent } from 'react'
 import { CommandPalette } from '@/components/command-palette'
 import { NavInferior } from '@/components/nav-inferior'
 import { Icono, type Grupo, type IconName, type NavItem, type ProyectoNav } from '@/components/nav-iconos'
+import { useLocalStorage, escribirLocal } from '@/lib/local-store'
 
 const NAV_COLAPSADO_KEY = 'wtw-nav-colapsado'
 const RAIL_KEY = 'wtw-rail'
+
+// Vive fuera del componente porque no depende de nada del render: lee el valor
+// vigente del store y escribe el contrario. Así el atajo `[` puede llamarla
+// desde un listener registrado una sola vez, sin re-suscribir en cada cambio.
+function toggleRail(): void {
+  let actual: string | null = null
+  try {
+    actual = window.localStorage.getItem(RAIL_KEY)
+  } catch {
+    // Sin lectura posible se asume expandido, el default de la app.
+  }
+  escribirLocal(RAIL_KEY, actual === 'rail' ? 'expandido' : 'rail')
+}
 
 // Tooltip de escritorio. En estado expandido es un complemento (la etiqueta ya
 // se ve) y por eso espera 400 ms; en estado rail es la ÚNICA forma de leer el
@@ -311,48 +325,41 @@ export function AppShell({
   // Si la fila cabe entera (pocas rutas, o pantalla ancha en modo móvil), no hay
   // nada que scrollear y el fade derecho no debe aparecer — sin esto se queda
   // prendido siempre porque `atEnd` arranca en false.
+  //
+  // Se mide con un ResizeObserver y no con un setState en el cuerpo del efecto:
+  // el observer es el sistema externo del que esta medida depende de verdad
+  // (ancho del contenedor), así que además cubre el resize de la ventana y el
+  // cambio de orientación del iPad, que la versión anterior no veía.
   useEffect(() => {
-    if (scrollRef.current) medirScroll(scrollRef.current)
+    const el = scrollRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => medirScroll(el))
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [flat.length])
 
-  // Preferencia de grupos colapsados en el sidebar de escritorio. Arranca en
-  // `null` y se llena en useEffect tras montar, para no divergir del render del
-  // servidor (regla 1 de CLAUDE.md: nunca leer localStorage durante el render).
-  const [colapsado, setColapsado] = useState<Record<string, boolean> | null>(null)
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(NAV_COLAPSADO_KEY)
-    if (!raw) {
-      setColapsado({})
-      return
-    }
+  // Preferencia de grupos colapsados en el sidebar de escritorio. Se lee con
+  // `useLocalStorage` (store externo): el snapshot del servidor es `null` —el
+  // mismo "todavía no lo leí" de antes, que la UI ya sabe pintar— y el del
+  // cliente se lee tras la hidratación, sin el render extra en cadena que
+  // costaba el `useState` + `useEffect` (regla 1 de CLAUDE.md intacta).
+  const colapsadoRaw = useLocalStorage(NAV_COLAPSADO_KEY)
+  const colapsado = useMemo<Record<string, boolean> | null>(() => {
+    if (colapsadoRaw === null) return null
     try {
-      setColapsado(JSON.parse(raw))
+      return JSON.parse(colapsadoRaw)
     } catch {
-      setColapsado({})
+      return {}
     }
-  }, [])
+  }, [colapsadoRaw])
 
   // Ancho del sidebar de escritorio: `null` = todavía no se leyó la preferencia
   // (misma regla 1). El default es EXPANDIDO a propósito: el lunes por la mañana
   // nadie quiere descubrir que su nav cambió de forma sola.
-  const [rail, setRail] = useState<boolean | null>(null)
+  const railRaw = useLocalStorage(RAIL_KEY)
+  const rail = railRaw === null ? null : railRaw === 'rail'
   const esRail = rail ?? false
 
-  // Mismo trato que `setColapsado` arriba: `react-hooks/set-state-in-effect`
-  // marca este setState, y se acepta a conciencia — es el precio de la regla 1
-  // (leer localStorage solo después de montar) y el patrón ya establecido aquí.
-  useEffect(() => {
-    setRail(window.localStorage.getItem(RAIL_KEY) === 'rail')
-  }, [])
-
-  function toggleRail(): void {
-    setRail((prev) => {
-      const next = !(prev ?? false)
-      window.localStorage.setItem(RAIL_KEY, next ? 'rail' : 'expandido')
-      return next
-    })
-  }
 
   // `[` colapsa/expande el rail. Global, como ⌘K, pero sin modificador: por eso
   // hay que ignorarlo cuando el foco está escribiendo en algún lado — si no, un
@@ -382,11 +389,8 @@ export function AppShell({
   const teclaAtajo = useSyncExternalStore(sinSuscripcion, teclaDelCliente, () => '⌘')
 
   function toggleGrupo(id: string): void {
-    setColapsado((prev) => {
-      const next = { ...(prev ?? {}), [id]: !(prev?.[id] ?? false) }
-      window.localStorage.setItem(NAV_COLAPSADO_KEY, JSON.stringify(next))
-      return next
-    })
+    const next = { ...(colapsado ?? {}), [id]: !(colapsado?.[id] ?? false) }
+    escribirLocal(NAV_COLAPSADO_KEY, JSON.stringify(next))
   }
 
   return (

@@ -1,17 +1,29 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+
+// Si el navegador trae la API es una capability del entorno, no estado de la
+// app: se lee como store externo (sin suscripción, nunca cambia en vida de la
+// pestaña) y el snapshot del servidor es `true` —el caso común— para que el
+// aviso de "tu navegador no mantiene la pantalla encendida" no parpadee en la
+// hidratación de los que sí la tienen.
+function sinSuscripcion(): () => void {
+  return () => {}
+}
+
+function hayWakeLockEnCliente(): boolean {
+  return 'wakeLock' in navigator
+}
 
 export function useWakeLock(active: boolean): { supported: boolean } {
-  const [supported, setSupported] = useState(true)
+  const disponible = useSyncExternalStore(sinSuscripcion, hayWakeLockEnCliente, () => true)
+  // Solo para el fallo del `request` en caliente: Safari puede tener la API y
+  // negar el permiso. Arranca en true y solo el catch lo baja.
+  const [otorgado, setOtorgado] = useState(true)
   const lockRef = useRef<WakeLockSentinel | null>(null)
 
   useEffect(() => {
-    if (!active) return
-    if (!('wakeLock' in navigator)) {
-      setSupported(false)
-      return
-    }
+    if (!active || !('wakeLock' in navigator)) return
 
     let cancelled = false
 
@@ -24,7 +36,7 @@ export function useWakeLock(active: boolean): { supported: boolean } {
         }
         lockRef.current = lock
       } catch {
-        setSupported(false)
+        setOtorgado(false)
       }
     }
 
@@ -43,5 +55,5 @@ export function useWakeLock(active: boolean): { supported: boolean } {
     }
   }, [active])
 
-  return { supported }
+  return { supported: disponible && otorgado }
 }

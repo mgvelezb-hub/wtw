@@ -159,7 +159,7 @@ function master(ev: RawEvent): IcsEvent {
   return { uid: ev.uid, summary: ev.summary, start: ev.start, end: ev.end, allDay: ev.allDay }
 }
 
-function occurrenceAt(ev: RawEvent, dayUTC: Date, index: number): IcsEvent {
+function occurrenceAt(ev: RawEvent, dayUTC: Date): IcsEvent {
   const start = new Date(
     Date.UTC(
       dayUTC.getUTCFullYear(),
@@ -231,7 +231,7 @@ function expandEvent(ev: RawEvent, winStart: Date, winEnd: Date): IcsEvent[] {
     if (matches) {
       if (count && emitted >= count) break
       emitted++
-      const occ = occurrenceAt(ev, cur, emitted)
+      const occ = occurrenceAt(ev, cur)
       const inWindow = occ.start >= winStart && occ.start < winEnd
       const notExcluded = !ev.exdates.has(ymd(occ.start))
       const withinUntil = !until || occ.start <= until

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { useLocalStorage, escribirLocal } from '@/lib/local-store'
 
 const PREFIJO = 'wtw-tour-visto:'
 
@@ -27,35 +28,27 @@ export function TourPrimeraVez({
   bullets: ReactNode[]
   className?: string
 }) {
-  const [visto, setVisto] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    try {
-      setVisto(window.localStorage.getItem(PREFIJO + ruta) === '1')
-    } catch {
-      // Safari en modo privado tira al leer localStorage. Sin flag legible se
-      // asume "ya visto": mejor no enseñar el tour que enseñarlo en cada carga.
-      setVisto(true)
-    }
-  }, [ruta])
+  // El store devuelve `null` en el servidor y cuando la clave no existe. Ojo con
+  // el default: mientras no se sabe, el tour NO se enseña — un flash de tour en
+  // cada carga sería peor que no verlo. `useLocalStorage` ya absorbe el caso de
+  // Safari en modo privado, que tira al leer.
+  const flag = useLocalStorage(PREFIJO + ruta)
+  // Reabrir es efímero a propósito: no borra el flag, así que una recarga deja
+  // la guía descartada otra vez.
+  const [reabierto, setReabierto] = useState(false)
+  const visto = flag === null ? null : flag === '1' && !reabierto
 
   function descartar() {
-    try {
-      window.localStorage.setItem(PREFIJO + ruta, '1')
-    } catch {
-      // Si no se puede persistir, al menos se cierra en esta sesión.
-    }
-    setVisto(true)
+    escribirLocal(PREFIJO + ruta, '1')
   }
 
   if (visto === null) return null
 
-  // Reabrir no borra el flag: si la persona recarga, vuelve a quedar descartado.
   if (visto) {
     return (
       <button
         type="button"
-        onClick={() => setVisto(false)}
+        onClick={() => setReabierto(true)}
         aria-label={`${titulo} — ver la guía de esta página`}
         title="Ver de nuevo la guía de esta página"
         className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border border-hair text-[11px] font-bold leading-none text-faint transition-colors hover:border-brand hover:text-brand ${

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { AyudaContextual } from '@/components/ayuda-contextual'
+import { useLocalStorage, escribirLocal } from '@/lib/local-store'
 import type { Briefing } from '@/lib/briefing'
 
 // "Tu arranque" — la card del briefing matutino.
@@ -48,22 +49,15 @@ function Linea({ icono, children, tono = 'calma' }: { icono: string; children: R
 }
 
 export function BriefingCard({ briefing }: { briefing: Briefing }) {
-  // Arranca en `null` y se llena en el efecto: leer localStorage durante el
-  // render rompe la hidratación (el servidor no tiene ese valor). Mientras es
-  // null la card se muestra abierta, que es el estado útil por defecto.
-  const [colapsado, setColapsado] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setColapsado(window.localStorage.getItem(CLAVE_COLAPSO) === briefing.fecha)
-  }, [briefing.fecha])
+  // Se guarda la FECHA, no un booleano: así el colapso caduca solo al cambiar
+  // el día, sin necesidad de limpiarlo en ninguna parte. En el servidor el
+  // store responde `null` y la card se muestra abierta, que es el estado útil
+  // por defecto (regla 1: nada de localStorage durante el render).
+  const guardada = useLocalStorage(CLAVE_COLAPSO)
+  const colapsado = guardada === null ? null : guardada === briefing.fecha
 
   function alternar() {
-    const siguiente = !(colapsado ?? false)
-    setColapsado(siguiente)
-    // Se guarda la FECHA, no un booleano: así el colapso caduca solo al cambiar
-    // el día, sin necesidad de limpiarlo en ninguna parte.
-    if (siguiente) window.localStorage.setItem(CLAVE_COLAPSO, briefing.fecha)
-    else window.localStorage.removeItem(CLAVE_COLAPSO)
+    escribirLocal(CLAVE_COLAPSO, colapsado ?? false ? null : briefing.fecha)
   }
 
   // Guarda propia además de la del tablero: una card de arranque vacía —marco,

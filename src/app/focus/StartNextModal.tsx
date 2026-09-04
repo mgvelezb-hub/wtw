@@ -13,7 +13,7 @@ export function StartNextModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
       <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#141414] p-6 text-center">
         <p className="text-base text-[#8a8578]">Terminaste antes de tiempo</p>
-        <p className="mt-2 text-xl font-medium text-[#ededed]">¿Iniciar "{siguienteTitulo}" ahora?</p>
+        <p className="mt-2 text-xl font-medium text-[#ededed]">¿Iniciar &ldquo;{siguienteTitulo}&rdquo; ahora?</p>
         <div className="mt-5 flex justify-center gap-3">
           <button
             onClick={onEsperar}

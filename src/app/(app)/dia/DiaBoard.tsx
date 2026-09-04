@@ -20,6 +20,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import type { DayBlockView, PendienteView, ProyectoActivoView, StrandedBlockView } from './service'
+import { useReloj } from '@/lib/reloj'
 import type { ResultadoSobrecarga } from '@/lib/carga-sostenible'
 import type { Briefing } from '@/lib/briefing'
 import { BriefingCard } from './BriefingCard'
@@ -452,7 +453,7 @@ function MetaBloque({ b }: { b: DayBlockView }) {
 }
 
 export function DiaBoard(p: DiaBoardProps) {
-  const [tick, setTick] = useState<number | null>(null)
+
   const [pending, startTransition] = useTransition()
   const [verTerminadas, setVerTerminadas] = useState(false)
   const [verCanceladas, setVerCanceladas] = useState(false)
@@ -528,11 +529,10 @@ export function DiaBoard(p: DiaBoardProps) {
     })
   }
 
-  useEffect(() => {
-    setTick(Date.now())
-    const id = setInterval(() => setTick(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
+  // El reloj es un store externo compartido (`useReloj`), no un estado que un
+  // efecto rellena: /dia y /focus leen el MISMO tick y repintan en el mismo
+  // frame, y el snapshot del servidor sigue siendo null (regla 1).
+  const tick = useReloj()
 
   const esHoy = p.selectedDay === p.today
   const moveOptions = moveTargets(p.today)

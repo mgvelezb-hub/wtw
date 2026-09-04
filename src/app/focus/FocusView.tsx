@@ -33,10 +33,17 @@ export function FocusView({ blocks }: { blocks: DayBlockView[] }) {
   // Recordamos qué tarea es "la de Focus" para que al pausar (runningSince
   // vuelve a null) siga siendo la actividad mostrada, con botón Reanudar,
   // en vez de desaparecer de la vista.
+  //
+  // Se ajusta DURANTE el render y no en un efecto: es el patrón de React para
+  // estado que deriva de props cambiantes. El efecto pintaba un frame con la
+  // actividad vieja antes de corregirse, y necesitaba una lista de dependencias
+  // incompleta para no borrar el recuerdo al pausar.
   const runningNow = getActiveBlock(blocks)
-  useEffect(() => {
-    if (runningNow) setFocusTaskId(runningNow.taskId)
-  }, [runningNow?.id])
+  const [ultimoRunningId, setUltimoRunningId] = useState<string | null>(null)
+  if (runningNow && runningNow.id !== ultimoRunningId) {
+    setUltimoRunningId(runningNow.id)
+    setFocusTaskId(runningNow.taskId)
+  }
 
   const activity = pickRememberedActivity(blocks, focusTaskId, runningNow)
   const isPaused = activity !== null && activity.runningSince === null
