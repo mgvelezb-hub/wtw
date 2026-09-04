@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { avisosDelTick, dentroDeVentana, isoWeekAPlanear } from '@/lib/recordatorios'
+import { avisosDelTick, dentroDeVentana, isoWeekAPlanear, tickUnicoActivo } from '@/lib/recordatorios'
 import { RECORDATORIOS_DEFAULT, leerRecordatorios } from '@/lib/push'
 
 describe('dentroDeVentana', () => {
@@ -79,5 +79,29 @@ describe('isoWeekAPlanear', () => {
 
   it('el sábado tampoco se queda en la semana en curso', () => {
     expect(isoWeekAPlanear(new Date('2026-09-05T19:00:00Z'), 6)).toBe('2026-W37')
+  })
+})
+
+// Restricción de la cuenta, no de diseño: el plan Hobby de Vercel dispara un
+// cron UNA vez al día, así que no hay forma de acertarle a la hora configurada.
+// Con tick único manda el día y se ignora la hora. Degradación visible, no bug.
+describe('tick único (plan Hobby)', () => {
+  const r = { ritual: { dia: 0, hora: '18:00' }, cierre: { hora: '17:30' } }
+
+  it('con un solo tick al día, la hora se ignora pero el DÍA se respeta', () => {
+    // Domingo a las 23:30 UTC, que no es la ventana de las 18:00 locales.
+    expect(avisosDelTick(r, { diaSemana: 0, minutos: 8 * 60 }, { tickUnico: true })).toEqual(['ritual'])
+    // Sábado sigue sin recordatorio de cierre: eso no lo relaja el tick único.
+    expect(avisosDelTick(r, { diaSemana: 6, minutos: 8 * 60 }, { tickUnico: true })).toEqual([])
+  })
+
+  it('sin tick único la hora vuelve a mandar', () => {
+    expect(avisosDelTick(r, { diaSemana: 0, minutos: 8 * 60 })).toEqual([])
+    expect(avisosDelTick(r, { diaSemana: 0, minutos: 18 * 60 })).toEqual(['ritual'])
+  })
+
+  it('el default es tick único: es lo que la cuenta permite hoy', () => {
+    expect(tickUnicoActivo({})).toBe(true)
+    expect(tickUnicoActivo({ RECORDATORIOS_TICK_UNICO: '0' })).toBe(false)
   })
 })

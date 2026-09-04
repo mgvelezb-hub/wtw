@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { SettingsForm } from './SettingsForm'
 import { RecordatoriosPanel } from './Recordatorios'
 import { clavePublica, pushConfigurado, leerRecordatorios } from '@/lib/push'
+import { tickUnicoActivo } from '@/lib/recordatorios'
 
 export default async function SettingsPage() {
   const session = await verifySession()
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
           configurado={pushConfigurado()}
           clavePublica={clavePublica()}
           dispositivos={dispositivos}
+          tickUnico={tickUnicoActivo(process.env)}
         />
       </div>
     </main>

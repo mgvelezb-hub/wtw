@@ -28,11 +28,14 @@ export function RecordatoriosPanel({
   configurado,
   clavePublica,
   dispositivos,
+  tickUnico,
 }: {
   inicial: Recordatorios
   configurado: boolean
   clavePublica: string | null
   dispositivos: number
+  /** El cron corre una vez al día (plan Hobby): la hora elegida no se respeta. */
+  tickUnico: boolean
 }) {
   const [r, setR] = useState(inicial)
   const [estado, setEstado] = useState<string | null>(null)
@@ -99,6 +102,14 @@ export function RecordatoriosPanel({
           el del cierre solo si quedan minutos del día sin explicar.
         </p>
       </div>
+
+      {tickUnico && (
+        <p className="text-xs leading-relaxed text-muted">
+          El plan de Vercel permite un solo disparo al día, así que hoy los avisos salen a las{' '}
+          <span className="num">17:30</span> y la hora que elijas abajo queda guardada pero no se usa. El día sí se
+          respeta.
+        </p>
+      )}
 
       {!configurado && (
         <p className="rounded-md bg-warn-soft px-3 py-2 text-xs text-warn">

@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { enviarAviso, leerRecordatorios, pushConfigurado, type Aviso } from '@/lib/push'
-import { avisosDelTick, isoWeekAPlanear, type Momento } from '@/lib/recordatorios'
+import { avisosDelTick, isoWeekAPlanear, tickUnicoActivo, type Momento } from '@/lib/recordatorios'
 import { getCierreDia } from '@/app/(app)/cierre/service'
 
-// Cron de recordatorios. Corre cada 15 min (vercel.json) y decide por persona:
-// no hay una hora global, cada quien tiene su zona y su hora en Ajustes.
+// Cron de recordatorios. Decide por persona: no hay una hora global, cada quien
+// tiene su zona y su hora en Ajustes.
+//
+// El plan Hobby de Vercel permite UN disparo al día, así que hoy el schedule es
+// diario a las 23:30 UTC (17:30 en México) y la hora configurada se ignora: el
+// aviso llega en el único tick que hay. Con plan Pro se cambian dos cosas a la
+// vez, el schedule de `vercel.json` a cada 15 min y `RECORDATORIOS_TICK_UNICO=0`,
+// y la hora vuelve a respetarse.
 //
 // Regla de fondo: un recordatorio que llega cuando la cosa YA está hecha educa
 // a ignorarlo. Así que cada aviso se comprueba contra el estado real antes de
@@ -92,12 +98,13 @@ export async function GET(req: Request) {
     select: { id: true, timezone: true, recordatorios: true },
   })
 
+  const tickUnico = tickUnicoActivo(process.env)
   const resumen: Array<{ userId: string; tipo: string; enviados: number }> = []
 
   for (const u of usuarios) {
     const r = leerRecordatorios(u.recordatorios)
     const momento = momentoLocal(u.timezone, ahora)
-    for (const tipo of avisosDelTick(r, momento)) {
+    for (const tipo of avisosDelTick(r, momento, { tickUnico })) {
       const aviso =
         tipo === 'ritual'
           ? await avisoRitual(u.id, ahora, momento.diaSemana)
@@ -108,5 +115,5 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, avisos: resumen })
+  return NextResponse.json({ ok: true, tickUnico, avisos: resumen })
 }
