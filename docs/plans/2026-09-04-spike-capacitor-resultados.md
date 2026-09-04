@@ -2,8 +2,10 @@
 
 **Pregunta:** ¿la app web de WTW, tal cual está en Vercel, corre como app de iPad sin
 duplicar código, con el mismo look & feel y recibiendo los upgrades del `git push`?
-**Respuesta corta: sí.** Cascarón WKWebView (Capacitor 8) que carga la URL de prod.
-Compiló, arrancó, se ve igual, y la notificación local llegó sin servidor.
+**Respuesta corta: sí, y ya corre en el iPad de Mau.** Cascarón WKWebView (Capacitor 8)
+que carga la URL de prod. Compiló, arrancó en ~3 s, se ve igual, la notificación local
+llegó sin servidor, la sesión sobrevive a matar la app y a reiniciar el iPad, y el DnD
+táctil responde.
 
 Decisión de alcance de Mau que este spike ejecuta: **wrapper, no SwiftUI**. La razón
 es el requisito de un solo código para web y nativo; SwiftUI significaba dos UIs y
@@ -52,21 +54,39 @@ en el iPad real, con cronómetro.
    `DidFirstMeaningfulPaint`) sí salen con `--predicate 'process == "App"'` y bastan
    para medir arranque.
 
+## En el iPad físico (iPad Air 4ª gen, iPadOS 26.6.1, misma tarde)
+
+Instalación con cuenta gratuita, firmada con el equipo personal. Cadena que costó
+descubrir, en orden: Modo Desarrollador en el iPad (el interruptor no aparece hasta
+que se "revela": `idevicedevmodectl reveal`, de libimobiledevice) → volver a iniciar
+sesión del Apple ID en Xcode → `xcodebuild ... -allowProvisioningUpdates
+-allowProvisioningDeviceRegistration` → `devicectl device install app` → en el iPad,
+Ajustes › General › VPN y gestión de dispositivos › confiar en el desarrollador →
+`devicectl device process launch`.
+
+| Qué | Resultado |
+|---|---|
+| Arranque en frío hasta el login (a ojo de Mau) | **~3 s**, build Debug |
+| Look & feel | Igual que Safari (Mau) |
+| Sesión tras matar la app (SIGKILL al proceso y relanzar) | **Sobrevive**: entró directo a /dia |
+| Sesión tras reiniciar el iPad | **Sobrevive**: entró directo a /dia |
+| DnD táctil de @dnd-kit en /semana dentro del WKWebView | **Responde** al dedo (Mau) |
+
+Trampa nueva: el SDK de dispositivo de Xcode 26 rechaza los headers de
+CapacitorCordova (`#include` entre comillas en framework header) aunque el build de
+simulador pase. Resuelto en `post_install` del Podfile bajando
+`CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER` a `NO` solo en los pods.
+`idevicescreenshot` no funciona con iPadOS 26: la pantalla del iPad real solo la ve Mau.
+
 ## Lo que sigue sin medir (necesita el iPad físico y a Mau)
 
-- **Sesión**: que la cookie httpOnly sobreviva a cerrar la app y a reiniciar el iPad.
-  Requiere iniciar sesión en el cascarón — yo no tecleo contraseñas; lo hace Mau.
-- **Arranque en frío real** vs Safari en el mismo iPad, y batería.
-- **Gesto táctil del DnD** (@dnd-kit) dentro del WKWebView.
-- **Instalación en el iPad**: bloqueada por dos cosas que solo Mau puede hacer —
-  activar Modo Desarrollador en el iPad (`developerModeStatus: disabled`) y volver a
-  iniciar sesión en Xcode › Settings › Accounts (Xcode rechazó la sesión guardada de
-  `mau_gf22@hotmail.com`). El proyecto ya trae `DEVELOPMENT_TEAM = Y2AN8V2K8H`
-  (equipo personal "Mau Gonzalez") y firma automática: con la sesión viva, el botón Run
-  de Xcode o el `xcodebuild` de abajo deberían bastar.
+- **Arranque en frío real** vs Safari con cronómetro, y batería. Lo de a ojo (~3 s) ya
+  quedó arriba.
+- **Reinstalar cada 7 días** (cuenta gratuita). El comando de abajo recompila e
+  instala; el proyecto ya trae `DEVELOPMENT_TEAM = Y2AN8V2K8H` y firma automática.
 
 ```bash
-cd ~/projects/wtw-app/ios/App && xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -destination 'id=4D492B51-31C6-5D34-98F3-3EF5C91C813E' -derivedDataPath build -allowProvisioningUpdates build
+cd ~/projects/wtw-app/ios/App && xcodebuild -workspace App.xcworkspace -scheme App -sdk iphoneos -destination 'id=4D492B51-31C6-5D34-98F3-3EF5C91C813E' -derivedDataPath build -allowProvisioningUpdates -allowProvisioningDeviceRegistration build && xcrun devicectl device install app --device 4D492B51-31C6-5D34-98F3-3EF5C91C813E build/Build/Products/Debug-iphoneos/App.app
 ```
 
 ## Límites de la cuenta gratuita (sin Apple Developer Program)

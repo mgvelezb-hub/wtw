@@ -22,4 +22,13 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+  # CapacitorCordova incluye sus headers con comillas; con el SDK de dispositivo
+  # de Xcode 26 eso es error (CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER) y
+  # el build para iPad falla aunque el de simulador pase. Se baja a aviso solo
+  # en los pods, no en la app.
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+    end
+  end
 end
