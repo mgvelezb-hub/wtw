@@ -1,7 +1,6 @@
 'use client'
 
-import { type ReactNode, useEffect, useLayoutEffect, useRef, useState, useTransition } from 'react'
-import { createPortal } from 'react-dom'
+import { type ReactNode, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
   DndContext,
@@ -41,7 +40,7 @@ import { createManualEntryAction, corregirTiempoMedidoAction } from './timeentry
 import { crearActividadDelDiaAction, sugerirDuracionAction } from './nueva-actividad-actions'
 import { delegarTareaAction, deshacerDelegacionAction } from './actions'
 import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
-import { colocarMenu, ANCHO_MENU, type PosicionMenu } from './menu-geometria'
+import { MenuFlotante } from '@/components/menu-flotante'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
 import { AyudaContextual } from '@/components/ayuda-contextual'
@@ -1237,7 +1236,7 @@ function AhoraFranja({
               ▶ {seconds > 0 ? 'Reanudar' : 'Iniciar'}
             </button>
           )}
-          <MenuBloque
+          <MenuFlotante
             disabled={pending}
             className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-hair text-base text-muted hover:bg-surface hover:text-ink"
           >
@@ -1271,7 +1270,7 @@ function AhoraFranja({
                 )}
               </>
             )}
-          </MenuBloque>
+          </MenuFlotante>
         </div>
       </div>
 
@@ -1515,115 +1514,6 @@ function NuevaActividad({
 //
 // La aritmética de dónde cae vive en ./menu-geometria.ts y se prueba sin
 // navegador; aquí solo se mide el botón y el panel.
-function MenuBloque({
-  children,
-  disabled,
-  className,
-}: {
-  children: (cerrar: () => void) => ReactNode
-  disabled: boolean
-  // Solo presentación: la franja de AHORA lo pide de 44×44 con borde; en las
-  // filas de la timeline es un glifo suelto en la columna de acción.
-  className?: string
-}) {
-  const [abierto, setAbierto] = useState(false)
-  const [pos, setPos] = useState<PosicionMenu | null>(null)
-  const boton = useRef<HTMLButtonElement | null>(null)
-  const panel = useRef<HTMLDivElement | null>(null)
-
-  // Se recalcula en scroll y resize mientras está abierto: con `fixed`, si la
-  // página scrollea el botón se mueve y el menú no.
-  useLayoutEffect(() => {
-    if (!abierto) return
-
-    function colocar() {
-      const r = boton.current?.getBoundingClientRect()
-      if (!r) return
-      setPos(
-        colocarMenu(
-          { top: r.top, bottom: r.bottom, right: r.right },
-          panel.current?.offsetHeight ?? 0,
-          { ancho: window.innerWidth, alto: window.innerHeight }
-        )
-      )
-    }
-
-    colocar()
-    window.addEventListener('scroll', colocar, true)
-    window.addEventListener('resize', colocar)
-    return () => {
-      window.removeEventListener('scroll', colocar, true)
-      window.removeEventListener('resize', colocar)
-    }
-  }, [abierto])
-
-  useEffect(() => {
-    if (!abierto) return
-    function alHacerClicAfuera(e: MouseEvent) {
-      const t = e.target as Node
-      // El panel ya no es descendiente del botón en el DOM: hay que preguntarle
-      // a los dos por separado o el primer clic dentro del menú lo cierra.
-      if (boton.current?.contains(t) || panel.current?.contains(t)) return
-      setAbierto(false)
-    }
-    function alTeclear(e: KeyboardEvent) {
-      if (e.key === 'Escape') setAbierto(false)
-    }
-    document.addEventListener('mousedown', alHacerClicAfuera)
-    document.addEventListener('keydown', alTeclear)
-    return () => {
-      document.removeEventListener('mousedown', alHacerClicAfuera)
-      document.removeEventListener('keydown', alTeclear)
-    }
-  }, [abierto])
-
-  return (
-    <div className="relative">
-      <button
-        ref={boton}
-        type="button"
-        disabled={disabled}
-        aria-haspopup="true"
-        aria-expanded={abierto}
-        aria-label="Más acciones del bloque"
-        title="Más acciones"
-        onClick={() => setAbierto((v) => !v)}
-        // El dedo, no el mouse: 40×40 mínimo de área de toque sin agrandar el
-        // glifo (el ⋯ se ve igual, solo deja de fallarse en iPad).
-        className={
-          className ??
-          `inline-flex h-9 w-9 items-center justify-center rounded-md text-sm leading-none lg:h-10 lg:w-10 ${
-            abierto ? 'bg-hair text-ink' : 'text-faint hover:bg-surface hover:text-ink'
-          }`
-        }
-      >
-        ⋯
-      </button>
-      {abierto &&
-        createPortal(
-          // Se monta antes de tener posición para poder MEDIRLO y decidir si
-          // abre hacia arriba; hasta entonces va oculto, no desplazado, para que
-          // no se vea saltar. `useLayoutEffect` cierra el ciclo antes del paint.
-          <div
-            ref={panel}
-            role="menu"
-            style={{
-              top: pos?.top ?? 0,
-              left: pos?.left ?? 0,
-              maxHeight: pos?.maxHeight,
-              width: ANCHO_MENU,
-              visibility: pos ? 'visible' : 'hidden',
-            }}
-            className="fixed z-50 space-y-0.5 overflow-y-auto rounded-lg border border-edge bg-surface p-1 shadow-lg"
-          >
-            {children(() => setAbierto(false))}
-          </div>,
-          document.body
-        )}
-    </div>
-  )
-}
-
 function BotonMenu({
   onClick,
   disabled,
@@ -1760,7 +1650,7 @@ function FilaBloque({
           <span className="flex items-center justify-end gap-1">
             {!b.done && candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
             {!b.done && enVivo && (
-              <MenuBloque disabled={pending}>
+              <MenuFlotante disabled={pending}>
                 {(cerrar) => (
                   <>
                     <BotonMenu
@@ -1786,7 +1676,7 @@ function FilaBloque({
                     </BotonMenu>
                   </>
                 )}
-              </MenuBloque>
+              </MenuFlotante>
             )}
           </span>
         </div>
@@ -1895,7 +1785,7 @@ function FilaBloque({
             </button>
           )}
 
-          <MenuBloque disabled={pending}>
+          <MenuFlotante disabled={pending}>
             {(cerrar) => (
               <>
                 {!primariaEsHecho && (
@@ -2091,7 +1981,7 @@ function FilaBloque({
                 )}
               </>
             )}
-          </MenuBloque>
+          </MenuFlotante>
         </span>
       </div>
 

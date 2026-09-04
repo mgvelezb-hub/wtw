@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { colocarMenu, ANCHO_MENU, MARGEN_MENU, SEPARACION_MENU } from '@/app/(app)/dia/menu-geometria'
+import { colocarMenu, ANCHO_MENU, MARGEN_MENU, SEPARACION_MENU } from '@/lib/menu-geometria'
 
 // Viewport de referencia: iPad en horizontal, que es donde Mau usa la app.
 const VP = { ancho: 1024, alto: 768 }

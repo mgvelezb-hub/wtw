@@ -17,6 +17,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { AyudaContextual } from '@/components/ayuda-contextual'
+import { MenuFlotante } from '@/components/menu-flotante'
 import { TrendCard } from '@/app/(app)/historico/TrendCard'
 import {
   MIN_ALTO_BLOQUE_PX,
@@ -112,7 +113,6 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
   const [resize, setResize] = useState<{ id: string; durMin: number } | null>(null)
   // Menú contextual de una junta de Outlook (posición fija: el grid tiene
   // overflow-hidden y un popover absolute se cortaría — decisión 14).
-  const [menuJunta, setMenuJunta] = useState<{ id: string; bloqueante: boolean; x: number; y: number } | null>(null)
 
   const [bloquesOpt, moverOptimista] = useOptimistic(
     v.bloques,
@@ -268,16 +268,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
     window.addEventListener('pointerup', up)
   }
 
-  function abrirMenuJunta(b: LienzoBloque, e: React.MouseEvent<HTMLElement>) {
-    e.stopPropagation()
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMenuJunta({
-      id: b.id,
-      bloqueante: b.bloqueante,
-      x: Math.min(rect.left, window.innerWidth - 250),
-      y: rect.bottom + 4,
-    })
-  }
+
 
   function capturar() {
     const titulo = captura.trim()
@@ -408,7 +399,9 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
                           durMinVisual={resize?.id === b.id ? resize.durMin : null}
                           arrastrandose={activo?.kind === 'block' && activo.id === b.id}
                           onResizeStart={iniciarResize}
-                          onMenuJunta={abrirMenuJunta}
+                          pendiente={pending}
+                          onAlternarJunta={(id) => startTransition(() => void alternarJuntaBloqueanteAction(id))}
+                          onCancelarJunta={(id) => startTransition(() => void cancelarJuntaAction(id))}
                         />
                       ))}
 
@@ -607,49 +600,6 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
           )}
         </DragOverlay>
 
-        {/* Menú de junta de Outlook — fixed para que ningún overflow lo corte. */}
-        {menuJunta && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMenuJunta(null)} aria-hidden />
-            <div
-              role="menu"
-              className="fixed z-50 w-60 rounded-lg border border-edge bg-surface p-1 shadow-lg"
-              style={{ top: menuJunta.y, left: menuJunta.x }}
-            >
-              <button
-                type="button"
-                role="menuitem"
-                disabled={pending}
-                onClick={() => {
-                  const id = menuJunta.id
-                  setMenuJunta(null)
-                  startTransition(() => void alternarJuntaBloqueanteAction(id))
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-paper disabled:opacity-40"
-              >
-                {menuJunta.bloqueante ? 'No me quita tiempo' : 'Sí me quita tiempo'}
-              </button>
-              <p className="px-2 pb-1 text-[10.5px] leading-snug text-faint">
-                {menuJunta.bloqueante
-                  ? 'Sigue visible pero deja de restar capacidad — y puedes poner bloques encima.'
-                  : 'Vuelve a restar capacidad y a estorbar el acomodo del día.'}
-              </p>
-              <button
-                type="button"
-                role="menuitem"
-                disabled={pending}
-                onClick={() => {
-                  const id = menuJunta.id
-                  setMenuJunta(null)
-                  startTransition(() => void cancelarJuntaAction(id))
-                }}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-40"
-              >
-                Cancelada — quitar de la semana
-              </button>
-            </div>
-          </>
-        )}
       </div>
     </DndContext>
   )
@@ -762,7 +712,9 @@ function BloqueEnGrid({
   durMinVisual,
   arrastrandose,
   onResizeStart,
-  onMenuJunta,
+  pendiente,
+  onAlternarJunta,
+  onCancelarJunta,
 }: {
   b: LienzoBloque
   destacado: boolean
@@ -770,7 +722,9 @@ function BloqueEnGrid({
   durMinVisual: number | null
   arrastrandose: boolean
   onResizeStart: (b: LienzoBloque, e: React.PointerEvent<HTMLElement>) => void
-  onMenuJunta: (b: LienzoBloque, e: React.MouseEvent<HTMLElement>) => void
+  pendiente: boolean
+  onAlternarJunta: (id: string) => void
+  onCancelarJunta: (id: string) => void
 }) {
   const durMin = durMinVisual ?? b.durMin
   const enResize = durMinVisual !== null
@@ -818,14 +772,45 @@ function BloqueEnGrid({
             OUTLOOK
             {informativa && <span className="font-normal text-faint"> · no bloquea</span>}
           </span>
-          <button
-            type="button"
-            onClick={(e) => onMenuJunta(b, e)}
-            aria-label={`Opciones de la junta ${b.titulo}`}
+          <MenuFlotante
+            disabled={pendiente}
+            ariaLabel={`Opciones de la junta ${b.titulo}`}
             className="-mr-1 -mt-0.5 rounded px-1 text-[12px] font-bold text-muted opacity-0 hover:bg-hair focus-visible:opacity-100 group-hover:opacity-100"
           >
-            ⋯
-          </button>
+            {(cerrar) => (
+              <>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={pendiente}
+                  onClick={() => {
+                    cerrar()
+                    onAlternarJunta(b.id)
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-paper disabled:opacity-40"
+                >
+                  {b.bloqueante ? 'No me quita tiempo' : 'Sí me quita tiempo'}
+                </button>
+                <p className="px-2 pb-1 text-[10.5px] leading-snug text-faint">
+                  {b.bloqueante
+                    ? 'Sigue visible pero deja de restar capacidad — y puedes poner bloques encima.'
+                    : 'Vuelve a restar capacidad y a estorbar el acomodo del día.'}
+                </p>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={pendiente}
+                  onClick={() => {
+                    cerrar()
+                    onCancelarJunta(b.id)
+                  }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-40"
+                >
+                  Cancelada — quitar de la semana
+                </button>
+              </>
+            )}
+          </MenuFlotante>
         </span>
       )}
       <span className={destacado ? 'font-semibold' : ''}>{b.titulo}</span>
