@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { RegisterSW } from "./register-sw";
+import { NativoBridge } from "./nativo-bridge";
 import "./globals.css";
 
 // Lenguaje visual "instrumento": el material de la app es el tiempo
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <RegisterSW />
+        <NativoBridge />
       </body>
     </html>
   );
