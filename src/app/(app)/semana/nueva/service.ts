@@ -1,6 +1,7 @@
 import type { DesvioCausa } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { isoWeekOf, isoWeekAPlanear, diaSemanaMx, weekRange } from '@/lib/dates'
+import { semanaPlaneada } from '@/lib/avisos'
 import { capacityForWeek, type CapacidadSemana } from '@/app/api/v1/capacity/service'
 import { competenciasParaPlaneacion, type CompetenciaPlaneacion } from '@/app/(app)/desarrollo/service'
 import { getPatronDesvios } from '@/app/(app)/cierre/service'
@@ -222,19 +223,31 @@ async function recapDe(userId: string, isoWeek: string): Promise<RecapAnterior |
   }
 }
 
+// La semana que se planea cuando nadie pidió una. La regla base es la del
+// ritual: la que ENTRA (domingo por la tarde se planea la que arranca el
+// lunes). Pero entre martes y viernes, si la semana que se está viviendo NO
+// tiene plan, lo que Mau quiere planear es ESTA: el 8-sep-2026 (martes) el
+// planeador lo mandó a W38 con W37 vacía y /dia amaneció sin nada. Con la
+// semana en curso ya planeada, a media semana sí toca la siguiente.
+export async function semanaPorDefecto(userId: string, hoy: Date): Promise<string> {
+  const dia = diaSemanaMx(hoy)
+  const enCurso = isoWeekOf(hoy)
+  if (dia >= 2 && dia <= 5 && !(await semanaPlaneada(userId, enCurso))) return enCurso
+  return isoWeekAPlanear(hoy, dia)
+}
+
 export async function contextoPlaneacion(
   userId: string,
   hoy: Date = new Date(),
-  // Semana pedida explícitamente (`/semana/nueva?semana=2026-W40`). Sin ella se
-  // planea la que ENTRA, no la que se está viviendo: el ritual se hace el
-  // domingo por la tarde para la semana que arranca el lunes. Con `isoWeekOf`
-  // el planeador comprobaba el plan de la semana que ya iba de salida, la
-  // encontraba planeada y servía el muro — justo cuando el push del ritual
-  // acababa de despertar a alguien para hacerlo.
+  // Semana pedida explícitamente (`/semana/nueva?semana=2026-W40`). Sin ella
+  // decide `semanaPorDefecto`: la que entra, salvo a media semana con la que se
+  // vive todavía sin plan. Con `isoWeekOf` a secas el planeador comprobaba el
+  // plan de la semana que ya iba de salida, la encontraba planeada y servía
+  // el muro — justo cuando el push del ritual acababa de despertar a alguien.
   isoWeekPedida?: string
 ): Promise<ContextoPlaneacion> {
   const isoWeekEnCurso = isoWeekOf(hoy)
-  const isoWeek = isoWeekValida(isoWeekPedida) ?? isoWeekAPlanear(hoy, diaSemanaMx(hoy))
+  const isoWeek = isoWeekValida(isoWeekPedida) ?? (await semanaPorDefecto(userId, hoy))
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
 
   const [previa, anterior, backlog, proyectos, capacidad, competencias, factoresClase, etiquetadas] = await Promise.all([

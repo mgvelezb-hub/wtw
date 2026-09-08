@@ -5,8 +5,7 @@ import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createWeekPayload } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
-import { isoWeekAPlanear, diaSemanaMx } from '@/lib/dates'
-import { componerReflexion, validarCarga, isoWeekValida } from './service'
+import { componerReflexion, validarCarga, isoWeekValida, semanaPorDefecto } from './service'
 import { borrarSemana } from './borrar'
 import { factorPorClase } from '@/lib/factor-clase'
 import { factorDeClase } from '@/lib/tipo-trabajo'
@@ -65,10 +64,10 @@ export async function crearSemanaAction(input: CrearSemanaInput) {
 
   // La semana viene del planeador (que la recibió por searchParam) y se valida
   // aquí: `isoWeekOf(new Date())` fijaba la semana EN CURSO, así que planear la
-  // que entra escribía el plan en la semana equivocada. El default es la que
-  // entra, el mismo que usa `contextoPlaneacion`.
+  // que entra escribía el plan en la semana equivocada. El default es el mismo
+  // que usa `contextoPlaneacion` (`semanaPorDefecto`).
   const ahora = new Date()
-  const isoWeek = isoWeekValida(input.isoWeek) ?? isoWeekAPlanear(ahora, diaSemanaMx(ahora))
+  const isoWeek = isoWeekValida(input.isoWeek) ?? (await semanaPorDefecto(session.userId, ahora))
 
   // El tope de carga se revalida en el servidor y no solo en el wizard: el botón
   // deshabilitado es una cortesía de UI, la restricción es esta. Se calcula con

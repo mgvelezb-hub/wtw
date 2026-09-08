@@ -563,10 +563,33 @@ describe('la semana que el planeador planea', () => {
     expect(ctx.isoWeekEnCurso).toBe('2026-W36')
   })
 
-  it('a media semana sigue apuntando a la que entra', async () => {
+  it('a media semana, con la semana en curso SIN plan, planea la que se vive', async () => {
+    // Martes 8-sep-2026: el default "la que entra" mandó el plan a W38 con W37
+    // vacía y /dia amaneció sin nada. Si esta semana no tiene plan, es esta.
     const user = await usuario()
     const ctx = await contextoPlaneacion(user.id, MARTES)
+    expect(ctx.isoWeek).toBe('2026-W37')
+    expect(ctx.isoWeekEnCurso).toBe('2026-W37')
+  })
+
+  it('a media semana, con la semana en curso YA planeada, apunta a la que entra', async () => {
+    const user = await usuario()
+    await createWeekPayload(user.id, {
+      isoWeek: '2026-W37',
+      factorUsado: 1.4,
+      wins: [{ posicion: 1, titulo: 'Algo' }],
+      tasks: [],
+      blocks: [],
+    })
+    const ctx = await contextoPlaneacion(user.id, MARTES)
     expect(ctx.isoWeek).toBe('2026-W38')
+  })
+
+  it('un cascarón vacío de la semana en curso no cuenta como plan: a media semana sigue siendo esta', async () => {
+    const user = await usuario()
+    await createWeekPayload(user.id, { isoWeek: '2026-W37', factorUsado: 1.4, wins: [], tasks: [], blocks: [] })
+    const ctx = await contextoPlaneacion(user.id, MARTES)
+    expect(ctx.isoWeek).toBe('2026-W37')
   })
 
   it('el lunes planea la semana en curso: quien planea el lunes planea el día que empieza', async () => {
