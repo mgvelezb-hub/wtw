@@ -19,6 +19,9 @@ export type DayBlockView = {
   planMin: number
   taskId: string | null
   done: boolean
+  // Se descartó a media tarde: el bloque se conserva —lo planeado del día no
+  // puede encoger hacia atrás— pero ya no ocupa tiempo ni admite cronómetro.
+  descartada: boolean
   dodItems: { id: string; texto: string; done: boolean }[]
   accumulatedSeconds: number
   runningSince: string | null
@@ -95,7 +98,10 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
       titulo: b.titulo,
       planMin: b.planMin,
       taskId: b.taskId,
-      done: task ? task.estatus === 'done' : b.done,
+      // `deferred` también saca el bloque de la lista activa: se descartó, no se
+      // hizo. El grupo "Canceladas" lo distingue de lo terminado.
+      done: task ? task.estatus === 'done' || task.estatus === 'deferred' : b.done,
+      descartada: task?.estatus === 'deferred',
       dodItems: task ? task.dodItems.map((d) => ({ id: d.id, texto: d.texto, done: d.done })) : [],
       accumulatedSeconds,
       runningSince: isRunning ? running!.startedAt.toISOString() : null,
@@ -130,6 +136,7 @@ export async function getDayBlocks(userId: string, dateStr: string): Promise<Day
     planMin: Math.max(0, toMin(e.fin) - toMin(e.inicio)),
     taskId: null,
     done: e.cancelado,
+    descartada: false,
     dodItems: [],
     accumulatedSeconds: 0,
     runningSince: null,
@@ -233,8 +240,11 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
   // Las delegadas no suman: esas horas ya no son de Mau. Siguen visibles en el
   // día como compromiso de un tercero, pero fuera de su carga y, por lo tanto,
   // fuera del factor —que se calcula contra lo planeado.
+  // Las descartadas tampoco: se soltaron a media tarde y esas horas volvieron a
+  // estar libres HOY. El cierre sí las sigue contando —lee los bloques por
+  // fecha— porque hacia atrás la pregunta es otra: qué se había planeado.
   const planeadoMin = blocks
-    .filter((b) => b.tipo === 'tarea' && !b.delegada)
+    .filter((b) => b.tipo === 'tarea' && !b.delegada && !b.descartada)
     .reduce((s, b) => s + b.planMin, 0)
   const realMin = blocks.reduce((s, b) => s + b.accumulatedSeconds, 0) / 60
   const factorDia = planeadoMin > 0 && realMin > 0 ? realMin / planeadoMin : null

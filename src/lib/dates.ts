@@ -82,3 +82,17 @@ export function diaSemanaMx(d: Date = new Date()): number {
   const dias: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
   return dias[abr] ?? 0
 }
+
+// Frontera UTC del día calendario de México. CDMX es UTC-6 fijo (sin horario
+// de verano desde 2022), así que el sufijo `-06:00` explícito basta y no hace
+// falta Intl para construir el rango.
+//
+// Existe porque un TimeEntry pertenece al día que Mau VIVIÓ, no al día UTC en
+// que cayó su timestamp: a partir de las 18:00 locales son días distintos, y
+// un cronómetro de la tarde se contaría en el cierre de mañana. `hasta` es
+// exclusivo — usarlo con `lt`, nunca con `lte`, o el primer segundo del día
+// siguiente cae en los dos.
+export function rangoDiaMx(fecha: string): { desde: Date; hasta: Date } {
+  const desde = new Date(`${fecha}T00:00:00-06:00`)
+  return { desde, hasta: new Date(desde.getTime() + 86_400_000) }
+}

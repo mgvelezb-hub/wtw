@@ -9,7 +9,7 @@ type Proyecto = {
   estatus: string
   cargaActivaHoras: number
 }
-type Compliance = { projectId: string; pctObjetivo: number; pctReal: number }
+type Compliance = { projectId: string; pctObjetivo: number; pctReal: number | null }
 type LedgerAliado = { projectNombre: string; horasAliado: number; valorizado: number | null; dolores: string[] }
 
 export function ProyectosBoard({
@@ -70,7 +70,7 @@ export function ProyectosBoard({
                 )}
                 {comp ? (
                   <span className="num text-right text-xs text-muted">
-                    {comp.pctObjetivo}% · {comp.pctReal.toFixed(0)}%
+                    {comp.pctObjetivo}% · {comp.pctReal === null ? 'sin medir' : `${comp.pctReal.toFixed(0)}%`}
                   </span>
                 ) : (
                   <span />

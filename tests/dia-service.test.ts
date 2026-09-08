@@ -12,6 +12,7 @@ import {
   editEntry,
 } from '@/app/(app)/dia/service'
 import { startTimer, stopTimer } from '@/app/api/v1/timer/service'
+import { getCierreDia } from '@/app/(app)/cierre/service'
 
 const TEST_EMAIL = 'test-dia@vp.mx'
 const TODAY = '2026-07-07'
@@ -183,5 +184,40 @@ describe('createManualEntry / editEntry', () => {
     const { task } = await setupDay()
     const entry = await createManualEntry(task.id, (await prisma.user.findFirstOrThrow({ where: { email: TEST_EMAIL } })).id, 60)
     await expect(editEntry(entry.id, 'otro-id', 100)).rejects.toThrow()
+  })
+})
+
+describe('descartar conserva el bloque', () => {
+  // Descartar borraba el bloque, y lo planeado del día se calcula leyendo
+  // bloques por fecha: el plan encogía HACIA ATRÁS y el cierre mostraba un
+  // hueco menor del real. Misma clase de error que la regla 11 del CLAUDE.md.
+  it('el bloque sigue ahí, marcado descartada y fuera de la lista activa', async () => {
+    const { user, task, block } = await setupDay()
+
+    await prisma.$transaction([
+      prisma.block.update({ where: { id: block.id }, data: { done: true } }),
+      prisma.task.update({ where: { id: task.id }, data: { estatus: 'deferred', weekId: null } }),
+    ])
+
+    const vista = (await getDayBlocks(user.id, TODAY)).find((b) => b.id === block.id)!
+    expect(vista.planMin).toBe(180)
+    // `done` la saca de la lista activa; `descartada` la separa de lo terminado,
+    // porque soltar algo no es haberlo hecho.
+    expect(vista.done).toBe(true)
+    expect(vista.descartada).toBe(true)
+  })
+
+  it('el cierre del día conserva lo que se había planeado', async () => {
+    const { user, task, block } = await setupDay()
+
+    const antes = await getCierreDia(user.id, TODAY)
+    expect(antes.planMin).toBe(180)
+
+    await prisma.$transaction([
+      prisma.block.update({ where: { id: block.id }, data: { done: true } }),
+      prisma.task.update({ where: { id: task.id }, data: { estatus: 'deferred', weekId: null } }),
+    ])
+
+    expect((await getCierreDia(user.id, TODAY)).planMin).toBe(180)
   })
 })

@@ -41,7 +41,7 @@ async function bloque(
   })
   if (d.segundos) {
     await prisma.timeEntry.create({
-      data: { userId, taskId: task.id, seconds: d.segundos, startedAt: new Date(JUEVES) },
+      data: { userId, taskId: task.id, seconds: d.segundos, startedAt: new Date(`${JUEVES}T09:00:00-06:00`) },
     })
   }
   await prisma.block.create({
@@ -167,6 +167,42 @@ describe('pasarPendientes', () => {
   })
 })
 
+describe('medición por día', () => {
+  // El repro del QA: cronometrar hoy, pasar el pendiente, abrir el cierre de
+  // mañana. Antes, la tarea arrastrada llevaba consigo TODOS sus TimeEntry, así
+  // que el mismo minuto se contaba en los dos cierres y el hueco de mañana salía
+  // subestimado — justo el número que la app existe para no inventar.
+  it('una tarea arrastrada no trae el tiempo de ayer al cierre de hoy', async () => {
+    const user = await usuario()
+    const w = await semana(user.id)
+    await bloque(user.id, w.id, { titulo: 'informe', planMin: 120, segundos: 1800 })
+
+    expect((await getCierreDia(user.id, JUEVES)).medidoMin).toBe(30)
+
+    await pasarPendientes(user.id, JUEVES)
+
+    // El viernes hereda el bloque y su plan, pero NADA de medición: el viernes
+    // todavía no se ha trabajado.
+    const viernes = await getCierreDia(user.id, VIERNES)
+    expect(viernes.planMin).toBe(120)
+    expect(viernes.medidoMin).toBe(0)
+    expect(viernes.huecoMin).toBe(120)
+  })
+
+  it('cuenta el tramo de la tarde de México en su propio día', async () => {
+    const user = await usuario()
+    const w = await semana(user.id)
+    const task = await bloque(user.id, w.id, { titulo: 'tarde', planMin: 120 })
+    // 19:00 CDMX del jueves = 01:00Z del viernes. Por UTC caería en el cierre
+    // del viernes; Mau lo vivió el jueves.
+    await prisma.timeEntry.create({
+      data: { userId: user.id, taskId: task.id, seconds: 3600, startedAt: new Date(`${JUEVES}T19:00:00-06:00`) },
+    })
+
+    expect((await getCierreDia(user.id, JUEVES)).medidoMin).toBe(60)
+  })
+})
+
 describe('convertirDesvioEnTarea', () => {
   async function proyecto(userId: string) {
     return prisma.project.create({ data: { userId, nombre: 'Liverpool' } })
@@ -195,6 +231,30 @@ describe('convertirDesvioEnTarea', () => {
     expect(t.timeEntries[0].manual).toBe(true)
     // Y se engancha a la semana que contiene la fecha.
     expect(t.weekId).not.toBeNull()
+  })
+
+  it('ancla el tramo a mediodía de México, no a medianoche UTC', async () => {
+    const user = await usuario()
+    const p = await proyecto(user.id)
+
+    const { taskId } = await convertirDesvioEnTarea(user.id, {
+      titulo: 'bomberazo',
+      minutos: 90,
+      projectId: p.id,
+      alcance: 'sow',
+      fecha: JUEVES,
+    })
+
+    const [entry] = (await prisma.task.findUniqueOrThrow({ where: { id: taskId }, include: { timeEntries: true } }))
+      .timeEntries
+
+    // `new Date('AAAA-MM-DD')` es medianoche UTC = 18:00 del día ANTERIOR en
+    // México: la señal de erosión de frontera lo leía como trabajo nocturno del
+    // día equivocado. Mediodía local es 18:00Z del MISMO día.
+    expect(entry.startedAt.toISOString()).toBe(`${JUEVES}T18:00:00.000Z`)
+    // Y el tramo cierra donde dicen sus segundos: un registro cuyo
+    // stoppedAt - startedAt no coincide con `seconds` se contradice a sí mismo.
+    expect(entry.stoppedAt!.getTime() - entry.startedAt.getTime()).toBe(entry.seconds * 1000)
   })
 
   it('deja estimadoMin en NULL para no falsear el factor de realismo', async () => {
@@ -273,7 +333,7 @@ describe('factorRealismoDetalle', () => {
         data: { userId: user.id, titulo: `t${i}`, estatus: 'done', estimadoMin: 60 },
       })
       await prisma.timeEntry.create({
-        data: { userId: user.id, taskId: t.id, seconds: 3600, startedAt: new Date(JUEVES), manual },
+        data: { userId: user.id, taskId: t.id, seconds: 3600, startedAt: new Date(`${JUEVES}T09:00:00-06:00`), manual },
       })
     }
 

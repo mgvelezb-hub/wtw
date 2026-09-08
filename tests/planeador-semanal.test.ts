@@ -677,6 +677,47 @@ describe('borrarSemanaAction (la segunda salida del muro)', () => {
     expect(await prisma.task.count({ where: { userId: user.id, titulo: 'Nacida en el ritual' } })).toBe(1)
   })
 
+  it('no revive lo que ya tenía desenlace', async () => {
+    const user = await usuario()
+    const w = await prisma.week.create({
+      data: {
+        userId: user.id,
+        isoWeek: '2026-W41',
+        rangoInicio: new Date('2026-10-05'),
+        rangoFin: new Date('2026-10-09'),
+        factorUsado: 1.4,
+      },
+    })
+    const terminada = await prisma.task.create({
+      data: { userId: user.id, weekId: w.id, titulo: 'Ya entregada', estatus: 'done', ajustadoMin: 84 },
+    })
+    const descartada = await prisma.task.create({
+      data: { userId: user.id, weekId: w.id, titulo: 'Ya no aplica', estatus: 'deferred' },
+    })
+    const pendiente = await prisma.task.create({
+      data: { userId: user.id, weekId: w.id, titulo: 'Sigue viva', estatus: 'planned', ajustadoMin: 42 },
+    })
+
+    const { borrarSemana } = await import('@/app/(app)/semana/nueva/borrar')
+    expect(await borrarSemana(user.id, '2026-W41')).toEqual({ ok: true })
+
+    // Un `backlog` sobre una tarea `done` la devuelve al vaciado del paso 3 y
+    // se puede volver a "terminar": el mismo trabajo contado dos veces.
+    expect(await prisma.task.findUniqueOrThrow({ where: { id: terminada.id } })).toMatchObject({
+      estatus: 'done',
+      weekId: null,
+      winId: null,
+      // El ajustado es el registro de calibración de esa tarea, no basura del plan.
+      ajustadoMin: 84,
+    })
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: descartada.id } })).estatus).toBe('deferred')
+    // Lo que seguía pendiente sí vuelve al backlog, listo para replanearse.
+    expect(await prisma.task.findUniqueOrThrow({ where: { id: pendiente.id } })).toMatchObject({
+      estatus: 'backlog',
+      ajustadoMin: null,
+    })
+  })
+
   it('no borra la semana de otro usuario', async () => {
     const user = await usuario()
     const otro = await prisma.user.create({

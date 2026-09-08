@@ -30,9 +30,20 @@ export async function borrarSemana(
   if (!week) return { error: `la semana ${semana} no existe` }
 
   await prisma.$transaction(async (tx) => {
+    // Lo que seguía pendiente vuelve al backlog para poder replanearse.
     await tx.task.updateMany({
-      where: { weekId: week.id, userId },
+      where: { weekId: week.id, userId, estatus: { in: ['planned', 'in_progress'] } },
       data: { weekId: null, winId: null, estatus: 'backlog', ajustadoMin: null },
+    })
+    // Lo que ya tiene desenlace —terminado, descartado o delegado— NO regresa.
+    // Un `backlog` sobre una tarea `done` revive trabajo cerrado: reaparece en
+    // el vaciado del paso 3 y se puede volver a "terminar", contando dos veces.
+    // Se sueltan las llaves de la semana que se va (el Win se borra con ella),
+    // pero el estatus y el `ajustadoMin` quedan: son el registro de calibración
+    // de esa tarea, y borrarlos destruye la medición que ya se pagó.
+    await tx.task.updateMany({
+      where: { weekId: week.id, userId, estatus: { in: ['done', 'deferred', 'delegada'] } },
+      data: { weekId: null, winId: null },
     })
     await tx.block.deleteMany({ where: { weekId: week.id } })
     await tx.weekRisk.deleteMany({ where: { weekId: week.id } })

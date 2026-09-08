@@ -161,7 +161,9 @@ export async function reflowTodayAction(todayStr: string) {
 
   const movibles: typeof blocks = []
   for (const b of blocks) {
-    const terminado = b.task ? b.task.estatus === 'done' : b.done
+    // Descartada cuenta como terminada para el reflow: no se reacomoda algo que
+    // ya se soltó.
+    const terminado = b.task ? b.task.estatus === 'done' || b.task.estatus === 'deferred' : b.done
     if (terminado) continue
     const corriendoAhora = !!(running && b.taskId === running.taskId)
     if (corriendoAhora) {
@@ -376,8 +378,14 @@ export async function descartarTareaAction(blockId: string) {
   if (!block || block.week.userId !== userId) throw new Error('block no encontrado')
   if (!block.taskId) throw new Error('solo tareas se pueden descartar')
 
+  // El bloque NO se borra. Lo planeado del día se calcula leyendo bloques por
+  // fecha, así que borrarlo a media tarde reducía `planMin` hacia atrás y el
+  // cierre mostraba un hueco menor del real: el plan se ajustaba solo a lo que
+  // terminó pasando. Es la misma clase de error que la regla 11 del CLAUDE.md.
+  // Queda marcado `done` —sale de la lista activa, sin cronómetro— y la tarea
+  // en `deferred`, que es lo que lo pinta como descartado y no como terminado.
   await prisma.$transaction([
-    prisma.block.delete({ where: { id: blockId } }),
+    prisma.block.update({ where: { id: blockId }, data: { done: true } }),
     prisma.task.update({ where: { id: block.taskId }, data: { estatus: 'deferred', weekId: null } }),
   ])
   revalidatePath('/dia')

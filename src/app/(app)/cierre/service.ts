@@ -1,5 +1,6 @@
 import type { DesvioCausa } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { rangoDiaMx } from '@/lib/dates'
 
 // Reconciliación de cierre de día (Fase 1 del plan del council).
 //
@@ -104,11 +105,19 @@ function iso(d: Date): string {
 
 export async function getCierreDia(userId: string, fecha: string): Promise<CierreDia> {
   const dia = new Date(fecha)
+  // Solo el tiempo cronometrado ESE día. Una tarea arrastrada trae consigo sus
+  // TimeEntry de días anteriores, y sumarlos aquí subestimaba el hueco de hoy y
+  // contaba el mismo minuto en dos cierres.
+  const { desde, hasta } = rangoDiaMx(fecha)
 
   const [bloques, reconciliacion, stakeholders, proyectos] = await Promise.all([
     prisma.block.findMany({
       where: { fecha: dia, week: { userId }, tipo: 'tarea' },
-      include: { task: { include: { timeEntries: { select: { seconds: true } } } } },
+      include: {
+        task: {
+          include: { timeEntries: { where: { startedAt: { gte: desde, lt: hasta } }, select: { seconds: true } } },
+        },
+      },
       orderBy: { orden: 'asc' },
     }),
     prisma.dayReconciliation.findUnique({
@@ -308,9 +317,20 @@ export async function pasarPendientes(userId: string, fecha: string): Promise<{ 
   const dia = new Date(fecha)
   if (Number.isNaN(dia.getTime())) throw new Error('fecha inválida')
 
+  // Mismo filtro por día que `getCierreDia`: el snapshot tiene que congelar el
+  // MISMO número que la pantalla mostró, o el cierre cambia al pasar pendientes.
+  const { desde, hasta } = rangoDiaMx(fecha)
   const bloques = await prisma.block.findMany({
     where: { fecha: dia, week: { userId }, tipo: 'tarea' },
-    include: { task: { select: { id: true, estatus: true, timeEntries: { select: { seconds: true } } } } },
+    include: {
+      task: {
+        select: {
+          id: true,
+          estatus: true,
+          timeEntries: { where: { startedAt: { gte: desde, lt: hasta } }, select: { seconds: true } },
+        },
+      },
+    },
     orderBy: { orden: 'asc' },
   })
 
@@ -418,6 +438,15 @@ export async function convertirDesvioEnTarea(
   }
 
   const fecha = new Date(input.fecha)
+  // El trabajo se hizo ese día, pero no sabemos a qué hora: `new Date('AAAA-MM-DD')`
+  // es medianoche UTC = 18:00 del día ANTERIOR en México, así que la señal de
+  // erosión de frontera lo leía como trabajo nocturno (y en lunes, como domingo).
+  // Anclarlo a mediodía local lo deja dentro de cualquier jornada razonable: es
+  // una hora que no afirma nada, en vez de una que afirma algo falso.
+  const { desde } = rangoDiaMx(input.fecha)
+  const inicioSintetico = new Date(desde.getTime() + 12 * 60 * 60 * 1000)
+  const segundos = Math.round(input.minutos * 60)
+
   const semana = await prisma.week.findFirst({
     where: { userId, rangoInicio: { lte: fecha }, rangoFin: { gte: fecha } },
     select: { id: true },
@@ -439,9 +468,13 @@ export async function convertirDesvioEnTarea(
       timeEntries: {
         create: {
           userId,
-          startedAt: fecha,
-          stoppedAt: fecha,
-          seconds: Math.round(input.minutos * 60),
+          // `stoppedAt` se deriva de `seconds` y no al revés: un tramo cuyo
+          // `stoppedAt - startedAt` no coincide con `seconds` es un registro
+          // que se contradice a sí mismo, y ya se corrigió esa incoherencia en
+          // el cronómetro de /dia.
+          startedAt: inicioSintetico,
+          stoppedAt: new Date(inicioSintetico.getTime() + segundos * 1000),
+          seconds: segundos,
           // No salió del cronómetro y el dato tiene que decirlo.
           manual: true,
         },

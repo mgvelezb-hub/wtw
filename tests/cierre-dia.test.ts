@@ -50,7 +50,7 @@ async function tareaConBloque(
   })
   if (datos.segundos) {
     await prisma.timeEntry.create({
-      data: { userId, taskId: task.id, seconds: datos.segundos, startedAt: new Date(FECHA) },
+      data: { userId, taskId: task.id, seconds: datos.segundos, startedAt: new Date(`${FECHA}T09:00:00-06:00`) },
     })
   }
   return task

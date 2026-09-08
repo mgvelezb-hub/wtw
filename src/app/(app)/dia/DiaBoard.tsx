@@ -550,8 +550,12 @@ export function DiaBoard(p: DiaBoardProps) {
   // no hace falta marcarla a mano, solo libera el campo visual sola. Una junta
   // cancelada es su propio grupo, separado de lo que de verdad se completó.
   const pasoHora = (b: DayBlockView) => b.externa && esHoy && !!nowStr && b.fin <= nowStr
-  const canceladas = p.blocks.filter((b) => b.externa && b.done)
-  const terminadas = [...p.blocks.filter((b) => (!b.externa && b.done) || (b.externa && !b.done && pasoHora(b)))].sort(
+  // Las descartadas van con las canceladas y no con las terminadas: soltar algo
+  // no es haberlo hecho, y mezclarlas inflaría visualmente el avance del día.
+  const canceladas = p.blocks.filter((b) => (b.externa && b.done) || b.descartada)
+  const terminadas = [
+    ...p.blocks.filter((b) => (!b.externa && b.done && !b.descartada) || (b.externa && !b.done && pasoHora(b))),
+  ].sort(
     (a, b) => a.fin.localeCompare(b.fin)
   )
   const activos = p.blocks.filter((b) => !canceladas.includes(b) && !terminadas.includes(b))
@@ -1757,6 +1761,7 @@ function FilaBloque({
             {b.titulo}
           </span>
           <MetaBloque b={b} />
+          {b.descartada && <span className="shrink-0 text-xs font-semibold text-danger">descartada</span>}
           {b.fueraDeJornada && !b.done && <span className="shrink-0 text-xs text-warn">fuera de jornada</span>}
           {nudgeMinuta && <NudgeMinuta />}
           <span className="num shrink-0 text-xs text-faint sm:hidden">{hhmm(b.planMin)}</span>
