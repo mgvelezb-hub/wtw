@@ -18,6 +18,7 @@ import {
 } from '@dnd-kit/core'
 import { AyudaContextual } from '@/components/ayuda-contextual'
 import { MenuFlotante } from '@/components/menu-flotante'
+import { Grip } from '@/components/grip'
 import { TrendCard } from '@/app/(app)/historico/TrendCard'
 import {
   MIN_ALTO_BLOQUE_PX,
@@ -679,11 +680,13 @@ function ColumnaDia({
   // redondear, y agendar "sábado 11:00" fingiría una jornada de sábado. Ese día
   // se agenda por la cabecera o por la franja Flex, que es lo honesto — el
   // compromiso es con el día, no con una hora de un día que no se trabaja.
-  const { setNodeRef, isOver } = useDroppable({ id: `col:${fecha}`, disabled: sinJornada })
+  // Sin marco al flotar encima: el fantasma de destino ya dice dónde cae el
+  // bloque, y encender la columna entera competía con él.
+  const { setNodeRef } = useDroppable({ id: `col:${fecha}`, disabled: sinJornada })
   return (
     <div
       ref={setNodeRef}
-      className={`relative border-r last:border-r-0 ${isOver ? 'ring-1 ring-inset ring-brand' : ''}`}
+      className="relative border-r last:border-r-0"
       style={{
         borderColor: LINEA_HORA,
         background: sinJornada ? '#faf7f2' : esHoy ? `#f8fbfa ${FONDO_COLUMNA}` : FONDO_COLUMNA,
@@ -738,7 +741,7 @@ function BloqueEnGrid({
 }) {
   const durMin = durMinVisual ?? b.durMin
   const enResize = durMinVisual !== null
-  const { setNodeRef, attributes, listeners } = useDraggable({
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners } = useDraggable({
     id: `block:${b.id}`,
     disabled: b.externa || b.done || enResize,
     data: {
@@ -759,19 +762,13 @@ function BloqueEnGrid({
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...(b.externa ? {} : listeners)}
       style={{
         ...estiloBloque(b, destacado),
         height: Math.max(MIN_ALTO_BLOQUE_PX, durMin * PX_POR_MIN),
-        // El cuerpo del bloque arrastra; el scroll del grid vive en el fondo de
-        // la columna. Sin esto, en iPad el navegador scrollea en vez de esperar
-        // el hold de 200 ms del TouchSensor.
-        touchAction: b.externa ? undefined : 'none',
       }}
       title={`${b.inicio}–${b.fin} · ${b.titulo}`}
-      className={`group absolute overflow-hidden rounded-md border-l-[3px] px-2 py-1.5 text-[11.5px] leading-[1.3] ${
-        b.externa ? 'z-0 cursor-default text-muted' : 'z-10 cursor-grab text-ink active:cursor-grabbing'
+      className={`group absolute overflow-hidden rounded-md border-l-[3px] px-1.5 py-1.5 text-[11.5px] leading-[1.3] ${
+        b.externa ? 'z-0 cursor-default text-muted' : 'z-10 text-ink'
       } ${b.done ? 'opacity-50 line-through' : ''} ${
         informativa ? 'border border-l-[3px] border-dashed border-faint opacity-60' : ''
       } ${enResize ? 'ring-1 ring-brand' : ''} ${arrastrandose ? 'opacity-40' : ''}`}
@@ -785,7 +782,7 @@ function BloqueEnGrid({
           <MenuFlotante
             disabled={pendiente}
             ariaLabel={`Opciones de la junta ${b.titulo}`}
-            className="-mr-1 -mt-0.5 rounded px-1 text-[12px] font-bold text-muted opacity-0 hover:bg-hair focus-visible:opacity-100 group-hover:opacity-100"
+            className="relative -mr-1 -mt-0.5 rounded px-1 text-[12px] font-bold text-muted opacity-0 before:absolute before:-inset-2 before:content-[''] hover:bg-hair focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
           >
             {(cerrar) => (
               <>
@@ -823,7 +820,24 @@ function BloqueEnGrid({
           </MenuFlotante>
         </span>
       )}
-      <span className={destacado ? 'font-semibold' : ''}>{b.titulo}</span>
+      <span className="flex items-start gap-1">
+        {/* El asa es el único activador: `touch-action: none` vive solo aquí,
+            así el grid sigue scrolleando con el dedo sobre el cuerpo del bloque.
+            Las juntas de Outlook la muestran apagada: se mueven en el calendario. */}
+        <span
+          ref={b.externa || b.done ? undefined : setActivatorNodeRef}
+          {...(b.externa || b.done ? {} : attributes)}
+          {...(b.externa || b.done ? {} : listeners)}
+          aria-label={b.externa ? undefined : `Arrastrar ${b.titulo}`}
+          className={`relative -ml-0.5 mt-px flex shrink-0 select-none items-center text-current before:absolute before:-inset-2 before:content-[''] ${
+            b.externa || b.done ? 'cursor-default opacity-25' : 'cursor-grab opacity-60 hover:opacity-100 active:cursor-grabbing'
+          }`}
+          style={b.externa || b.done ? undefined : { touchAction: 'none' }}
+        >
+          <Grip />
+        </span>
+        <span className={`min-w-0 ${destacado ? 'font-semibold' : ''}`}>{b.titulo}</span>
+      </span>
       {cabeRango && (
         <span className="num mt-0.5 block text-[10px] text-muted">
           {b.inicio} – {enResize ? <b className="text-brand-deep">{finVisual}</b> : b.fin}
@@ -835,7 +849,7 @@ function BloqueEnGrid({
         <span
           onPointerDown={(e) => onResizeStart(b, e)}
           aria-hidden
-          className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover:opacity-100"
+          className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
           style={{ touchAction: 'none' }}
         >
           <span className="mb-[3px] h-[3px] w-8 rounded-full bg-brand/50" />
@@ -851,7 +865,7 @@ function BloqueEnGrid({
 }
 
 function ChipFlex({ b }: { b: LienzoBloque }) {
-  const { setNodeRef, attributes, listeners } = useDraggable({
+  const { setNodeRef, setActivatorNodeRef, attributes, listeners } = useDraggable({
     id: `block:${b.id}`,
     data: {
       kind: 'block',
@@ -864,17 +878,24 @@ function ChipFlex({ b }: { b: LienzoBloque }) {
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className="cursor-grab truncate rounded border-l-[3px] px-1.5 py-1 text-[11px] text-ink active:cursor-grabbing"
+      className="flex items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-[11px] text-ink"
       style={{
         backgroundColor: `${colorDe(b)}1f`,
         borderLeftColor: colorDe(b),
-        touchAction: 'none',
       }}
       title={`${b.titulo} · ${horas(b.planMin)}`}
     >
-      {b.titulo}
+      <span
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={`Arrastrar ${b.titulo}`}
+        className="relative flex shrink-0 cursor-grab select-none items-center text-faint before:absolute before:-inset-2 before:content-[''] hover:text-ink active:cursor-grabbing"
+        style={{ touchAction: 'none' }}
+      >
+        <Grip />
+      </span>
+      <span className="min-w-0 truncate">{b.titulo}</span>
     </div>
   )
 }
@@ -901,10 +922,11 @@ function PendienteCard({ t }: { t: LienzoSemana['bandeja'][number] }) {
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        className="text-sm leading-none text-faint"
+        aria-label={`Arrastrar ${t.titulo}`}
+        className="relative mt-0.5 flex shrink-0 cursor-grab select-none items-center text-faint before:absolute before:-inset-2.5 before:content-[''] hover:text-ink active:cursor-grabbing"
         style={{ touchAction: 'none' }}
       >
-        ⋮⋮
+        <Grip />
       </span>
       <span className="min-w-0 flex-1">
         {t.urgente && <span className="text-danger">★ </span>}

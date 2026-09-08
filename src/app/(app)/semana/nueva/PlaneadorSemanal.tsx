@@ -347,7 +347,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             cargando={cargandoIA === 'recap'}
             onIA={() =>
               conIA('recap', async () => {
-                const r = await recapAction()
+                const r = await recapAction(ctx.isoWeek)
                 if (r.ok) set({ reflexion: r.datos })
                 else setError(r.error)
               })
@@ -363,7 +363,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             cargando={cargandoIA === 'wins'}
             onIA={() =>
               conIA('wins', async () => {
-                const r = await sugerirWinsAction()
+                const r = await sugerirWinsAction(ctx.isoWeek)
                 if (!r.ok) return setError(r.error)
                 const sugeridos: WinDraft[] = r.datos.map((w) => ({
                   ...WIN_VACIO,
@@ -468,7 +468,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             cargando={cargandoIA === 'premortem'}
             onIA={() =>
               conIA('premortem', async () => {
-                const r = await premortemAction(winsLlenos, bal.cargaMin, bal.planeableMin)
+                const r = await premortemAction(winsLlenos, bal.cargaMin, bal.planeableMin, ctx.isoWeek)
                 if (!r.ok) return setError(r.error)
                 // Los riesgos se reemplazan, así que las medidas que ya se
                 // habían agregado quedarían colgando de riesgos que ya no

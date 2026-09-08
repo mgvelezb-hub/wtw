@@ -99,11 +99,13 @@ function recapATexto(a: RecapAnterior): string {
 
 // --- Paso 1: recap de la semana anterior -----------------------------------
 
-export async function recapAction(): Promise<ResultadoIA<string>> {
+// `isoWeek` es la semana que el planeador está planeando: sin ella, el
+// contexto cae al default y la IA puede redactar sobre OTRA semana (QA 8-sep).
+export async function recapAction(isoWeek?: string): Promise<ResultadoIA<string>> {
   const session = await verifySession()
   if (!session) return { ok: false, error: 'no autenticado' }
 
-  const ctx = await contextoPlaneacion(session.userId)
+  const ctx = await contextoPlaneacion(session.userId, new Date(), isoWeek)
   if (!ctx.anterior) return { ok: false, error: 'No hay semana anterior registrada — este paso no aplica.' }
 
   return llamar('planear_recap', RECAP, recapATexto(ctx.anterior))
@@ -113,11 +115,11 @@ export async function recapAction(): Promise<ResultadoIA<string>> {
 
 export type WinSugerido = { titulo: string; dod?: string; siEntonces?: string; porque?: string }
 
-export async function sugerirWinsAction(): Promise<ResultadoIA<WinSugerido[]>> {
+export async function sugerirWinsAction(isoWeek?: string): Promise<ResultadoIA<WinSugerido[]>> {
   const session = await verifySession()
   if (!session) return { ok: false, error: 'no autenticado' }
 
-  const ctx = await contextoPlaneacion(session.userId)
+  const ctx = await contextoPlaneacion(session.userId, new Date(), isoWeek)
   const contenido = [
     `Backlog (${ctx.backlog.length} pendientes):`,
     ...ctx.backlog
@@ -233,12 +235,13 @@ export type PreMortem = {
 export async function premortemAction(
   wins: Array<{ titulo: string }>,
   cargaMin: number,
-  planeableMin: number
+  planeableMin: number,
+  isoWeek?: string
 ): Promise<ResultadoIA<PreMortem>> {
   const session = await verifySession()
   if (!session) return { ok: false, error: 'no autenticado' }
 
-  const ctx = await contextoPlaneacion(session.userId)
+  const ctx = await contextoPlaneacion(session.userId, new Date(), isoWeek)
   const contenido = [
     `Wins: ${wins.map((w, i) => `${i + 1}. ${w.titulo}`).join(' | ') || 'ninguno definido'}`,
     `Carga: ${horas(cargaMin)} sobre ${horas(planeableMin)} planeables.`,

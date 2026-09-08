@@ -208,6 +208,17 @@ function DesktopNavItem({
     setTip(null)
   }
 
+  // El tooltip abierto por el "?" táctil no tiene blur que lo cierre (iOS no
+  // enfoca botones al tocarlos): se cierra al tocar cualquier otra cosa.
+  useEffect(() => {
+    if (!tip) return
+    const cerrarFuera = (e: PointerEvent) => {
+      if (!fila.current?.contains(e.target as Node)) setTip(null)
+    }
+    document.addEventListener('pointerdown', cerrarFuera)
+    return () => document.removeEventListener('pointerdown', cerrarFuera)
+  }, [tip])
+
   useEffect(() => cancelar, [])
 
   return (
@@ -230,6 +241,20 @@ function DesktopNavItem({
           <Icono name={item.icon} />
           {!rail && <span>{item.label}</span>}
         </Link>
+        {/* En táctil no hay hover que revele la descripción, y desplegarla bajo
+            cada módulo llenaba el menú de texto. Un "?" la abre a demanda con el
+            mismo tooltip; se cierra tocándolo otra vez o tocando fuera. */}
+        {!rail && (
+          <button
+            type="button"
+            onClick={() => (tip ? ocultarTip() : mostrarTip(true))}
+            aria-label={`Qué es ${item.label}`}
+            aria-expanded={Boolean(tip)}
+            className="hidden h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold text-faint hover:bg-paper hover:text-muted [@media(hover:none)]:flex"
+          >
+            ?
+          </button>
+        )}
         {tieneSub && !rail && (
           <button
             type="button"
@@ -256,11 +281,6 @@ function DesktopNavItem({
         </div>
       )}
 
-      {!rail && (
-        <p className="hidden px-3 pb-1 text-[11px] leading-snug text-faint [@media(hover:none)]:block">
-          {item.desc}
-        </p>
-      )}
 
       {item.sub && desplegado && (
         <div className="ml-6 mt-0.5 flex flex-col gap-0.5 border-l border-hair pl-2">

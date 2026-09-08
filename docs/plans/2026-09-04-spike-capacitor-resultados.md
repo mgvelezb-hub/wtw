@@ -38,10 +38,13 @@ en el iPad real, con cronómetro.
    1.7 s, así que no es la red: es el descargador de SPM dentro de xcodebuild). Solución:
    `npx cap add ios --packagemanager Cocoapods` — compila Capacitor desde
    `node_modules`, sin bajar binarios. CocoaPods 1.17 necesita `LC_ALL=en_US.UTF-8`.
-2. **`server.url` admite ruta.** Para probar una página concreta sin barra de
-   direcciones: `CAP_SERVER_URL=http://localhost:3010/nativo npx cap sync ios`. El
-   simulador ve el `localhost` de la Mac directo; `cleartext` se enciende solo si la URL
-   es `http://`.
+2. **`server.url` debe ser SOLO el origen** (corregido el 8-sep). Ese día se probó con
+   `…:3010/nativo` y pareció funcionar porque `/nativo` no redirige. Capacitor decide
+   "esto es la app" con `absoluteString.starts(with: serverURL)`: con una ruta en la
+   URL, el redirect de `/dia` a `/login` cuenta como sitio externo y **se abre en
+   Safari**. `CAP_SERVER_URL=http://localhost:3010 npx cap sync ios` y navegar dentro;
+   `allowNavigation: [host]` queda en la config como red. `cleartext` se enciende solo
+   si la URL es `http://`.
 3. **El puerto 9 no sirve para simular "sin red".** WebKit lo tiene en su lista de puertos
    bloqueados y devuelve un documento vacío como carga EXITOSA — nunca dispara
    `didFailProvisionalNavigation`, que es lo que carga `errorPath`. Usar un puerto alto

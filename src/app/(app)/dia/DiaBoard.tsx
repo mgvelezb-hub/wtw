@@ -41,6 +41,7 @@ import { crearActividadDelDiaAction, sugerirDuracionAction } from './nueva-activ
 import { delegarTareaAction, deshacerDelegacionAction } from './actions'
 import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
 import { MenuFlotante } from '@/components/menu-flotante'
+import { Grip } from '@/components/grip'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
 import { AyudaContextual } from '@/components/ayuda-contextual'
@@ -145,6 +146,7 @@ function ZonaDrop({
   clase,
   activaClase,
   seccion,
+  lineaFinal,
   children,
 }: {
   id: string
@@ -152,20 +154,28 @@ function ZonaDrop({
   activaClase: string
   /** Rinde <section> en vez de <div> — la de Pendientes ya lo era. */
   seccion?: boolean
+  /** Pinta una línea de inserción al final cuando algo flota encima. */
+  lineaFinal?: boolean
   children: ReactNode
 }) {
   const { setNodeRef, isOver } = useDroppable({ id })
   const className = `${clase} ${isOver ? activaClase : ''}`
+  // La línea de inserción: dónde caería lo que se arrastra si se suelta aquí
+  // (al final de la lista). Teñir el panel entero decía "aquí se puede" pero
+  // no "aquí queda"; la línea dice lo segundo, que es lo que el ojo busca.
+  const indicador = isOver && lineaFinal ? <div aria-hidden className="mt-1 h-0.5 rounded-full bg-brand" /> : null
   if (seccion) {
     return (
       <section ref={setNodeRef} className={className}>
         {children}
+        {indicador}
       </section>
     )
   }
   return (
     <div ref={setNodeRef} className={className}>
       {children}
+      {indicador}
     </div>
   )
 }
@@ -663,7 +673,7 @@ export function DiaBoard(p: DiaBoardProps) {
           </section>
         )}
 
-        <ZonaDrop id="timeline" clase="order-2 mx-4 bloque p-4 lg:mx-7" activaClase="bg-brand-soft/40">
+        <ZonaDrop id="timeline" clase="order-2 mx-4 bloque p-4 lg:mx-7" activaClase="" lineaFinal>
           {/* Único indicador de capacidad del día: el renglón Planeado/Real/Libres
               absorbió la card grande de "Capacidad de hoy". Dos tarjetas midiendo
               lo mismo se contradecían visualmente. */}
@@ -1020,10 +1030,10 @@ function PendienteCard({
           {...attributes}
           {...listeners}
           aria-label={`Arrastrar ${pe.titulo}`}
-          className="relative -ml-1 shrink-0 cursor-grab select-none px-0.5 text-sm leading-none text-faint before:absolute before:-inset-2.5 before:content-[''] active:cursor-grabbing"
+          className="relative -ml-1 flex shrink-0 cursor-grab select-none items-center self-center px-0.5 text-faint opacity-60 before:absolute before:-inset-2.5 before:content-[''] hover:opacity-100 active:cursor-grabbing"
           style={{ touchAction: 'none' }}
         >
-          ⋮⋮
+          <Grip />
         </span>
         <span className="num shrink-0 text-[0.6875rem] text-muted">
           {pe.estimadoMin != null ? hhmm(pe.estimadoMin) : '—'}
@@ -1709,7 +1719,7 @@ function FilaBloque({
         setDragRef(node)
         setDropRef(node)
       }}
-      className={`hair group py-2.5 ${fondo} ${isOver ? 'ring-1 ring-inset ring-brand' : ''} ${
+      className={`hair group py-2.5 ${fondo} ${isOver ? 'shadow-[inset_0_2px_0_0_var(--color-brand)]' : ''} ${
         arrastrandose ? 'opacity-40' : ''
       }`}
     >
@@ -1726,14 +1736,12 @@ function FilaBloque({
             {...attributes}
             {...listeners}
             aria-label={`Arrastrar ${b.titulo}`}
-            className={`relative -ml-1.5 shrink-0 select-none px-0.5 text-xs leading-none text-faint transition-opacity before:absolute before:-inset-2.5 before:content-[''] ${
-              b.runningSince
-                ? 'cursor-default opacity-20'
-                : 'cursor-grab opacity-40 active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100'
+            className={`relative -ml-1.5 flex shrink-0 select-none items-center px-0.5 text-faint transition-opacity before:absolute before:-inset-2.5 before:content-[''] ${
+              b.runningSince ? 'cursor-default opacity-20' : 'cursor-grab opacity-60 hover:opacity-100 active:cursor-grabbing'
             }`}
             style={{ touchAction: 'none' }}
           >
-            ⋮⋮
+            <Grip />
           </span>
           {rango}
         </span>
