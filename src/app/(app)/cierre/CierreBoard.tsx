@@ -20,7 +20,7 @@ type Fila = DesvioInput & { key: string }
 const A_QUIEN_TOCA_COLOR: Record<string, string> = {
   cliente: 'bg-warn-border text-warn',
   disciplina: 'bg-[#5b4b8a] text-white',
-  código: 'bg-brand text-white',
+  código: 'bg-brand text-sobre-brand',
 }
 
 function horas(min: number): string {
@@ -348,7 +348,7 @@ export function CierreBoard({
                 })
               )
             }
-            className="rounded-md bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-md bg-brand px-4 py-2 text-sm font-bold text-sobre-brand disabled:opacity-40"
           >
             {pending ? 'Guardando…' : cierre.yaReconciliado ? 'Actualizar cierre' : 'Cerrar el día'}
           </button>
@@ -563,7 +563,7 @@ function PromoverDesvio({
               dolorCliente: alcance === 'aliado' ? dolor : undefined,
             })
           }
-          className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+          className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-sobre-brand disabled:opacity-40"
         >
           {pending ? 'Registrando…' : 'Registrar'}
         </button>

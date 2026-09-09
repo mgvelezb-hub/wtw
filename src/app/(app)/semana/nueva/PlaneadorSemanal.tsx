@@ -274,7 +274,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
             href={`/semana/nueva?semana=${ctx.isoWeekSiguiente}`}
-            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white"
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-sobre-brand"
           >
             Planear {ctx.isoWeekSiguiente} →
           </Link>
@@ -332,7 +332,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
               onClick={() => set({ paso: i })}
               className={`rounded-full px-3 py-1 text-xs font-bold ${
                 i === draft.paso
-                  ? 'bg-brand-deep text-white'
+                  ? 'bg-brand-deep text-sobre-brand'
                   : i < draft.paso
                     ? 'bg-brand-soft text-brand-deep'
                     : 'bg-paper text-muted'
@@ -536,7 +536,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
               setAvisoWins(false)
               set({ paso: draft.paso + 1 })
             }}
-            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white"
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-sobre-brand"
           >
             {draft.paso === 1 && winsSinPlan.length > 0 && avisoWins ? 'Avanzar sin si-entonces →' : 'Siguiente →'}
           </button>
@@ -590,7 +590,7 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
             }}
             // Antes ámbar (color de advertencia): un botón primario es una acción,
             // y la gramática reserva el ámbar solo para advertencias — nunca botones.
-            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+            className="rounded-md bg-brand-deep px-4 py-2 text-sm font-bold text-sobre-brand disabled:opacity-40"
           >
             {pending ? 'Creando…' : '✓ Crear semana'}
           </button>
@@ -901,7 +901,7 @@ function PasoWins({
                   aria-pressed={w.leverage === true}
                   onClick={() => editar(i, { leverage: w.leverage === true ? null : true })}
                   className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                    w.leverage === true ? 'bg-brand-deep text-white' : 'border border-hair text-muted'
+                    w.leverage === true ? 'bg-brand-deep text-sobre-brand' : 'border border-hair text-muted'
                   }`}
                 >
                   Sí
@@ -911,7 +911,7 @@ function PasoWins({
                   aria-pressed={w.leverage === false}
                   onClick={() => editar(i, { leverage: w.leverage === false ? null : false })}
                   className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-                    w.leverage === false ? 'bg-brand-deep text-white' : 'border border-hair text-muted'
+                    w.leverage === false ? 'bg-brand-deep text-sobre-brand' : 'border border-hair text-muted'
                   }`}
                 >
                   No

@@ -1,67 +1,170 @@
 @import "tailwindcss";
 
+/* ── LOS TRES TEMAS ──────────────────────────────────────────────────────────
+   claro · oscuro · fuera de jornada.
+
+   Por qué son tres. "Fuera de jornada" no es el oscuro reciclado: si se viera
+   igual que el oscuro que el usuario eligió, no diría nada. La palanca que los
+   separa es el sesgo de los neutros. El claro y el oscuro deliberado llevan
+   sesgo teal —el mismo del acento—; el de fuera de jornada lo mueve a cálido.
+   El suelo mismo avisa que el contexto cambió, sin gastar ámbar en superficies
+   grandes, que rompería "ámbar solo advertencia".
+
+   La lógica de CUÁL se pinta vive en `lib/tema.ts`, sin DOM y con tests. Aquí
+   solo están los valores. Todos los tokens se declaran en `:root` primero: uno
+   que solo exista dentro de un `[data-tema]` no aplicaría en el instante previo
+   a que el script en línea estampe el atributo.
+
+   `color-scheme` se mueve con el tema y no es decoración: sin él, iOS y Chrome
+   pintan los controles de formulario con SU tema y el texto de un input queda
+   casi invisible aunque el CSS nunca lo haya pedido. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* La app es solo modo claro por diseño. Sin esto, Safari/Chrome en un
-     dispositivo con modo oscuro del sistema (iPad/celular) le aplican su
-     tema oscuro nativo a inputs/textareas sin color explícito — texto casi
-     invisible aunque el CSS de la app nunca lo pida. */
   color-scheme: light;
+
+  /* El fondo dejó de ser crema (#f4efe3): en monitor, una superficie cálida a
+     pantalla completa aplana todo y las áreas dejan de distinguirse entre sí
+     (feedback de Mau, 2026-08-24). `paper` es un gris muy claro con sesgo teal
+     —el mismo sesgo del acento, no un gris de fábrica— y las superficies de
+     trabajo van en blanco puro. */
+  --paper: #eef2f2;
+  --surface: #ffffff;
+  --ink: #1a2323;
+  /* La escala de tres niveles se re-abrió el 2026-09-09. El `faint` viejo
+     (#9fb0ae) daba 2.00:1 sobre `paper` en 171 usos y nunca pasó contraste;
+     subirlo solo lo pegaba a `muted` y colapsaba la jerarquía a dos niveles.
+     Ahora los tres son distinguibles Y legibles: 14.2 → 6.4 → 4.5. */
+  --muted: #4c5a59;
+  --faint: #5f7371;
+  /* `hair` separa filas DENTRO de un área; `edge` delimita un área de otra. */
+  --hair: #dce4e2;
+  --edge: #ccdad8;
+
+  /* Gramática de color — un color, un significado:
+     brand (teal): acción primaria, selección, identidad. El ÚNICO acento.
+     warn (ámbar): SOLO advertencias. Nunca botones, nunca chips decorativos.
+     danger (rojo): SOLO destructivo o atrasado.
+     ok (verde): SOLO confirmación o a tiempo. */
+  --brand: #0a7c82;
+  --brand-strong: #086a6f;
+  --brand-deep: #0c4a45;
+  --brand-soft: #d3e4e0;
+  /* El teal como TEXTO da 4.41:1 sobre paper: se queda a 0.09 del umbral. Como
+     relleno con blanco encima sí pasa (4.98), así que la identidad no se toca y
+     lo que cambia es que el texto en color de marca use este tono. */
+  --brand-text: #086e73;
+  /* Lo que va ENCIMA de un relleno de marca. En claro es blanco (4.98:1); en
+     los dos temas oscuros el teal se aclara y el blanco cae a 2.82:1, así que
+     ahí el texto se invierte a tinta oscura (6.50:1). Es la regla que más se
+     rompe al portar un tema claro: el botón se ve bien en la captura y es
+     ilegible en la mano. */
+  --sobre-brand: #ffffff;
+  --warn: #8a6116;
+  --warn-strong: #b8923f;
+  --warn-soft: #fdf6e3;
+  --warn-border: #e8b94a;
+  --danger: #b43232;
+  --danger-soft: #f7dcdc;
+  --ok: #15803d;
+  --ok-soft: #c7e4de;
+
+  --background: var(--surface);
+  --foreground: var(--ink);
 }
 
+/* Oscuro deliberado: el usuario lo eligió, o su sistema lo pide. Conserva el
+   sesgo teal. Las superficies suben en luminosidad sobre el fondo, que es como
+   se lee la elevación cuando no hay sombras. */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+
+  --paper: #0e1615;
+  --surface: #17211f;
+  --ink: #e7edec;
+  --muted: #a2b3b0;
+  --faint: #7d908d;
+  --hair: #26312f;
+  --edge: #36423f;
+
+  --brand: #35a9ae;
+  --brand-strong: #57c3c6;
+  /* En claro `brand-deep` es el teal más oscuro, para texto sobre `brand-soft`.
+     En oscuro ese papel se invierte: el fondo suave es oscuro y el texto claro. */
+  --brand-deep: #bfe4e3;
+  --brand-soft: #123a3a;
+  --brand-text: #57c3c6;
+  --sobre-brand: #0e1615;
+  --warn: #d9a441;
+  --warn-strong: #e8b94a;
+  --warn-soft: #2a2213;
+  --warn-border: #7a6224;
+  --danger: #e57373;
+  --danger-soft: #33191a;
+  --ok: #57c08c;
+  --ok-soft: #14312a;
+}
+
+/* Fuera de jornada. Mismo contraste que el oscuro —todo pasa 4.5:1— pero con
+   los neutros movidos a cálido: es la señal ambiental de que lo que sigue ya
+   cuenta como tiempo prestado, dicha sin una palabra. */
+:root[data-tema="fuera"] {
+  color-scheme: dark;
+
+  --paper: #16130d;
+  --surface: #201b13;
+  --ink: #efe9df;
+  --muted: #b5a894;
+  --faint: #8d8271;
+  --hair: #2c261c;
+  --edge: #3f3729;
+
+  --brand: #3fb0a9;
+  --brand-strong: #63c8c1;
+  --brand-deep: #c6e9e5;
+  --brand-soft: #123834;
+  --brand-text: #63c8c1;
+  --sobre-brand: #16130d;
+  --warn: #e0ab4a;
+  --warn-strong: #edc063;
+  --warn-soft: #2b2214;
+  --warn-border: #7d6528;
+  --danger: #e57373;
+  --danger-soft: #331a17;
+  --ok: #57c08c;
+  --ok-soft: #143128;
+}
+
+/* `@theme inline` es lo que hace que los temas funcionen: en vez de congelar el
+   hex dentro de cada utilidad, deja la referencia a la variable, así que
+   `bg-paper` sigue a `--paper` cuando cambia el atributo del <html>. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-plex-sans), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-plex-mono), "SF Mono", Menlo, monospace;
-}
 
-/* Superficies y neutros del lenguaje "instrumento" (rediseño 2026-08-22).
-   Un solo juego de neutros con sesgo teal, en vez de neutral-* de Tailwind:
-   - paper: el fondo de la app (el crema que ya existía como literal).
-   - surface: superficies blancas (columnas, filas destacadas).
-   - ink / muted / faint: texto principal / secundario / terciario.
-   - hair: la línea de 1px que separa en lugar de las cajas con sombra. */
-@theme {
-  /* El fondo dejó de ser crema (#f4efe3): en monitor, una superficie cálida a
-     pantalla completa aplana todo y las áreas dejan de distinguirse entre sí
-     (feedback de Mau, 2026-08-24). Ahora `paper` es un gris muy claro con sesgo
-     teal —el mismo sesgo del acento, no un gris de fábrica— y las superficies de
-     trabajo van en blanco puro. La jerarquía la da el contraste entre los dos,
-     reforzado por `edge`. */
-  --color-paper: #eef2f2;
-  --color-surface: #ffffff;
-  --color-ink: #1a2323;
-  --color-muted: #5c6b6a;
-  --color-faint: #9fb0ae;
-  --color-hair: #dce4e2;
-  /* Borde de bloque: más marcado que `hair` (que separa filas DENTRO de un
-     bloque). `edge` es lo que delimita un área de otra. */
-  --color-edge: #ccdad8;
-}
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-hair: var(--hair);
+  --color-edge: var(--edge);
 
-/* Gramática de color — un color, un significado. Tokens Tailwind v4 (@theme
-   genera bg-brand, text-warn, border-danger, etc.). Regla:
-   - brand (teal): acción primaria, selección, identidad. El ÚNICO acento.
-   - brand-deep: paneles primarios invertidos y énfasis de marca.
-   - warn (ámbar): SOLO advertencias. Nunca botones, nunca chips decorativos.
-   - danger (rojo): SOLO destructivo/atrasado.
-   - ok (verde): SOLO confirmación/a tiempo.
-   Los hex históricos (#0c4a45, #e8b94a, #b43232…) migran a estos tokens. */
-@theme {
-  --color-brand: #0a7c82;
-  --color-brand-strong: #086a6f;
-  --color-brand-deep: #0c4a45;
-  --color-brand-soft: #d3e4e0;
-  --color-warn: #8a6116;
-  --color-warn-strong: #b8923f;
-  --color-warn-soft: #fdf6e3;
-  --color-warn-border: #e8b94a;
-  --color-danger: #b43232;
-  --color-danger-soft: #f7dcdc;
-  --color-ok: #15803d;
-  --color-ok-soft: #c7e4de;
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-text: var(--brand-text);
+  --color-sobre-brand: var(--sobre-brand);
+  --color-warn: var(--warn);
+  --color-warn-strong: var(--warn-strong);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-border: var(--warn-border);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
 }
 
 body {

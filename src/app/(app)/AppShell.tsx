@@ -7,6 +7,7 @@ import { CommandPalette } from '@/components/command-palette'
 import { NavInferior } from '@/components/nav-inferior'
 import { Icono, type Grupo, type IconName, type NavItem, type ProyectoNav } from '@/components/nav-iconos'
 import { useLocalStorage, escribirLocal } from '@/lib/local-store'
+import { Marca } from '@/components/marca'
 
 const NAV_COLAPSADO_KEY = 'wtw-nav-colapsado'
 const RAIL_KEY = 'wtw-rail'
@@ -138,7 +139,7 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
     <Link
       href={href}
       className={`flex min-h-11 shrink-0 scroll-mx-2 snap-start items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
-        active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'
+        active ? 'bg-brand text-sobre-brand' : 'text-muted hover:bg-paper'
       }`}
     >
       <Icono name={icon} />
@@ -236,7 +237,7 @@ function DesktopNavItem({
           aria-current={active ? 'page' : undefined}
           className={`flex flex-1 items-center rounded-md text-sm font-medium transition-colors ${
             rail ? 'min-h-11 justify-center px-0' : 'min-h-11 gap-2 px-3'
-          } ${active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'}`}
+          } ${active ? 'bg-brand text-sobre-brand' : 'text-muted hover:bg-paper'}`}
         >
           <Icono name={item.icon} />
           {!rail && <span>{item.label}</span>}
@@ -274,7 +275,7 @@ function DesktopNavItem({
         <div
           role="tooltip"
           style={{ top: tip.top, left: tip.left }}
-          className="pointer-events-none fixed z-50 w-56 -translate-y-1/2 rounded-lg bg-brand-deep px-3 py-2 text-xs leading-snug text-white shadow-lg"
+          className="pointer-events-none fixed z-50 w-56 -translate-y-1/2 rounded-lg bg-brand-deep px-3 py-2 text-xs leading-snug text-sobre-brand shadow-lg"
         >
           {rail && <span className="mb-0.5 block text-[13px] font-semibold">{item.label}</span>}
           {item.desc}
@@ -428,9 +429,12 @@ export function AppShell({
           esRail ? 'md:w-14 md:px-2' : 'md:w-56 md:px-3'
         }`}
       >
-        <div className={`hidden pb-4 md:block ${esRail ? 'px-0 text-center' : 'px-2'}`}>
-          <p className="text-base font-bold text-brand">{esRail ? 'W' : 'WTW'}</p>
-          {!esRail && <p className="truncate text-xs text-faint">{nombre}</p>}
+        <div className={`hidden pb-4 md:block ${esRail ? 'px-0' : 'px-2'}`}>
+          <div className={`flex items-center gap-2 ${esRail ? 'justify-center' : ''}`}>
+            <Marca size={esRail ? 24 : 20} />
+            {!esRail && <p className="text-base font-semibold text-ink">Reckon</p>}
+          </div>
+          {!esRail && <p className="mt-1 truncate text-xs text-faint">{nombre}</p>}
         </div>
 
         {/* Tablet angosta (640–767): fila plana scrollable, con fade en los

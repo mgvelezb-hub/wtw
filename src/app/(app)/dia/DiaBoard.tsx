@@ -130,7 +130,7 @@ function TabDia({ t, activo }: { t: DiaTab; activo: boolean }) {
       ref={setNodeRef}
       href={`/dia?dia=${t.fecha}`}
       className={`flex shrink-0 items-baseline gap-1.5 rounded-md px-3 py-1.5 text-xs ${
-        activo ? 'bg-brand-deep font-semibold text-white' : 'text-muted hover:bg-surface'
+        activo ? 'bg-brand-deep font-semibold text-sobre-brand' : 'text-muted hover:bg-surface'
       } ${isOver ? 'ring-1 ring-inset ring-brand' : ''}`}
     >
       <span>{t.abr}</span>
@@ -668,7 +668,7 @@ export function DiaBoard(p: DiaBoardProps) {
                   onClick={() =>
                     startTransition(() => void carryAllToTodayAction(p.stranded.map((s) => s.id), p.today))
                   }
-                  className="mt-3 rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-strong"
+                  className="mt-3 rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-sobre-brand hover:bg-brand-strong"
                 >
                   Llevar todo a hoy
                 </button>
@@ -1238,7 +1238,7 @@ function AhoraFranja({
             <button
               disabled={pending}
               onClick={() => startTransition(() => void stopTimerAction())}
-              className="flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
+              className="flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-sobre-brand hover:bg-brand-strong disabled:opacity-40"
             >
               ❚❚ Pausar
             </button>
@@ -1246,7 +1246,7 @@ function AhoraFranja({
             <button
               disabled={pending}
               onClick={() => startTransition(() => void startTimerAction(current.taskId!))}
-              className="flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-40"
+              className="flex h-11 items-center gap-2 rounded-lg bg-brand px-5 text-sm font-semibold text-sobre-brand hover:bg-brand-strong disabled:opacity-40"
             >
               ▶ {seconds > 0 ? 'Reanudar' : 'Iniciar'}
             </button>
@@ -1501,7 +1501,7 @@ function NuevaActividad({
           type="button"
           disabled={pending || titulo.trim() === ''}
           onClick={() => guardar(true)}
-          className="rounded-md bg-brand-deep px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
+          className="rounded-md bg-brand-deep px-2.5 py-1.5 text-xs font-semibold text-sobre-brand disabled:opacity-40"
         >
           Agendar en este día
         </button>

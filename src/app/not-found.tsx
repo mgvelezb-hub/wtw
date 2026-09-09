@@ -16,7 +16,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/dia"
-          className="mt-5 inline-flex min-h-11 items-center rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong"
+          className="mt-5 inline-flex min-h-11 items-center rounded-md bg-brand px-4 py-2 text-sm font-semibold text-sobre-brand hover:bg-brand-strong"
         >
           Ir a Mi Día
         </Link>

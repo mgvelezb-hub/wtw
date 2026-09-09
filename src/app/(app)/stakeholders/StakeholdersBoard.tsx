@@ -23,7 +23,7 @@ const TIPOS: InteraccionTipo[] = ['junta', 'llamada', 'correo', 'informal', 'pre
 const POSTURAS: StakeholderPostura[] = ['aliado', 'neutral', 'opositor', 'desconocida']
 
 const POSTURA_COLOR: Record<string, string> = {
-  aliado: 'bg-brand-strong text-white',
+  aliado: 'bg-brand-strong text-sobre-brand',
   neutral: 'bg-hair text-muted',
   opositor: 'bg-danger text-white',
   // Ámbar es advertencia, no decoración (DESIGN.md): no saber la postura de
@@ -50,7 +50,7 @@ const SALUD_COLOR: Record<EtiquetaSalud, string> = {
 // El tier NO es semáforo — es una clasificación. Pintarlo de rojo diría que ser
 // definitivo es malo, cuando es solo el que más atención exige.
 const TIER_COLOR: Record<TierSaliencia, string> = {
-  definitivo: 'bg-brand-deep text-white',
+  definitivo: 'bg-brand-deep text-sobre-brand',
   expectante: 'bg-brand-deep/15 text-brand-deep',
   latente: 'bg-hair text-muted',
 }
@@ -378,7 +378,7 @@ function FormaNuevo({
             cadenciaDias: cadencia ? Number(cadencia) : null,
           })
         }
-        className="rounded-md bg-brand px-4 py-1.5 text-sm font-bold text-white disabled:opacity-40"
+        className="rounded-md bg-brand px-4 py-1.5 text-sm font-bold text-sobre-brand disabled:opacity-40"
       >
         {pending ? 'Guardando…' : 'Agregar'}
       </button>
@@ -565,7 +565,7 @@ function Ficha({
                   setIncumplimiento(false)
                 })
               }
-              className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+              className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-sobre-brand disabled:opacity-40"
             >
               {pending ? 'Guardando…' : 'Registrar'}
             </button>

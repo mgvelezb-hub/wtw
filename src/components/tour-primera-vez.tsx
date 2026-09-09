@@ -80,7 +80,7 @@ export function TourPrimeraVez({
       <button
         type="button"
         onClick={descartar}
-        className="mt-3 rounded-full bg-brand px-4 py-1.5 text-xs font-bold text-white hover:bg-brand-strong"
+        className="mt-3 rounded-full bg-brand px-4 py-1.5 text-xs font-bold text-sobre-brand hover:bg-brand-strong"
       >
         Entendido
       </button>

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { RegisterSW } from "./register-sw";
 import { NativoBridge } from "./nativo-bridge";
+import { TemaInicial } from "./tema-inicial";
 import "./globals.css";
 
 // Lenguaje visual "instrumento": el material de la app es el tiempo
@@ -20,8 +21,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WTW App",
-  description: "Tu semana, ganada por diseño",
+  title: "Reckon",
+  description: "Estimas. Mides. Corriges.",
 };
 
 export const viewport: Viewport = {
@@ -44,6 +45,7 @@ export default function RootLayout({
       className={`${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <TemaInicial />
         {children}
         <RegisterSW />
         <NativoBridge />

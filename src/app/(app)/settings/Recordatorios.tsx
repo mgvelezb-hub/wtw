@@ -231,7 +231,7 @@ export function RecordatoriosPanel({
             type="button"
             onClick={activarEnEsteDispositivo}
             disabled={pending}
-            className="rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className="rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
           >
             Activar en este dispositivo
           </button>

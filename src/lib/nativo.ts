@@ -39,7 +39,7 @@ export async function probarNotificacionLocal(enSegundos: number): Promise<'gran
     notifications: [
       {
         id: 9001,
-        title: 'WTW — prueba',
+        title: 'Reckon — prueba',
         body: `Notificación local programada hace ${enSegundos} s. Llegó sin servidor.`,
         schedule: { at: new Date(Date.now() + enSegundos * 1000) },
       },

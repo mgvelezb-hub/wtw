@@ -281,7 +281,7 @@ export function InboxBoard({
         <button
           type="submit"
           disabled={pending || !titulo.trim()}
-          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-50"
+          className="w-full rounded-md bg-brand px-4 py-2 text-sm font-semibold text-sobre-brand hover:bg-brand-strong disabled:opacity-50"
         >
           Agregar a pendientes
         </button>
@@ -349,7 +349,7 @@ export function InboxBoard({
                     setLoteAbierto(false)
                   })
                 }}
-                className="mt-2 rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                className="mt-2 rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
               >
                 Confirmar clases
               </button>

@@ -2,12 +2,12 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'WTW App',
-    short_name: 'WTW',
-    description: 'Tu semana, ganada por diseño',
+    name: 'Reckon',
+    short_name: 'Reckon',
+    description: 'Estimas. Mides. Corriges.',
     start_url: '/dia',
     display: 'standalone',
-    background_color: '#ffffff',
+    background_color: '#0A7C82',
     theme_color: '#0A7C82',
     icons: [
       { src: '/pwa/icon-192', sizes: '192x192', type: 'image/png' },

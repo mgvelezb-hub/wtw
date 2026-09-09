@@ -72,10 +72,10 @@ export async function GET() {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//WTW App//ES',
+    'PRODID:-//Reckon//ES',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    'X-WR-CALNAME:WTW — Mi semana',
+    'X-WR-CALNAME:Reckon — Mi semana',
   ]
   for (const b of week?.blocks ?? []) {
     if (b.inicio === 'flex' || b.fin === 'flex') continue

@@ -314,7 +314,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               <Link href={`/dia?dia=${v.diaSeleccionado}`} className="px-3 py-1.5 text-muted hover:text-brand">
                 Día
               </Link>
-              <span className="bg-brand-deep px-3 py-1.5 text-white">Semana</span>
+              <span className="bg-brand-deep px-3 py-1.5 text-sobre-brand">Semana</span>
             </div>
             <span className="font-semibold text-ink">Semana {v.numeroSemana}</span>
             <span className="num text-xs text-muted">{v.rango}</span>

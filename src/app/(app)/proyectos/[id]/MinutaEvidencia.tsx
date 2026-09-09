@@ -113,7 +113,7 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
           <button
             disabled={pending}
             onClick={inferir}
-            className="mt-1.5 w-full rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className="mt-1.5 w-full rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
           >
             {pending ? '⏳ buscando…' : 'Buscar evidencia'}
           </button>
@@ -152,7 +152,7 @@ export function MinutaEvidencia({ minutaId }: { minutaId: string }): React.React
                     <button
                       disabled={pending}
                       onClick={() => registrar(i)}
-                      className="flex-1 rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                      className="flex-1 rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
                     >
                       Registrar
                     </button>

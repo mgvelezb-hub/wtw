@@ -94,7 +94,7 @@ function ImpactoForm({
         <button
           disabled={disabled || !valido}
           onClick={guardar}
-          className="rounded bg-brand px-2 py-0.5 text-xs font-semibold text-white disabled:opacity-50"
+          className="rounded bg-brand px-2 py-0.5 text-xs font-semibold text-sobre-brand disabled:opacity-50"
         >
           Guardar
         </button>

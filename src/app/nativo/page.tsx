@@ -8,7 +8,7 @@ export default function NativoPage() {
   return (
     <main className="min-h-dvh bg-paper">
       <div className="mx-auto max-w-md space-y-4 px-4 py-8">
-        <h1 className="text-lg font-semibold text-ink">WTW en el dispositivo</h1>
+        <h1 className="text-lg font-semibold text-ink">Reckon en el dispositivo</h1>
         <p className="text-xs leading-relaxed text-muted">
           Esta página solo tiene contenido dentro de la app instalada. Si la ves en un navegador, no hay nada que
           probar aquí.

@@ -83,7 +83,7 @@ export function FocusActivity({
           <button
             disabled={pending || !activity.taskId}
             onClick={() => activity.taskId && startTransition(() => void startTimerAction(activity.taskId!))}
-            className="rounded-md bg-brand px-5 py-2 text-base font-bold text-white hover:bg-brand-strong"
+            className="rounded-md bg-brand px-5 py-2 text-base font-bold text-sobre-brand hover:bg-brand-strong"
           >
             ▶ Reanudar
           </button>

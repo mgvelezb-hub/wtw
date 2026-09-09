@@ -20,7 +20,7 @@ const SHELL = ['/manifest.webmanifest'];
 // de la red para verse bien no serviría de nada.
 const SIN_RED = '<!doctype html><html lang="es-MX"><meta charset="utf-8">' +
   '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
-  '<title>WTW — sin conexión</title>' +
+  '<title>Reckon — sin conexión</title>' +
   '<body style="margin:0;min-height:100dvh;display:grid;place-items:center;background:#eef2f2;color:#1a2323;' +
   'font:17px/1.45 \\'IBM Plex Sans\\',system-ui,-apple-system,sans-serif">' +
   '<main style="max-width:28rem;margin:1rem;padding:1.5rem;background:#fff;border:1px solid #ccdad8;border-radius:10px">' +

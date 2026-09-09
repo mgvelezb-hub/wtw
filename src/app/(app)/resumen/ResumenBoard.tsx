@@ -101,7 +101,7 @@ export function ResumenBoard({
               onClick={() => setClave(a.clave)}
               title={a.ayuda}
               className={`rounded-full px-3 py-1 text-xs font-bold ${
-                clave === a.clave ? 'bg-brand text-white' : 'bg-paper text-muted hover:bg-hair'
+                clave === a.clave ? 'bg-brand text-sobre-brand' : 'bg-paper text-muted hover:bg-hair'
               }`}
             >
               {a.label}
@@ -199,7 +199,7 @@ export function ResumenBoard({
         <button
           disabled={pending || faltaDato}
           onClick={generar}
-          className="mt-3 w-full rounded-md bg-brand px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
+          className="mt-3 w-full rounded-md bg-brand px-4 py-2 text-sm font-bold text-sobre-brand disabled:opacity-40"
         >
           {pending ? '⏳ generando…' : '✨ Generar resumen'}
         </button>
@@ -238,7 +238,7 @@ export function ResumenBoard({
                     }
                   })
                 }}
-                className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+                className="rounded-md bg-brand px-3 py-1 text-xs font-bold text-sobre-brand disabled:opacity-40"
               >
                 Guardar edición
               </button>

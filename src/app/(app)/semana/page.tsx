@@ -18,7 +18,7 @@ export default async function SemanaPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-paper px-4 text-center">
         <p className="lbl">Semana sin planear</p>
         <p className="text-sm text-muted">No hay semana activa todavía.</p>
-        <Link href="/semana/nueva" className="rounded-md bg-brand-deep px-5 py-2.5 text-sm font-bold text-white">
+        <Link href="/semana/nueva" className="rounded-md bg-brand-deep px-5 py-2.5 text-sm font-bold text-sobre-brand">
           Planear la semana
         </Link>
         <p className="text-xs text-faint">

@@ -47,7 +47,7 @@ export function AvisosNativos({ sello }: { sello: number }) {
         permiso === 'granted'
           ? null
           : permiso === 'denied'
-            ? 'Permiso negado. Se recupera solo desde Ajustes del sistema › Notificaciones › WTW.'
+            ? 'Permiso negado. Se recupera solo desde Ajustes del sistema › Notificaciones › Reckon.'
             : 'Sin respuesta al permiso.',
       )
       if (permiso === 'granted') setPendientes(await avisosPendientes())
@@ -82,7 +82,7 @@ export function AvisosNativos({ sello }: { sello: number }) {
           <button
             type="button"
             onClick={activar}
-            className="rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-white"
+            className="rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand"
           >
             Activar en este dispositivo
           </button>

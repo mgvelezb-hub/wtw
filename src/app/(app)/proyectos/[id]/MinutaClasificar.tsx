@@ -117,7 +117,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
         <button
           disabled={pending}
           onClick={clasificar}
-          className="mt-1.5 w-full rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+          className="mt-1.5 w-full rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
         >
           {pending ? '⏳ clasificando…' : 'Clasificar'}
         </button>
@@ -160,7 +160,7 @@ export function MinutaClasificar({ minutaId, tieneNotas }: { minutaId: string; t
             <button
               disabled={pending || aceptados.size === 0}
               onClick={agregar}
-              className="flex-1 rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+              className="flex-1 rounded bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
             >
               Agregar {aceptados.size}
             </button>

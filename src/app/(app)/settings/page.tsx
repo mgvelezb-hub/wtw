@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { SettingsForm } from './SettingsForm'
 import { RecordatoriosPanel } from './Recordatorios'
 import { NativoPanel } from './Nativo'
+import { Apariencia } from './Apariencia'
 import { clavePublica, pushConfigurado, leerRecordatorios } from '@/lib/push'
 import { tickUnicoActivo } from '@/lib/recordatorios'
 
@@ -29,6 +30,8 @@ export default async function SettingsPage() {
         }}
       />
       <div className="mx-auto max-w-md px-4 pb-8">
+        <Apariencia horario={`${user.horarioInicio}–${user.horarioFin}`} />
+        <div className="mt-4" />
         <RecordatoriosPanel
           inicial={leerRecordatorios(user.recordatorios)}
           configurado={pushConfigurado()}
