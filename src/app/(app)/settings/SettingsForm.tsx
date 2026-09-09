@@ -79,6 +79,14 @@ export function SettingsForm({ user }: { user: SettingsUser }) {
       <button
         type="submit"
         formAction={logoutAction}
+        // El service worker guarda HTML ya autenticado. La cookie se va con la
+        // action, pero sin esto la caché sobrevive y offline se seguía pintando
+        // el /dia del usuario anterior: en un dispositivo compartido es una
+        // fuga, no una molestia. Va en onClick y no en la action porque la
+        // caché vive en el navegador, donde el servidor no llega.
+        onClick={() => {
+          navigator.serviceWorker?.controller?.postMessage({ tipo: 'wtw:limpiar-cache' })
+        }}
         className="w-full rounded-md border border-edge bg-surface px-4 py-2 text-sm font-medium text-brand-deep hover:bg-paper"
       >
         Cerrar sesión

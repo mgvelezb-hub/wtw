@@ -8,7 +8,27 @@ export const dynamic = 'force-static'
 export function GET() {
   const version = process.env.VERCEL_GIT_COMMIT_SHA ?? 'dev'
   const body = `const CACHE = 'wtw-shell-${version}';
-const SHELL = ['/dia', '/manifest.webmanifest'];
+// \`/dia\` NO va aquí. RegisterSW vive en el layout raíz, así que el SW también
+// se registra desde /login: el \`addAll\` pedía /dia sin sesión, recibía el 307 a
+// /login y guardaba el HTML de LOGIN bajo la clave /dia. Ese mismo objeto era el
+// fallback offline, así que sin red la PWA mostraba el login aunque hubiera
+// sesión, hasta el siguiente deploy. Solo se precachea lo que es igual para
+// cualquiera, con o sin sesión.
+const SHELL = ['/manifest.webmanifest'];
+
+// Los mismos tokens de la app, en línea: una página de "sin red" que dependiera
+// de la red para verse bien no serviría de nada.
+const SIN_RED = '<!doctype html><html lang="es-MX"><meta charset="utf-8">' +
+  '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+  '<title>WTW — sin conexión</title>' +
+  '<body style="margin:0;min-height:100dvh;display:grid;place-items:center;background:#eef2f2;color:#1a2323;' +
+  'font:17px/1.45 \\'IBM Plex Sans\\',system-ui,-apple-system,sans-serif">' +
+  '<main style="max-width:28rem;margin:1rem;padding:1.5rem;background:#fff;border:1px solid #ccdad8;border-radius:10px">' +
+  '<h1 style="font-size:1.25rem;margin:0 0 .5rem">Sin conexión</h1>' +
+  '<p style="margin:0 0 1rem;color:#5c6b6a">Esta pantalla no se ha abierto desde que estás sin red, así que no hay copia que mostrar. ' +
+  'Lo que ya cronometraste sigue guardado en el servidor.</p>' +
+  '<button onclick="location.reload()" style="font:inherit;min-height:44px;padding:.6rem 1rem;border:1px solid #0a7c82;' +
+  'border-radius:8px;background:#0a7c82;color:#fff;font-weight:600">Reintentar</button></main>';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
@@ -66,17 +86,37 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Una navegación solo se guarda si vale la pena servirla después: 200 propio y
+// SIN redirecciones. Guardar una respuesta redirigida rompía la navegación
+// offline en duro — el navegador rechaza servir con \`respondWith\` una respuesta
+// con \`redirected: true\` para una petición \`navigate\` — así que en vez de
+// degradar, fallaba.
+function vaAlCache(res) {
+  return res.ok && res.type === 'basic' && !res.redirected;
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+          // \`waitUntil\`, no una promesa suelta: el evento puede terminar antes
+          // de que el put alcance a escribir.
+          if (vaAlCache(res)) {
+            const copy = res.clone();
+            event.waitUntil(caches.open(CACHE).then((c) => c.put(request, copy)));
+          }
           return res;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match('/dia')))
+        // Sin red se sirve lo último guardado de ESTA ruta. Ya no hay fallback a
+        // /dia: servir el día de alguien más —o el login— en lugar de la página
+        // pedida es peor que decir que no hay red. Si tampoco hay copia, una
+        // página propia; \`caches.match\` de algo que no existe resuelve
+        // \`undefined\`, y un \`respondWith(undefined)\` es un error de red a secas.
+        .catch(() =>
+          caches.match(request).then((r) => r || new Response(SIN_RED, { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }))
+        )
     );
     return;
   }
@@ -86,12 +126,23 @@ self.addEventListener('fetch', (event) => {
         (cached) =>
           cached ||
           fetch(request).then((res) => {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy));
+            if (vaAlCache(res)) {
+              const copy = res.clone();
+              event.waitUntil(caches.open(CACHE).then((c) => c.put(request, copy)));
+            }
             return res;
           })
       )
     );
+  }
+});
+
+// El logout manda este mensaje: la cookie se va, pero el HTML autenticado vivía
+// en la caché y offline se seguía pintando el /dia del usuario anterior. En un
+// dispositivo compartido eso es una fuga, no una molestia.
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.tipo === 'wtw:limpiar-cache') {
+    event.waitUntil(caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))));
   }
 });
 `

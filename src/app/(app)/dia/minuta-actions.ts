@@ -5,6 +5,7 @@ import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createMinuta, promoteItem } from '@/app/api/v1/minutas/service'
 import type { MinutaItemEstado, MinutaItemTipo } from '@prisma/client'
+import { sanitizarRich } from '@/lib/sanitizar-rich'
 
 async function userId(): Promise<string> {
   const session = await verifySession()
@@ -54,7 +55,7 @@ function toView(minuta: {
       id: i.id,
       tipo: i.tipo,
       texto: i.texto,
-      textoRich: i.textoRich,
+      textoRich: sanitizarRich(i.textoRich),
       responsable: i.responsable,
       fechaCompromiso: i.fechaCompromiso ? i.fechaCompromiso.toISOString().slice(0, 10) : null,
       estado: i.estado,
@@ -138,7 +139,9 @@ export async function guardarItemAction(input: GuardarItemInput): Promise<Minuta
       minutaId,
       tipo: input.item.tipo,
       texto: input.item.texto,
-      textoRich: input.item.textoRich || undefined,
+      // Se sanea al guardar: la base nunca debe contener HTML que no
+      // produjo el editor.
+      textoRich: input.item.textoRich ? sanitizarRich(input.item.textoRich) : undefined,
       responsable: input.item.responsable || undefined,
       fechaCompromiso: input.item.fechaCompromiso ? new Date(input.item.fechaCompromiso) : undefined,
       orden,

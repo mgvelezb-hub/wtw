@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { listMinutas } from '@/app/api/v1/minutas/service'
 import { generateStatusEquipo, updateArtifact } from '@/lib/ai/generate-status'
 import type { Artifact, ArtifactEstado, MinutaItemEstado, MinutaItemTipo } from '@prisma/client'
+import { sanitizarRich } from '@/lib/sanitizar-rich'
 
 // Server Actions de la vista de proyecto (Tarea 7, fase 7). Consumen los
 // servicios existentes (src/app/api/v1/minutas/service.ts,
@@ -52,7 +53,7 @@ export async function listMinutasAction(projectId: string): Promise<MinutaView[]
       id: i.id,
       tipo: i.tipo,
       texto: i.texto,
-      textoRich: i.textoRich,
+      textoRich: sanitizarRich(i.textoRich),
       responsable: i.responsable,
       estado: i.estado,
     })),

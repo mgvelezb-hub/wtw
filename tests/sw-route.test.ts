@@ -25,3 +25,41 @@ describe('GET /sw.js', () => {
     expect(res.headers.get('Content-Type')).toBe('application/javascript')
   })
 })
+
+describe('caché del service worker', () => {
+  async function sw(): Promise<string> {
+    return (await GET()).text()
+  }
+
+  it('no precachea /dia', async () => {
+    // RegisterSW vive en el layout raíz, así que el SW también se registra desde
+    // /login: el addAll pedía /dia sin sesión, recibía el 307 y guardaba el HTML
+    // de LOGIN bajo la clave /dia. Ese objeto era además el fallback offline.
+    const body = await sw()
+    expect(body).toContain("const SHELL = ['/manifest.webmanifest']")
+    expect(body).not.toContain("SHELL = ['/dia'")
+  })
+
+  it('no guarda respuestas redirigidas ni fallidas', async () => {
+    // El navegador rechaza servir con respondWith una respuesta `redirected`
+    // para una petición `navigate`: la navegación offline fallaba en duro.
+    const body = await sw()
+    expect(body).toContain('res.ok && res.type === \'basic\' && !res.redirected')
+  })
+
+  it('escribe en la caché dentro de waitUntil', async () => {
+    // Un `put` suelto puede morir con el evento.
+    expect(await sw()).toContain('event.waitUntil(caches.open(CACHE)')
+  })
+
+  it('borra toda la caché cuando el logout se lo pide', async () => {
+    const body = await sw()
+    expect(body).toContain("'wtw:limpiar-cache'")
+    expect(body).toContain('keys.map((k) => caches.delete(k))')
+  })
+
+  it('sigue siendo JavaScript válido', async () => {
+    const body = await sw()
+    expect(() => new Function(body)).not.toThrow()
+  })
+})
