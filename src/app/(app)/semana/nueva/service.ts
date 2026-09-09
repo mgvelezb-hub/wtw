@@ -8,6 +8,11 @@ import { getPatronDesvios } from '@/app/(app)/cierre/service'
 import { factorPorClase } from '@/lib/factor-clase'
 import type { FactorClasePlano } from '@/lib/tipo-trabajo'
 import { sugerirClase, type TareaEtiquetada } from '@/lib/sugerir-clase'
+// Re-exportado para que los llamadores de servidor que ya lo pedían aquí no
+// tengan que cambiar de import. El wizard, que es cliente, lo toma de `./carga`
+// directo: pasar por este módulo lo arrastraría a `@/lib/avisos`, que es
+// `server-only`, y el build de producción se cae.
+export { balance, validarCarga, type Balance, type ValidacionCarga } from './carga'
 import type { TipoTrabajo } from '@prisma/client'
 
 // Contexto que alimenta los 5 pasos del ritual. Todo se calcula aquí, en el
@@ -309,73 +314,6 @@ export async function contextoPlaneacion(
     competencias,
     factoresClase,
   }
-}
-
-// Carga vs. capacidad. Vive aquí y no en el cliente porque es el único número
-// que decide si la semana es realista, y el wizard lo muestra en los pasos 3 y 4.
-export type Balance = {
-  cargaMin: number
-  planeableMin: number
-  colchonMin: number
-  sobrecargado: boolean
-}
-
-export function balance(cargaAjustadaMin: number, capacidad: CapacidadSemana): Balance {
-  const planeableMin = Math.round(capacidad.trabajablePlaneable * 60)
-  return {
-    cargaMin: cargaAjustadaMin,
-    planeableMin,
-    colchonMin: planeableMin - cargaAjustadaMin,
-    sobrecargado: cargaAjustadaMin > planeableMin,
-  }
-}
-
-// ── El buffer deja de ser decorativo ────────────────────────────────────────
-//
-// `trabajablePlaneable` ya es (trabajable − buffer%): la resta del buffer ocurre
-// en capacityForWeek. Lo que faltaba era la CONSECUENCIA — hasta ahora el
-// planeador pintaba la sobrecarga en rojo y de todas formas dejaba crear la
-// semana, así que el buffer era una cifra en Settings, no una restricción.
-//
-// La regla: la carga aceptada no puede exceder lo planeable. No es prudencia
-// genérica; una semana planeada al 100% no deja margen para lo no previsto y el
-// desbordamiento se paga en la semana siguiente (Sonnentag: la recuperación es
-// condición del desempeño sostenido, no su recompensa).
-export type ValidacionCarga = {
-  ok: boolean
-  cargaMin: number
-  planeableMin: number
-  excedenteMin: number
-  mensaje: string | null
-}
-
-function horasTexto(min: number): string {
-  const h = min / 60
-  return `${Number.isInteger(h) ? h : h.toFixed(1)}h`
-}
-
-export function validarCarga(cargaAjustadaMin: number, capacidad: CapacidadSemana): ValidacionCarga {
-  const bal = balance(cargaAjustadaMin, capacidad)
-  const excedenteMin = Math.max(0, bal.cargaMin - bal.planeableMin)
-  return {
-    ok: excedenteMin === 0,
-    cargaMin: bal.cargaMin,
-    planeableMin: bal.planeableMin,
-    excedenteMin,
-    // Tono de calibración, no de regaño: dice qué pasa y cuánto hay que mover.
-    mensaje: mensajeDeCarga(excedenteMin, bal.planeableMin),
-  }
-}
-
-function mensajeDeCarga(excedenteMin: number, planeableMin: number): string | null {
-  if (excedenteMin === 0) return null
-  // Sin tiempo planeable, "recorta 12h" es un callejón sin salida: no hay
-  // recorte que alcance porque el problema no es la carga, es el calendario.
-  // Decir qué palanca sí existe es la diferencia entre una compuerta y un muro.
-  if (planeableMin <= 0) {
-    return 'Esta semana no tiene tiempo planeable: el calendario la ocupa completa. Libera juntas, o ajusta tu jornada y tu buffer en Settings antes de planear.'
-  }
-  return `El plan al 100% degrada la capacidad de la semana siguiente — recorta ${horasTexto(excedenteMin)} o muévelas a backlog.`
 }
 
 // ── "¿Qué cambias esta semana?" ─────────────────────────────────────────────
