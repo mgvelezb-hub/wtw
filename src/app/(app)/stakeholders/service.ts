@@ -171,14 +171,21 @@ export function saludDe(
 ): SaludStakeholder {
   const tier = tierDe(s.poder, s.legitimidad, s.urgencia)
   const atributos = (s.poder >= ALTO ? 1 : 0) + (s.legitimidad ? 1 : 0) + (s.urgencia ? 1 : 0)
-  const cadenciaEsperada = s.cadenciaDias ?? CADENCIA_POR_TIER[tier]
+  // El piso de 1 día es lo que impide dividir entre cero: con `cadenciaDias = 0`
+  // —que el campo "Cada" aceptaba— la razón salía `0/0 = NaN`, el score acababa
+  // en NaN y el badge imprimía literalmente "NaN · sana".
+  const cadenciaEsperada = Math.max(1, s.cadenciaDias ?? CADENCIA_POR_TIER[tier])
 
   const ordenadas = [...interacciones].sort((a, b) => b.fecha.getTime() - a.fecha.getTime())
   const ultima = ordenadas[0] ?? null
   const diasSinContacto = ultima ? dias(ultima.fecha, hoy) : null
 
   const ventana = ordenadas.filter((i) => dias(i.fecha, hoy) <= VENTANA_DIAS)
-  const contactosPositivos = ventana.filter((i) => i.variableConfianza !== null).length
+  // Un contacto que además rompió un compromiso NO cuenta como positivo. Cuando
+  // contaba en las dos listas, la asimetría 3:1 —una promesa rota pesa el triple
+  // que un contacto bueno— quedaba en −2 neto en vez de −3, que es justo el peso
+  // que hace que registrar un incumplimiento tenga consecuencia.
+  const contactosPositivos = ventana.filter((i) => i.variableConfianza !== null && !i.esIncumplimiento).length
   const incumplimientos = ventana.filter((i) => i.esIncumplimiento).length
   const confianzaNeta = contactosPositivos - incumplimientos * PESO_INCUMPLIMIENTO
 

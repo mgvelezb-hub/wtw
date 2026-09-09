@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import type { InteraccionTipo, StakeholderPostura, VariableConfianza } from '@prisma/client'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { rangoDiaMx, todayStr } from '@/lib/dates'
 
 // Escritura del mapa de stakeholders. Los modelos existían en el schema desde la
 // Fase 2b pero no había forma de alimentarlos desde la app — la misma falla que
@@ -13,6 +14,26 @@ function rango(n: number): number {
   // La escala es 1-3 y viene de un <select>, pero un valor fuera de rango
   // rompería la matriz en silencio (todo caería a "monitorear").
   return Math.min(3, Math.max(1, Math.round(n)))
+}
+
+// "Cada 0 días" no es una cadencia; es una división entre cero que llegaba
+// hasta el badge como "NaN · sana". El campo lo aceptaba porque nada lo
+// validaba. Tope de un año: más allá, la cadencia ya no describe una relación.
+function cadencia(n: number | null | undefined): number | null {
+  if (n === null || n === undefined) return null
+  if (!Number.isFinite(n)) return null
+  return Math.min(365, Math.max(1, Math.round(n)))
+}
+
+// La fecha de un contacto es un hecho del pasado. Una futura ponía `dias()` en
+// negativo: decay 0, cadencia nunca vencida y la ficha diciendo "hace −12d" —
+// una relación que se ve sana porque el dato viaja en el tiempo. Y un campo
+// vacío daba `new Date('')`, que llegaba a Prisma como Invalid Date.
+function fechaDeContacto(valor: string, hoy: Date): Date {
+  const d = new Date(valor)
+  if (Number.isNaN(d.getTime())) throw new Error('la fecha del contacto no es válida')
+  if (d.getTime() > hoy.getTime()) throw new Error('un contacto no puede registrarse en el futuro')
+  return d
 }
 
 export async function crearStakeholderAction(input: {
@@ -57,7 +78,7 @@ export async function crearStakeholderAction(input: {
       interes: rango(input.interes),
       postura: input.postura,
       queNecesita: input.queNecesita?.trim() || null,
-      cadenciaDias: input.cadenciaDias ?? null,
+      cadenciaDias: cadencia(input.cadenciaDias),
     },
   })
 
@@ -101,7 +122,7 @@ export async function actualizarStakeholderAction(
       ...(cambio.urgencia !== undefined ? { urgencia: cambio.urgencia } : {}),
       ...(cambio.postura !== undefined ? { postura: cambio.postura } : {}),
       ...(cambio.queNecesita !== undefined ? { queNecesita: cambio.queNecesita.trim() || null } : {}),
-      ...(cambio.cadenciaDias !== undefined ? { cadenciaDias: cambio.cadenciaDias } : {}),
+      ...(cambio.cadenciaDias !== undefined ? { cadenciaDias: cadencia(cambio.cadenciaDias) } : {}),
       ...(cambio.notas !== undefined ? { notas: cambio.notas.trim() || null } : {}),
     },
   })
@@ -141,11 +162,15 @@ export async function registrarInteraccionAction(input: {
   if (!stakeholder) throw new Error('stakeholder no encontrado')
 
   const nota = input.nota?.trim() || null
+  // El fin del día de hoy en México: registrar "hoy" no puede rebotar por unas
+  // horas de diferencia con el reloj UTC del servidor.
+  const { hasta } = rangoDiaMx(todayStr())
+  const fecha = fechaDeContacto(input.fecha, hasta)
 
   await prisma.stakeholderInteraccion.create({
     data: {
       stakeholderId: stakeholder.id,
-      fecha: new Date(input.fecha),
+      fecha,
       tipo: input.tipo,
       nota,
       variableConfianza: input.variableConfianza ?? null,

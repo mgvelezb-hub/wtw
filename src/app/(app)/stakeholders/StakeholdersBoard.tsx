@@ -26,7 +26,9 @@ const POSTURA_COLOR: Record<string, string> = {
   aliado: 'bg-brand-strong text-white',
   neutral: 'bg-hair text-muted',
   opositor: 'bg-danger text-white',
-  desconocida: 'bg-warn-soft text-warn',
+  // Ámbar es advertencia, no decoración (DESIGN.md): no saber la postura de
+  // alguien es un hueco de información, no un riesgo que la pantalla deba gritar.
+  desconocida: 'bg-hair text-faint',
 }
 
 const ESCALA = [
@@ -463,6 +465,9 @@ function Ficha({
               <input
                 type="date"
                 value={fecha}
+                // Un contacto es un hecho del pasado. Sin tope, una fecha futura
+                // dejaba la cadencia sin vencer nunca y la ficha decía "hace −12d".
+                max={hoyISO()}
                 onChange={(e) => setFecha(e.target.value)}
                 aria-label={`Fecha de contacto con ${s.nombre}`}
                 className="num rounded border border-edge bg-surface px-1 py-0.5 text-xs text-ink"

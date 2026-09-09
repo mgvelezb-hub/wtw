@@ -385,3 +385,33 @@ describe('getMapaStakeholders — salud sobre datos reales', () => {
     expect(mapa.stakeholders[0].salud.contactosPositivos).toBe(7)
   })
 })
+
+describe('saludDe — el marcador no se rompe con datos de borde', () => {
+  it('una cadencia de 0 días no produce NaN', () => {
+    // El campo "Cada" aceptaba 0 y `diasSinContacto / 0` con 0 días sin contacto
+    // daba `0/0 = NaN`: el score salía NaN y el badge imprimía "NaN · sana".
+    const s = saludDe(
+      { poder: 3, legitimidad: true, urgencia: true, cadenciaDias: 0 },
+      [{ fecha: HOY, variableConfianza: 'credibilidad', esIncumplimiento: false }],
+      HOY
+    )
+
+    expect(Number.isNaN(s.score)).toBe(false)
+    expect(s.score).toBeGreaterThanOrEqual(0)
+    expect(s.score).toBeLessThanOrEqual(100)
+  })
+
+  it('un contacto que además rompió un compromiso no cuenta como positivo', () => {
+    // Contaba en las dos listas: neto −2 en vez de −3, y la asimetría 3:1 —lo
+    // que hace que registrar un incumplimiento tenga consecuencia— se anulaba.
+    const s = saludDe(
+      { poder: 2, legitimidad: false, urgencia: false, cadenciaDias: 30 },
+      [{ fecha: new Date(haceDias(5)), variableConfianza: 'confiabilidad', esIncumplimiento: true }],
+      HOY
+    )
+
+    expect(s.contactosPositivos).toBe(0)
+    expect(s.incumplimientos).toBe(1)
+    expect(s.confianzaNeta).toBe(-3)
+  })
+})
