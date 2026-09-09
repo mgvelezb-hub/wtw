@@ -18,6 +18,7 @@ export function EquipoBoard({ reports }: { reports: Report[] }) {
   const nombreRef = useRef<HTMLInputElement>(null)
   const [pending, startTransition] = useTransition()
   const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-4">
@@ -30,8 +31,14 @@ export function EquipoBoard({ reports }: { reports: Report[] }) {
           const nombre = nombreRef.current?.value ?? ''
           if (!email.trim() || !nombre.trim()) return
           startTransition(async () => {
-            const pwd = await inviteColleagueAction(email.trim(), nombre.trim())
-            setTempPassword(pwd)
+            setError(null)
+            const r = await inviteColleagueAction(email.trim(), nombre.trim())
+            if (!r.ok) {
+              // Los campos NO se limpian: lo tecleado sigue ahí para corregirlo.
+              setError(r.error)
+              return
+            }
+            setTempPassword(r.tempPassword)
             if (emailRef.current) emailRef.current.value = ''
             if (nombreRef.current) nombreRef.current.value = ''
           })
@@ -44,6 +51,12 @@ export function EquipoBoard({ reports }: { reports: Report[] }) {
           Agregar
         </button>
       </form>
+
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
 
       {tempPassword && (
         <div className="rounded-lg border border-warn-border bg-warn-soft p-3 text-sm text-warn">
