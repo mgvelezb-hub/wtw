@@ -26,6 +26,11 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0A7C82",
+  // Sin `viewport-fit=cover`, WKWebView y Safari resuelven TODOS los
+  // `env(safe-area-inset-*)` a 0. El padding que separa la nav inferior del
+  // home indicator estaba escrito desde hace meses y era letra muerta: en
+  // iPhone la barra del sistema quedaba encima de los tabs.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

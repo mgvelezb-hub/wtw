@@ -123,6 +123,24 @@ select {
   color: var(--foreground);
 }
 
+/* iOS hace zoom al enfocar cualquier campo cuyo tamaño calculado sea menor a
+   16 px, y luego NO regresa: en el iPad cada tap en un campo dejaba la pantalla
+   corrida y había que pellizcar para volver. Casi todos los campos de la app
+   son `text-sm` (14 px), así que el bug era universal.
+
+   Va con `!important` a propósito y es la única excepción del archivo: una
+   regla de elemento pierde contra la clase de utilidad de Tailwind, y la
+   alternativa —tocar cada campo de 21 rutas— se desincroniza el día que
+   alguien escriba el siguiente. Solo aplica en punteros gruesos: en monitor
+   los 14 px se conservan, que es donde la escala fina sí se lee bien. */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Contenido con formato de las minutas — aplica igual dentro del editor
    (.ProseMirror) que en la lectura (.minuta-rich). El preflight de Tailwind
    resetea viñetas y bordes de tabla, así que hay que devolverlos explícitamente

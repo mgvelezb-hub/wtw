@@ -131,10 +131,12 @@ export function NavInferior({ grupos }: { grupos: Grupo[] }) {
 
       {/* `pb-[env(safe-area-inset-bottom)]` es lo que separa los iconos de la
           barra de gestos del iPhone cuando la PWA corre en pantalla completa;
-          sin eso el home indicator queda encima de los dos tabs de en medio. */}
+          sin eso el home indicator queda encima de los dos tabs de en medio.
+          Los insets laterales son por el apaisado: con `viewport-fit=cover` la
+          página llega hasta el borde físico y la muesca se come el primer tab. */}
       <nav
         aria-label="Navegación principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface pb-[env(safe-area-inset-bottom)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-edge bg-surface pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] sm:hidden"
       >
         <div className="flex items-stretch">
           {principales.map((it) => {
