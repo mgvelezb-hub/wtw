@@ -13,7 +13,16 @@ import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO, factorDeClase } from '@/lib/tipo-tra
 import type { TipoTrabajo } from '@prisma/client'
 
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
-const DRAFT_KEY = 'wtw_planeador_draft_v2'
+// v3 escopa el draft por semana. Los drafts v2 no dicen a qué semana pertenecen,
+// así que no se migran: aplicar uno a la semana equivocada es exactamente el bug
+// que esta versión corrige, y perder un ritual a medias una sola vez cuesta menos
+// que escribir el plan de una semana dentro de otra.
+const DRAFT_KEY = 'wtw_planeador_draft_v3'
+
+// Lo que se guarda ahora es `{isoWeek, draft}`. Antes la llave era constante:
+// empezabas a planear W38, salías, entrabas a `?semana=W39` y aparecía el ritual
+// de W38 —con el backlog de otra semana— y el botón final lo escribía en W39.
+type DraftGuardado = { isoWeek: string; draft: Draft }
 
 // Solo cambia lo que se muestra, no el valor que compara la lógica (`w.estatus`
 // sigue siendo 'fallido' en la DB): "no logrado" es el mismo dato que "fallido"
@@ -83,8 +92,13 @@ function leerDraft(ctx: ContextoPlaneacion): Draft {
   try {
     const guardado = localStorage.getItem(DRAFT_KEY)
     if (guardado) {
-      const parsed = JSON.parse(guardado) as Draft
-      if (Array.isArray(parsed?.items) && Array.isArray(parsed?.wins)) return normalizar(parsed)
+      const parsed = JSON.parse(guardado) as DraftGuardado
+      const d = parsed?.draft
+      // La semana tiene que coincidir. Un draft de otra semana se ignora, no se
+      // adapta: sus tareas y su backlog son de un contexto que ya no aplica.
+      if (parsed?.isoWeek === ctx.isoWeek && Array.isArray(d?.items) && Array.isArray(d?.wins)) {
+        return normalizar(d)
+      }
     }
   } catch {
     // draft corrupto: se arranca limpio en vez de tirar el ritual completo
@@ -152,9 +166,9 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
   // cierra la pestaña, no se pierde.
   useEffect(
     function guardarDraft(): void {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ isoWeek: ctx.isoWeek, draft }))
     },
-    [draft]
+    [draft, ctx.isoWeek]
   )
 
   function set(cambio: Partial<Draft>): void {
@@ -546,7 +560,6 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                 }))
                 let creada = false
                 try {
-                  localStorage.removeItem(DRAFT_KEY)
                   await crearSemanaAction({
                     isoWeek: ctx.isoWeek,
                     reflexion: draft.reflexion || undefined,
@@ -560,10 +573,12 @@ export function PlaneadorSemanal({ ctx }: { ctx: ContextoPlaneacion }): React.Re
                     })),
                     tasks,
                   })
+                  // El draft se borra DESPUÉS de que la semana existe. Al revés,
+                  // una pestaña que muriera durante la llamada se llevaba los 10
+                  // minutos del ritual, y el catch no cubre ese caso.
                   creada = true
+                  localStorage.removeItem(DRAFT_KEY)
                 } catch (e) {
-                  // Falló el guardado: se devuelve el draft para no perder 10 min de ritual.
-                  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
                   setError(e instanceof Error ? e.message : 'No se pudo crear la semana.')
                 }
                 // La navegación va FUERA del try. Antes la action terminaba con

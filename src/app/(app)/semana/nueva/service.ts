@@ -94,7 +94,12 @@ export type PendienteBacklog = {
 
 // Formato de semana ISO tal como lo escribe `isoWeekOf`: "2026-W37". Se valida
 // porque el valor puede llegar de la barra de direcciones.
-const RE_ISO_WEEK = /^\d{4}-W\d{2}$/
+//
+// El rango 01–53 no es cosmético: `\d{2}` dejaba pasar `2026-W00` y `2026-W99`,
+// y `weekRange` los convierte en un rango de fechas real —diciembre del año
+// anterior, o marzo del siguiente— así que se creaba un `Week` con datos basura
+// que después nadie entiende de dónde salió.
+const RE_ISO_WEEK = /^\d{4}-W(0[1-9]|[1-4]\d|5[0-3])$/
 
 export function isoWeekValida(valor: string | undefined | null): string | null {
   return valor && RE_ISO_WEEK.test(valor) ? valor : null

@@ -738,6 +738,17 @@ describe('borrarSemanaAction (la segunda salida del muro)', () => {
     await deleteTestUser('test-planeador-otro@vp.mx')
   })
 
+  it('rechaza semanas que pasan el formato pero no existen', async () => {
+    const { isoWeekValida } = await import('@/app/(app)/semana/nueva/service')
+    // `\d{2}` las dejaba pasar y `weekRange` las convertía en un rango real
+    // —diciembre del año anterior, marzo del siguiente— creando un Week basura.
+    expect(isoWeekValida('2026-W00')).toBeNull()
+    expect(isoWeekValida('2026-W54')).toBeNull()
+    expect(isoWeekValida('2026-W99')).toBeNull()
+    expect(isoWeekValida('2026-W01')).toBe('2026-W01')
+    expect(isoWeekValida('2026-W53')).toBe('2026-W53')
+  })
+
   it('rechaza una semana con formato inventado sin tocar nada', async () => {
     const user = await usuario()
     const { borrarSemana } = await import('@/app/(app)/semana/nueva/borrar')
