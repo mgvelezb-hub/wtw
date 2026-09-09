@@ -1,6 +1,32 @@
 import { prisma } from '@/lib/prisma'
+import { todayStr } from '@/lib/dates'
 
-type Semaforo = 'a_tiempo' | 'atrasado'
+export type Semaforo = 'a_tiempo' | 'atrasado' | 'aceptado' | 'sin_fecha'
+
+// El semáforo de un entregable.
+//
+// Antes solo comparaba proyectada contra comprometida, así que un entregable
+// comprometido para ayer y SIN forecast salía en verde "A tiempo": la única
+// forma de que se pusiera rojo era que alguien lo declarara tarde a mano.
+// Justo la brecha de sobre-optimismo que el producto existe para atacar — la
+// pantalla confirmaba el optimismo en vez de contradecirlo.
+//
+// El orden de las reglas es el argumento:
+// 1. Aceptado ya no corre contra reloj, pase lo que pase con las fechas.
+// 2. Sin fecha comprometida no hay contra qué medir, y decir "A tiempo" sería
+//    inventar una promesa que nadie hizo.
+// 3. Un compromiso que ya venció está atrasado aunque no haya forecast.
+// 4. Un forecast que rebasa el compromiso está atrasado aunque falten semanas.
+export function semaforoDe(
+  d: { estatus: string; fechaComprometida: Date | null; fechaProyectada: Date | null },
+  hoy: Date
+): Semaforo {
+  if (d.estatus === 'aceptado') return 'aceptado'
+  if (!d.fechaComprometida) return 'sin_fecha'
+  if (d.fechaComprometida < hoy) return 'atrasado'
+  if (d.fechaProyectada && d.fechaProyectada > d.fechaComprometida) return 'atrasado'
+  return 'a_tiempo'
+}
 
 export async function getProyectoDetalle(userId: string, projectId: string) {
   const project = await prisma.project.findUnique({
@@ -15,9 +41,15 @@ export async function getProyectoDetalle(userId: string, projectId: string) {
   })
   if (!project || project.userId !== userId) return null
 
+  // Las fechas del entregable son `@db.Date`: Prisma las devuelve como
+  // medianoche UTC del día calendario. Para compararlas hay que construir HOY
+  // igual —medianoche UTC del día de México—, no un instante: con el reloj del
+  // servidor, un entregable comprometido para hoy salía atrasado desde las
+  // 18:00 de ayer.
+  const hoy = new Date(`${todayStr()}T00:00:00Z`)
+
   const entregables = project.deliverables.map((d) => {
-    let semaforo: Semaforo = 'a_tiempo'
-    if (d.fechaProyectada && d.fechaComprometida && d.fechaProyectada > d.fechaComprometida) semaforo = 'atrasado'
+    const semaforo = semaforoDe(d, hoy)
     return {
       id: d.id,
       nombre: d.nombre,

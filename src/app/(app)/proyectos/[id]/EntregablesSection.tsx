@@ -19,8 +19,18 @@ export type EntregableView = {
   avancePct: number
   presentado: boolean
   presentadoA: string | null
-  semaforo: 'a_tiempo' | 'atrasado'
+  semaforo: 'a_tiempo' | 'atrasado' | 'aceptado' | 'sin_fecha'
   impactos: ImpactoView[]
+}
+
+// "Sin fecha" es gris a propósito: no es una advertencia, es la ausencia del
+// dato contra el que se juzga todo lo demás. Pintarlo de verde afirmaba que un
+// entregable sin compromiso va bien.
+const SEMAFORO: Record<string, { texto: string; clase: string }> = {
+  a_tiempo: { texto: 'A tiempo', clase: 'text-ok' },
+  atrasado: { texto: 'Atrasado', clase: 'text-danger' },
+  aceptado: { texto: 'Aceptado', clase: 'text-ok' },
+  sin_fecha: { texto: 'Sin fecha', clase: 'text-faint' },
 }
 
 // Form inline de 3 campos para registrar un impacto — sin modal. Colapsado
@@ -152,10 +162,8 @@ function EntregableRow({ entregable, projectId }: { entregable: EntregableView; 
       <div className="grid grid-cols-[1fr_60px_90px] items-center gap-3">
         <span className="font-medium text-ink">{ent.nombre}</span>
         <span className="num text-right text-sm text-muted">{ent.avancePct}%</span>
-        <span
-          className={`text-right text-xs font-semibold ${ent.semaforo === 'atrasado' ? 'text-danger' : 'text-ok'}`}
-        >
-          {ent.semaforo === 'atrasado' ? 'Atrasado' : 'A tiempo'}
+        <span className={`text-right text-xs font-semibold ${SEMAFORO[ent.semaforo].clase}`}>
+          {SEMAFORO[ent.semaforo].texto}
         </span>
       </div>
       <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-hair">
