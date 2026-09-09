@@ -443,12 +443,12 @@ function PropuestasLiteraturaSection(): React.ReactElement {
   function actualizar(id: string, cambio: { dondePropuse?: string; queParo?: string }): void {
     setError(null)
     startTransition(async () => {
-      try {
-        await actualizarPropuestaAction(id, cambio)
-        setPropuestas(await listarPropuestasAction())
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'No se pudo actualizar la propuesta.')
+      const r = await actualizarPropuestaAction(id, cambio)
+      if (!r.ok) {
+        setError(r.error)
+        return
       }
+      setPropuestas(await listarPropuestasAction())
     })
   }
 
@@ -520,16 +520,16 @@ function PropuestasLiteraturaSection(): React.ReactElement {
             onClick={() => {
               setError(null)
               startTransition(async () => {
-                try {
-                  await registrarPropuestaAction({ insight, fuente, dondePropuse })
-                  setInsight('')
-                  setFuente('')
-                  setDondePropuse('')
-                  setAbierto(false)
-                  setPropuestas(await listarPropuestasAction())
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : 'No se pudo registrar.')
+                const r = await registrarPropuestaAction({ insight, fuente, dondePropuse })
+                if (!r.ok) {
+                  setError(r.error)
+                  return
                 }
+                setInsight('')
+                setFuente('')
+                setDondePropuse('')
+                setAbierto(false)
+                setPropuestas(await listarPropuestasAction())
               })
             }}
             className={BTN_PRIMARIO}
@@ -781,17 +781,20 @@ export function DesarrolloBoard({
               onClick={() => {
                 setError(null)
                 startTransition(async () => {
-                  try {
-                    await registrarEvidenciaAction({ competencyId, nota, testigo, nivelDemostrado })
-                    setNota('')
-                    setCompetencyId('')
-                    setTestigo('')
-                    setNivelDemostrado('')
-                    setAbierto(false)
-                    setOk(true)
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : 'No se pudo registrar.')
+                  // La action devuelve en vez de lanzar: en producción Next
+                  // redacta el mensaje de una excepción y el usuario recibía una
+                  // cadena opaca en inglés en lugar de "necesita una nota".
+                  const r = await registrarEvidenciaAction({ competencyId, nota, testigo, nivelDemostrado })
+                  if (!r.ok) {
+                    setError(r.error)
+                    return
                   }
+                  setNota('')
+                  setCompetencyId('')
+                  setTestigo('')
+                  setNivelDemostrado('')
+                  setAbierto(false)
+                  setOk(true)
                 })
               }}
               className={BTN_PRIMARIO}

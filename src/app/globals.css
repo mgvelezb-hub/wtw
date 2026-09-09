@@ -123,6 +123,30 @@ select {
   color: var(--foreground);
 }
 
+/* Blanco táctil de 44 px SIN cambiar el tamaño visible del control.
+   
+   El iPad es el dispositivo principal y hay controles de 12–18 px por toda la
+   app: el "?" de ayuda, los ✓/✕ de edición en línea. Agrandarlos de verdad
+   arruinaría la densidad —son deliberadamente discretos— así que lo que crece
+   es el área que recibe el dedo, con un pseudo-elemento centrado e invisible.
+
+   Cuándo NO usar esto: cuando el control tiene un vecino a menos de 44 px. Dos
+   áreas invisibles superpuestas se las gana la última del DOM, y en un par ✓/✕
+   eso significa cancelar cuando quisiste guardar — peor que el blanco chico.
+   Ahí el control crece de verdad, con `min-h-11 min-w-11`. */
+@utility toque {
+  position: relative;
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+
 /* iOS hace zoom al enfocar cualquier campo cuyo tamaño calculado sea menor a
    16 px, y luego NO regresa: en el iPad cada tap en un campo dejaba la pantalla
    corrida y había que pellizcar para volver. Casi todos los campos de la app

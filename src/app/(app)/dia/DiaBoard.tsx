@@ -1047,9 +1047,10 @@ function PendienteCard({
           {pe.titulo}
         </span>
         <button
+          type="button"
           disabled={pending}
           onClick={() => startTransition(() => void scheduleTaskAction(pe.id, today))}
-          className="shrink-0 text-xs font-semibold text-brand hover:text-brand-strong disabled:opacity-40"
+          className="flex min-h-11 shrink-0 items-center px-2 text-xs font-semibold text-brand hover:text-brand-strong disabled:opacity-40"
         >
           + Hoy
         </button>
@@ -1066,7 +1067,7 @@ function PendienteCard({
               e.target.value = ''
               if (fecha) startTransition(() => void scheduleTaskAction(pe.id, fecha))
             }}
-            className="rounded border border-edge bg-surface px-1 py-0.5 text-[0.625rem] font-medium text-muted"
+            className="min-h-11 rounded border border-edge bg-surface px-1 text-[0.625rem] font-medium text-muted"
           >
             <option value="" disabled>
               Agendar a…
@@ -1083,8 +1084,8 @@ function PendienteCard({
             disabled={pending}
             onConfirm={() => startTransition(() => void descartarPendienteAction(pe.id))}
             titulo="Ya no aplica — quitar de pendientes (no cuenta como terminada)"
-            className="rounded px-1.5 py-0.5 text-[0.625rem] font-bold text-faint hover:bg-danger-soft hover:text-danger"
-            armedClassName="rounded bg-danger px-1.5 py-0.5 text-[0.625rem] font-bold text-white"
+            className="inline-flex min-h-11 items-center rounded px-1.5 text-[0.625rem] font-bold text-faint hover:bg-danger-soft hover:text-danger"
+            armedClassName="inline-flex min-h-11 items-center rounded bg-danger px-1.5 text-[0.625rem] font-bold text-white"
           />
         </span>
       </div>
@@ -1297,13 +1298,16 @@ function AhoraFranja({
                 checked={d.done}
                 disabled={pending}
                 onChange={() => startTransition(() => void toggleDodItemAction(d.id))}
+                className="toque"
               />
               <span className={d.done ? 'text-faint line-through' : 'text-ink'}>{d.texto}</span>
               <button
+                type="button"
                 disabled={pending}
                 onClick={() => startTransition(() => void discardDodItemAction(d.id))}
-                className="text-faint hover:text-danger"
+                className="toque text-faint hover:text-danger"
                 title="Descartar — ya no aplica"
+                aria-label="Descartar este criterio"
               >
                 ✕
               </button>
@@ -1321,7 +1325,8 @@ function MinutaBoton({ block, onAbrirMinuta }: { block: DayBlockView; onAbrirMin
   return (
     <button
       onClick={() => onAbrirMinuta(block)}
-      className="shrink-0 rounded px-1.5 py-1 text-[0.6875rem] font-semibold text-muted hover:text-brand-strong"
+      type="button"
+      className="toque shrink-0 rounded px-1.5 py-1 text-[0.6875rem] font-semibold text-muted hover:text-brand-strong"
       title={block.minutaId ? 'Revisar la minuta de esta junta' : 'Capturar la minuta de esta junta'}
       aria-label={block.minutaId ? 'Ver minuta' : 'Capturar minuta'}
     >
@@ -1342,7 +1347,7 @@ function NudgeMinuta() {
 // ConfirmarQuitar y CampoEnLinea, que aceptan className, para que un ítem del
 // menú se vea igual sin importar qué control lo implemente.
 const FILA_MENU =
-  'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-paper disabled:opacity-40'
+  'flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-ink hover:bg-paper disabled:opacity-40'
 const FILA_MENU_DANGER =
   'flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs font-semibold text-danger hover:bg-danger-soft disabled:opacity-40'
 
@@ -1782,7 +1787,7 @@ function FilaBloque({
               onClick={() => startTransition(() => void startTimerAction(b.taskId!))}
               title="Iniciar el cronómetro de este bloque"
               aria-label="Iniciar el cronómetro de este bloque"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-semibold text-brand hover:bg-brand-soft disabled:opacity-40 lg:h-10 lg:w-10"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-sm font-semibold text-brand hover:bg-brand-soft disabled:opacity-40"
             >
               ▶
             </button>
@@ -1792,7 +1797,7 @@ function FilaBloque({
               onClick={alternarHecho}
               title={b.done ? 'Deshacer — regresar a pendiente' : 'Marcar terminada'}
               aria-label={b.done ? 'Deshacer terminada' : 'Marcar terminada'}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-semibold text-muted hover:bg-surface hover:text-ink disabled:opacity-40 lg:h-10 lg:w-10"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md text-sm font-semibold text-muted hover:bg-surface hover:text-ink disabled:opacity-40"
             >
               {b.done ? '↺' : '✓'}
             </button>
@@ -1911,7 +1916,7 @@ function FilaBloque({
                         if (fecha) startTransition(() => void moveBlockAction(b.id, fecha))
                       }}
                       aria-label="Mover el bloque a otro día"
-                      className="ml-auto w-24 rounded border border-edge bg-surface px-1 py-0.5 text-[0.6875rem] font-medium text-muted"
+                      className="ml-auto min-h-11 w-24 rounded border border-edge bg-surface px-1 text-[0.6875rem] font-medium text-muted"
                     >
                       <option value="" disabled>
                         Día…

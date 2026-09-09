@@ -102,10 +102,13 @@ export async function registrarEvidenciaInferidaAction(input: {
   })
   if (!competencia) throw new Error('reactivo no encontrado')
 
-  await registrarEvidenciaAction({
+  // La action de evidencia ya no lanza: si su validación falla, ese mensaje es
+  // el que hay que propagar, no uno genérico.
+  const r = await registrarEvidenciaAction({
     competencyId: competencia.id,
     nota: conProcedencia(nota, minuta.titulo, minuta.fecha),
   })
+  if (!r.ok) throw new Error(r.error)
 
   revalidatePath(`/proyectos/${minuta.projectId}`)
 }

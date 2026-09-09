@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { registrarEvidencia, type RegistrarEvidenciaInput } from '@/app/api/v1/evidence/service'
+import { intentar, type Resultado } from '@/lib/resultado'
 
 // Registro de evidencia desde la UI. Hasta ahora Evidence solo se podía crear vía
 // POST /api/v1/evidence — es decir, la rúbrica de 48 reactivos existía sin ninguna
@@ -11,14 +12,19 @@ import { registrarEvidencia, type RegistrarEvidenciaInput } from '@/app/api/v1/e
 // La validación (nota, testigo, nivelDemostrado, ownership) vive en el service
 // compartido con la capa Bearer PAT.
 
-export async function registrarEvidenciaAction(input: RegistrarEvidenciaInput) {
+// Devuelve en vez de lanzar: las validaciones del service ("la evidencia
+// necesita una nota", "nivel no reconocido") son mensajes que el usuario tiene
+// que leer para corregir, y Next los redacta si salen como excepción.
+export async function registrarEvidenciaAction(input: RegistrarEvidenciaInput): Promise<Resultado> {
   const session = await verifySession()
-  if (!session) throw new Error('no autenticado')
+  if (!session) return { ok: false, error: 'no autenticado' }
 
-  await registrarEvidencia(session.userId, input)
-
-  revalidatePath('/desarrollo')
-  revalidatePath('/dia')
+  return intentar(async () => {
+    await registrarEvidencia(session.userId, input)
+    revalidatePath('/desarrollo')
+    revalidatePath('/dia')
+    return {}
+  }, 'No se pudo registrar la evidencia.')
 }
 
 export async function borrarEvidenciaAction(evidenceId: string) {

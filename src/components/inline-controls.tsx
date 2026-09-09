@@ -38,6 +38,7 @@ export function ConfirmarQuitar({
 
   return (
     <button
+      type="button"
       disabled={disabled}
       onClick={() => {
         if (!armed) {
@@ -104,7 +105,7 @@ export function CampoEnLinea({
 
   if (!abierto) {
     return (
-      <button disabled={disabled} onClick={abrir} className={className} title={titulo} aria-label={titulo}>
+      <button type="button" disabled={disabled} onClick={abrir} className={className} title={titulo} aria-label={titulo}>
         {icono}
       </button>
     )
@@ -137,19 +138,24 @@ export function CampoEnLinea({
           valido ? 'border-hair' : 'border-danger'
         }`}
       />
+      {/* Estos dos crecen de verdad en vez de usar `toque`: están pegados, y dos
+          áreas táctiles invisibles superpuestas se las gana la última del DOM —
+          querer guardar y cancelar, que aquí descarta lo tecleado. */}
       <button
+        type="button"
         disabled={disabled || !valido}
         onClick={guardar}
-        className="text-xs font-bold text-brand-deep disabled:text-faint"
+        className="flex min-h-11 min-w-11 items-center justify-center text-xs font-bold text-brand-deep disabled:text-faint"
         title="Guardar"
         aria-label="Guardar"
       >
         ✓
       </button>
       <button
+        type="button"
         disabled={disabled}
         onClick={() => setAbierto(false)}
-        className="text-xs font-bold text-faint hover:text-danger"
+        className="flex min-h-11 min-w-11 items-center justify-center text-xs font-bold text-faint hover:text-danger"
         title="Cancelar"
         aria-label="Cancelar"
       >

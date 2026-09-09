@@ -137,7 +137,7 @@ function NavLink({ href, label, icon, active }: { href: string; label: string; i
   return (
     <Link
       href={href}
-      className={`flex shrink-0 scroll-mx-2 snap-start items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      className={`flex min-h-11 shrink-0 scroll-mx-2 snap-start items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors ${
         active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'
       }`}
     >
@@ -235,7 +235,7 @@ function DesktopNavItem({
           aria-label={rail ? item.label : undefined}
           aria-current={active ? 'page' : undefined}
           className={`flex flex-1 items-center rounded-md text-sm font-medium transition-colors ${
-            rail ? 'justify-center px-0 py-2.5' : 'gap-2 px-3 py-2'
+            rail ? 'min-h-11 justify-center px-0' : 'min-h-11 gap-2 px-3'
           } ${active ? 'bg-brand text-white' : 'text-muted hover:bg-paper'}`}
         >
           <Icono name={item.icon} />
@@ -288,7 +288,7 @@ function DesktopNavItem({
             <Link
               key={s.href}
               href={s.href}
-              className={`flex items-center gap-2 truncate rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              className={`flex min-h-11 items-center gap-2 truncate rounded-md px-2 text-xs font-medium transition-colors ${
                 subActive(s.href) ? 'bg-brand-soft text-brand-deep' : 'text-muted hover:bg-paper'
               }`}
             >
@@ -527,7 +527,7 @@ export function AppShell({
               aria-controls="nav-lateral"
               aria-label={esRail ? 'Expandir la navegación' : 'Colapsar la navegación'}
               title={`${esRail ? 'Expandir' : 'Colapsar'} la navegación ([)`}
-              className={`mt-2 flex w-full items-center rounded-md py-2 text-[11px] font-medium text-faint transition-colors hover:bg-paper hover:text-muted ${
+              className={`mt-2 flex min-h-11 w-full items-center rounded-md text-[11px] font-medium text-faint transition-colors hover:bg-paper hover:text-muted ${
                 esRail ? 'justify-center px-0' : 'gap-2 px-2'
               }`}
             >

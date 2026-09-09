@@ -152,6 +152,7 @@ export function RecordatoriosPanel({
       <label className="flex flex-wrap items-center gap-2 text-sm">
         <input
           type="checkbox"
+          className="toque"
           checked={r.ritual !== null}
           onChange={(e) =>
             guardar({
@@ -199,6 +200,7 @@ export function RecordatoriosPanel({
       <label className="flex flex-wrap items-center gap-2 text-sm">
         <input
           type="checkbox"
+          className="toque"
           checked={r.cierre !== null}
           onChange={(e) =>
             guardar({

@@ -1046,6 +1046,7 @@ function PasoVaciar({
               checked={it.incluida}
               aria-label={`Incluir ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { incluida: e.target.checked })}
+              className="toque"
             />
             <span className={`min-w-0 flex-1 text-sm ${it.incluida ? 'text-ink' : 'text-faint'}`}>
               {it.titulo}
@@ -1063,13 +1064,16 @@ function PasoVaciar({
               aria-label={`Minutos de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { estimadoMin: Math.max(0, Number(e.target.value) || 0) })}
               placeholder="min"
-              className="w-16 rounded border border-hair px-1 py-0.5 text-xs text-ink"
+              // `inputMode` saca el teclado numérico en iOS en vez del completo:
+              // el paso 3 es teclear minutos, decenas de veces seguidas.
+              inputMode="numeric"
+              className="min-h-11 w-16 rounded border border-hair px-1 text-xs text-ink"
             />
             <select
               value={it.winPosicion ?? ''}
               aria-label={`Win de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { winPosicion: e.target.value ? Number(e.target.value) : undefined })}
-              className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
+              className="min-h-11 rounded border border-edge bg-surface px-1 text-xs text-muted"
             >
               <option value="">Sin Win</option>
               {wins.map((w, i) => (
@@ -1092,7 +1096,7 @@ function PasoVaciar({
                       tipoSugerido: false,
                     })
                   }
-                  className={`rounded border px-1 py-0.5 text-xs ${
+                  className={`min-h-11 rounded border px-1 text-xs ${
                     it.tipoSugerido && it.tipoTrabajo
                       ? 'border-warn-border bg-warn-soft text-warn'
                       : it.tipoTrabajo
@@ -1120,7 +1124,7 @@ function PasoVaciar({
                 value={it.competenciaId ?? ''}
                 aria-label={`Competencia de ${it.titulo}`}
                 onChange={(e) => onItem(it.ref, { competenciaId: e.target.value || undefined })}
-                className={`w-full rounded border px-1 py-0.5 text-xs ${
+                className={`min-h-11 w-full rounded border px-1 text-xs ${
                   it.competenciaId ? 'border-brand/40 bg-brand/5 text-brand-deep' : 'border-edge bg-surface text-muted'
                 }`}
               >
@@ -1223,7 +1227,7 @@ function PasoBloquear({
               value={it.fecha ?? ''}
               aria-label={`Día de ${it.titulo}`}
               onChange={(e) => onItem(it.ref, { fecha: e.target.value || undefined })}
-              className="rounded border border-edge bg-surface px-1 py-0.5 text-xs text-muted"
+              className="min-h-11 rounded border border-edge bg-surface px-1 text-xs text-muted"
             >
               <option value="">Sin día</option>
               {capacidad.dias.map((d) => (
@@ -1293,7 +1297,7 @@ function PasoPreemptar({
           </span>
           <button
             onClick={() => medidas.forEach((m, i) => (todasAgregadas ? m.agregada : !m.agregada) && onToggleMedida(i))}
-            className="rounded-md border border-brand-deep px-2 py-0.5 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
+            className="min-h-11 rounded-md border border-brand-deep px-2 text-xs font-bold text-brand-deep hover:bg-brand-deep/10"
           >
             {todasAgregadas ? 'Quitar todas' : 'Agregar todas'}
           </button>
@@ -1323,7 +1327,7 @@ function PasoPreemptar({
                     value={m.titulo}
                     aria-label={`Título de la medida del riesgo ${i + 1}`}
                     onChange={(e) => onEditarMedida(i, { titulo: e.target.value })}
-                    className="min-w-40 flex-1 rounded border border-hair px-2 py-0.5 text-xs text-ink"
+                    className="min-h-11 min-w-40 flex-1 rounded border border-hair px-2 text-xs text-ink"
                   />
                   <input
                     type="number"
@@ -1332,7 +1336,7 @@ function PasoPreemptar({
                     value={m.estimadoMin || ''}
                     aria-label={`Minutos de la medida del riesgo ${i + 1}`}
                     onChange={(e) => onEditarMedida(i, { estimadoMin: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-16 rounded border border-hair px-1 py-0.5 text-xs text-ink"
+                    className="min-h-11 w-16 rounded border border-hair px-1 text-xs text-ink"
                   />
                   <span className="text-xs text-faint">min</span>
                 </div>

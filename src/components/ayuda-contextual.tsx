@@ -99,7 +99,10 @@ export function AyudaContextual({
         onClick={() => setAbierto((v) => !v)}
         aria-expanded={abierto}
         aria-label={`Qué es: ${titulo}`}
-        className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-colors ${
+        // `toque` deja el círculo en 18 px y le da 44 px de área al dedo: en el
+        // iPad este botón era la única explicación de varios conceptos y fallar
+        // el tap era la norma.
+        className={`toque flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-colors ${
           abierto
             ? 'border-brand bg-brand-soft text-brand-deep'
             : 'border-hair text-faint hover:border-brand hover:text-brand'
