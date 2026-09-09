@@ -8,6 +8,7 @@ import {
   moveBlockAction,
   scheduleTaskAction,
   setBlockDurationAction,
+  setBlockFlexAction,
   setBlockTimeAction,
   toggleBloqueanteAction,
   unscheduleBlockAction,
@@ -32,19 +33,26 @@ function revalidar(): void {
   revalidatePath('/dia')
 }
 
-// Arrastrar un bloque a otra columna. Conserva la hora (moveBlockAction solo
-// toca `fecha`); si además se soltó a cierta altura del grid, `hhmm` trae la
-// hora nueva ya redondeada por el cliente.
+// Arrastrar un bloque a otra columna. Si se soltó a cierta altura del grid,
+// `hhmm` trae la hora nueva ya redondeada por el cliente; si se soltó en la
+// franja flex o en la cabecera del día, viene `null` y eso SIGNIFICA "quítale
+// la hora".
+//
+// Antes, `null` solo movía la fecha: la pantalla pintaba el chip en flex y
+// medio segundo después el servidor lo regresaba al grid a su hora vieja. El
+// arrastre decía una cosa y guardaba otra, que en una app de planeación es
+// peor que no poder arrastrar.
 //
 // El orden importa: primero mover, luego poner hora. Al revés, setBlockTime
 // reacomodaría los vecinos del día VIEJO — el día del que el bloque ya se va.
 export async function moverBloqueAction(blockId: string, dateStr: string, hhmm: string | null) {
   await moveBlockAction(blockId, dateStr)
-  if (hhmm) {
-    const block = await prisma.block.findUnique({ where: { id: blockId }, select: { tipo: true } })
-    // Solo los bloques de tarea se reposicionan: una junta la manda el
-    // calendario, no el arrastre.
-    if (block?.tipo === 'tarea') await setBlockTimeAction(blockId, hhmm, SNAP_MIN)
+  const block = await prisma.block.findUnique({ where: { id: blockId }, select: { tipo: true } })
+  // Solo los bloques de tarea se reposicionan: una junta la manda el
+  // calendario, no el arrastre.
+  if (block?.tipo === 'tarea') {
+    if (hhmm) await setBlockTimeAction(blockId, hhmm, SNAP_MIN)
+    else await setBlockFlexAction(blockId)
   }
   revalidar()
 }

@@ -99,6 +99,23 @@ export async function moveBlockAction(blockId: string, dateStr: string) {
   revalidatePath('/semana')
 }
 
+// Le quita la hora a un bloque: pasa a la franja flex del día, que es "hoy sí,
+// a la hora que caiga". Es la operación inversa de `setBlockTimeAction`.
+//
+// No reacomoda a los vecinos. El hueco que deja se queda: la regla de la
+// cascada es que empuja hacia adelante pero nunca jala hacia atrás, porque
+// cerrar huecos solo movería bloques que el usuario colocó a propósito.
+export async function setBlockFlexAction(blockId: string) {
+  const userId = await uid()
+  const block = await prisma.block.findUnique({ where: { id: blockId }, include: { week: true } })
+  if (!block || block.week.userId !== userId) throw new Error('block no encontrado')
+  if (block.inicio === 'flex') return
+
+  await prisma.block.update({ where: { id: blockId }, data: { inicio: 'flex', fin: 'flex' } })
+  revalidatePath('/dia')
+  revalidatePath('/semana')
+}
+
 // "Llevar a hoy" — el bloque queda como estaba (mismo estimado/tiempo acumulado,
 // el TimeEntry no se toca), solo cambia su fecha y semana al día de hoy.
 export async function carryToTodayAction(blockId: string, todayStr: string) {
