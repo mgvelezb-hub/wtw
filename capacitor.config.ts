@@ -19,7 +19,7 @@ const serverHost = new URL(serverUrl).hostname
 
 const config: CapacitorConfig = {
   appId: 'mx.vpconsulting.wtw',
-  appName: 'WTW',
+  appName: 'Reckon',
   webDir: 'native/www',
   server: {
     url: serverUrl,

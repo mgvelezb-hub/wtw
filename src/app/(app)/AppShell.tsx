@@ -425,7 +425,7 @@ export function AppShell({
       <nav
         id="nav-lateral"
         aria-label="Secciones"
-        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-edge bg-surface px-2 py-2 sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:border-edge md:py-4 ${transicion} ${
+        className={`fixed inset-x-0 top-0 z-20 hidden gap-1 overflow-x-auto border-b border-edge bg-surface px-2 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] sm:flex md:inset-y-0 md:right-auto md:flex-col md:gap-0 md:overflow-y-auto md:overflow-x-hidden md:border-b-0 md:border-r md:border-edge md:pb-4 md:pt-[calc(1rem+env(safe-area-inset-top))] ${transicion} ${
           esRail ? 'md:w-14 md:px-2' : 'md:w-56 md:px-3'
         }`}
       >
@@ -545,7 +545,9 @@ export function AppShell({
       {/* El padding de abajo libra la barra inferior (≈60 px) más el home
           indicator del iPhone; arriba solo hay que compensar la fila de tabs en
           el rango de tablet angosta. */}
-      <div className="pb-[calc(4.25rem+env(safe-area-inset-bottom))] sm:pb-0 sm:pt-14 md:pt-0">{children}</div>
+      <div className="pb-[calc(4.25rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)] sm:pb-[env(safe-area-inset-bottom)] sm:pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-[env(safe-area-inset-top)]">
+        {children}
+      </div>
 
       <NavInferior grupos={grupos} />
       <CommandPalette grupos={grupos} proyectos={proyectos} />

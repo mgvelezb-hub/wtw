@@ -14,6 +14,30 @@ describe('viewport', () => {
   })
 })
 
+describe('el suelo del documento', () => {
+  it('html y body se pintan con paper, no con la superficie blanca', () => {
+    // Con `viewport-fit=cover` la página llega al borde físico del iPad, y lo
+    // que se ve bajo el indicador de inicio —y en el rebote del scroll— es el
+    // fondo del DOCUMENTO, no el de la app. Con `surface` ahí aparecía una
+    // franja blanca en el tema claro; en los oscuros habría sido peor.
+    const css = readFileSync('src/app/globals.css', 'utf-8')
+    expect(css).toMatch(/html \{\s*background: var\(--paper\);\s*\}/)
+    expect(css).toMatch(/body \{\s*background: var\(--paper\);/)
+  })
+})
+
+describe('áreas seguras', () => {
+  it('el rail y el contenido reservan la barra de estado', () => {
+    // El `env(safe-area-inset-*)` que se agregó con `viewport-fit=cover` solo
+    // vivía en la nav inferior, que en iPad está OCULTA: el rail y el contenido
+    // arrancaban en y=0 y la fecha del sistema quedaba encima del nombre.
+    const shell = readFileSync('src/app/(app)/AppShell.tsx', 'utf-8')
+    expect(shell).toContain('pt-[calc(1rem+env(safe-area-inset-top))]')
+    expect(shell).toContain('pt-[env(safe-area-inset-top)]')
+    expect(shell).toContain('pb-[env(safe-area-inset-bottom)]')
+  })
+})
+
 describe('campos en táctil', () => {
   it('los controles de formulario llegan a 16 px en punteros gruesos', () => {
     const css = readFileSync('src/app/globals.css', 'utf-8')

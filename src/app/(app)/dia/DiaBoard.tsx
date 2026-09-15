@@ -587,7 +587,7 @@ export function DiaBoard(p: DiaBoardProps) {
             mientras se scrollea lo que importa es la lista, no el reloj. La barra
             sangra a los bordes de la columna para que su línea inferior corra de
             lado a lado, como la de un instrumento. */}
-        <div className="sticky top-0 sm:top-14 z-20 md:top-0">
+        <div className="sticky top-[env(safe-area-inset-top)] z-20 sm:top-[calc(3.5rem+env(safe-area-inset-top))] md:top-[env(safe-area-inset-top)]">
           <BarraEstadoDia
             p={p}
             esHoy={esHoy}

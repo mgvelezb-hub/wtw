@@ -167,8 +167,16 @@
   --color-ok-soft: var(--ok-soft);
 }
 
+/* El suelo va en `paper`, no en `surface`. Con `viewport-fit=cover` la página
+   llega al borde físico y lo que se ve bajo el indicador de inicio —y en el
+   rebote del scroll— es el fondo del DOCUMENTO, no el de la app: con `surface`
+   ahí aparecía una franja blanca. `html` también, o el rebote la descubre. */
+html {
+  background: var(--paper);
+}
+
 body {
-  background: var(--background);
+  background: var(--paper);
   color: var(--foreground);
   font-family: var(--font-sans);
 }
