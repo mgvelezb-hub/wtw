@@ -125,6 +125,47 @@ del test.
     JSON truncado se delata al parsear; una PROSA truncada no —se guardaba como borrador
     bueno— así que `callModel` lanza en vez de devolver texto a medias.
 
+14. **Correr `next build` antes de cada push, no solo los tests.** El grafo de módulos del
+    CLIENTE solo se arma en el build de producción: un `import 'server-only'` que llega a un
+    Client Component pasa `next dev` y pasa la suite completa, y revienta en Vercel. Pasó con
+    `PlaneadorSemanal.tsx` tomando `balance`/`validarCarga` de `semana/nueva/service.ts`, que
+    importa `@/lib/avisos`. **El deploy falla en silencio y prod se queda en el commit
+    anterior**: el fix del planeador estuvo cuatro días sin llegar al iPad sin que nadie lo
+    notara. La aritmética pura vive en `semana/nueva/carga.ts` justo por esto.
+
+15. **Un dev server reusado sirve el CSS VIEJO.** Se ve como tokens vacíos (`--paper` en "")
+    y utilidades nuevas que no existen, mientras el fuente ya está bien. No creerle a la
+    consola ni a `getComputedStyle`: `curl` a la hoja compilada
+    (`/_next/static/chunks/…css`) y `grep`. Se arregla con `preview_stop` + `rm -rf .next` +
+    `preview_start`. Ojo también al contar: la hoja de PRODUCCIÓN viene minificada en 3
+    líneas, así que `grep -c` cuenta líneas y miente — usar `grep -o | wc -l`.
+
+16. **`contentInset: 'never'` y `viewport-fit=cover` van JUNTOS o ninguno.** Con
+    `'automatic'`, iOS mete el contenido bajo la barra de estado por su cuenta y `cover` le
+    dice a la página que llegue al borde físico: el inset se cuenta dos veces y entre la barra
+    y la app asoma el fondo NATIVO del WebView, que es un color fijo y no sabe de los tres
+    temas. Con el WebView de borde a borde, además: `html` necesita `overscroll-behavior:
+    none` (el rebote despega el documento y vuelve a mostrar ese fondo) y la barra de estado
+    pasa a ser parte del tema. **El enum de `@capacitor/status-bar` nombra el FONDO, no el
+    texto**: `Style.Dark` es "texto claro para fondos oscuros". Leerlo como el color de la
+    letra deja la hora en negro sobre una app casi negra.
+
+17. **El icono del dispositivo NO sale de `/pwa/icon-192`** —eso es la PWA— sino del catálogo
+    de assets compilado en el binario (`ios/App/App/Assets.xcassets/AppIcon.appiconset/`).
+    Regenerarlo: `curl -s localhost:3010/pwa/icon-1024 > …/AppIcon-512@2x.png`, sin canal
+    alfa. El nombre bajo el icono es `CFBundleDisplayName` del `Info.plist`. **El `appId` no
+    se toca**: cambiarlo instala una app NUEVA al lado de la vieja y se pierde la sesión.
+
+18. **Verificar un deploy con el SHA, no con una cadena del HTML.** `/sw.js` versiona su
+    caché con `VERCEL_GIT_COMMIT_SHA`, así que
+    `curl -s <prod>/sw.js | grep -o "wtw-shell-[a-f0-9]*"` dice exactamente qué commit está
+    sirviendo. Buscar un símbolo en el bundle de `/login` no sirve: esa ruta no carga los
+    chunks del grupo `(app)`.
+
+19. **`npx cap sync ios` falla con "Could not delete ios/App/build".** Xcode se niega a
+    limpiar un directorio que no creó él:
+    `xattr -w com.apple.xcode.CreatedByBuildSystem true ios/App/build` y reintentar.
+
 ## Rutas archivadas
 
 `/roi` está archivada detrás de un flag (`src/lib/flags.ts`): responde 404 y no aparece en la
