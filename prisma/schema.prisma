@@ -97,6 +97,23 @@ enum TipoTrabajo {
   junta
   gestion
   comunicacion
+  // Agregadas el 2026-09-14. El catálogo original era de consultoría —deck,
+  // análisis, junta— y la mitad del trabajo de hoy es construir software: con
+  // todo eso en `otro`, esa clase juntaba cosas que no se parecen y su factor
+  // nunca iba a significar nada.
+  //
+  // Se agregaron TRES y no seis a propósito: cada clase necesita 3 muestras con
+  // estimado y medición para encender, así que partir de más clases retrasa la
+  // calibración de todas. Estas tres separan perfiles de esfuerzo que de verdad
+  // se estiman distinto, no temas.
+  desarrollo
+  // `datos` sale de `analisis`: actualizar bases e indicadores mide ×1.0 en el
+  // histórico y armar un deck mide ×1.9. Revueltos, el promedio no describe a
+  // ninguno de los dos.
+  datos
+  // Probar es donde el alcance se expande solo: cada bug encontrado es trabajo
+  // que no estaba estimado.
+  pruebas
   otro
 }
 

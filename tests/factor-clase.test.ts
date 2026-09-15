@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { deleteTestUser } from './helpers/cleanup'
 import { factorPorClase } from '@/lib/factor-clase'
 import type { TipoTrabajo } from '@prisma/client'
+import { TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
 
 const TEST_EMAIL = 'test-factor-clase@vp.mx'
 const OTRO_EMAIL = 'test-factor-clase-otro@vp.mx'
@@ -50,12 +51,14 @@ describe('factorPorClase', () => {
     expect(factores.junta.factor).toBeNull()
   })
 
-  it('devuelve las seis clases, con null en las que no tienen datos', async () => {
+  it('devuelve TODAS las clases del catálogo, con null en las que no tienen datos', async () => {
     const user = await crearUsuario(TEST_EMAIL)
     const factores = await factorPorClase(user.id)
-    expect(Object.keys(factores).sort()).toEqual(
-      ['analisis', 'comunicacion', 'deck', 'gestion', 'junta', 'otro'].sort()
-    )
+    // Se compara contra el catálogo, no contra una lista escrita a mano: el
+    // catálogo creció el 2026-09-14 con desarrollo, datos y pruebas, y volverá a
+    // crecer. Un test que enumera las clases se rompe cada vez que eso pasa sin
+    // que nada esté mal.
+    expect(Object.keys(factores).sort()).toEqual([...TIPOS_TRABAJO].sort())
     expect(factores.otro).toEqual({ factor: null, muestras: 0 })
   })
 

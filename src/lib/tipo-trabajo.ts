@@ -4,9 +4,14 @@ import type { TipoTrabajo } from '@prisma/client'
 // `factor-clase.ts` importa `prisma` (que instancia PrismaClient) y por eso no
 // puede tocarlo un Client Component. Los labels sí los necesita el formulario de
 // captura, así que viven aparte.
+// El orden es el del selector. `otro` va al final porque es el cajón, no una
+// opción con la que se empiece.
 export const TIPO_TRABAJO_LABEL: Record<TipoTrabajo, string> = {
   deck: 'Deck',
   analisis: 'Análisis',
+  datos: 'Datos',
+  desarrollo: 'Desarrollo',
+  pruebas: 'Pruebas',
   junta: 'Junta',
   gestion: 'Gestión',
   comunicacion: 'Comunicación',

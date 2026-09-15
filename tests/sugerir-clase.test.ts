@@ -75,3 +75,42 @@ describe('factorDeClase', () => {
     expect(factorDeClase('deck', null, 1.4)).toBe(1.4)
   })
 })
+
+describe('las clases agregadas el 2026-09-14', () => {
+  // El catálogo original era de consultoría y la mitad del trabajo de hoy es
+  // construir software: sin estas clases todo eso caía en `otro`, que juntaba
+  // cosas que no se parecen y cuyo factor nunca iba a significar nada.
+  it('reconoce desarrollo de software', () => {
+    for (const t of [
+      'Desarrollar el punto de venta',
+      'Implementar el MCP: panel de leads en tiempo real',
+      'Reparar la app en el celular de Irma',
+      'Vista de entregables interactiva desde la app',
+    ]) {
+      expect(sugerirClase(t, [])?.tipo).toBe('desarrollo')
+    }
+  })
+
+  it('reconoce las pruebas, donde el alcance se expande solo', () => {
+    for (const t of ['Pruebas de impresora, tickets y escaneo de barras', 'Estresar el sistema']) {
+      expect(sugerirClase(t, [])?.tipo).toBe('pruebas')
+    }
+  })
+
+  it('separa actualizar datos de emitir un juicio', () => {
+    // Es la separación que más vale: en el histórico, actualizar bases mide ×1.0
+    // y armar un deck mide ×1.9. Revueltos en `analisis`, el promedio no
+    // describe a ninguno de los dos.
+    expect(sugerirClase('Actualizar Base de Costos para indicadores', [])?.tipo).toBe('datos')
+    expect(sugerirClase('Análisis why-cause de costo y rendimiento', [])?.tipo).toBe('analisis')
+  })
+
+  it('el histórico del usuario sigue ganando sobre las semillas', () => {
+    // La fuente buena es su vocabulario, no el mío.
+    const s = sugerirClase('Pruebas con productos y cierre de caja', [
+      { titulo: 'Pruebas con productos y ventas', tipoTrabajo: 'desarrollo' },
+    ])
+    expect(s?.tipo).toBe('desarrollo')
+    expect(s?.fuente).toBe('historico')
+  })
+})

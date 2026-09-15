@@ -39,7 +39,12 @@ export function tokens(texto: string): string[] {
 // gana. Son términos del vocabulario de consultoría de Mau, no genéricos.
 const SEMILLAS: Record<TipoTrabajo, string[]> = {
   deck: ['deck', 'lamina', 'laminas', 'presentacion', 'slide', 'slides', 'ppt', 'powerpoint', 'storytelling'],
-  analisis: ['analisis', 'analizar', 'modelo', 'modelar', 'excel', 'datos', 'calculo', 'calcular', 'python', 'query', 'costeo', 'costo', 'costos', 'escenario', 'simulacion', 'kpi', 'indicador', 'dashboard', 'tarifa', 'tarifas', 'presupuesto', 'validacion', 'validar', 'revisar', 'revision'],
+  // `analisis` conserva lo que produce un JUICIO: escenarios, why-cause, auditar.
+  // Lo que produce un DATO actualizado se fue a `datos`, que mide muy distinto.
+  analisis: ['analisis', 'analizar', 'modelo', 'modelar', 'calculo', 'calcular', 'escenario', 'simulacion', 'auditar', 'auditoria', 'validacion', 'validar', 'revisar', 'revision', 'retar', 'evaluar', 'diagnostico', 'investigar'],
+  datos: ['datos', 'base', 'bases', 'excel', 'query', 'sql', 'postgres', 'postgresql', 'sap', 'costeo', 'costo', 'costos', 'kpi', 'kpis', 'indicador', 'indicadores', 'dashboard', 'powerbi', 'tarifa', 'tarifas', 'presupuesto', 'matriz', 'actualizar'],
+  desarrollo: ['desarrollar', 'desarrollo', 'app', 'aplicacion', 'web', 'pagina', 'implementar', 'programar', 'codigo', 'reparar', 'arreglar', 'bug', 'bugs', 'feature', 'vista', 'pantalla', 'mcp', 'chatbot', 'api', 'deploy', 'agregar'],
+  pruebas: ['prueba', 'pruebas', 'probar', 'testing', 'estresar', 'escaneo', 'impresora'],
   junta: ['junta', 'sesion', 'comite', 'reunion', 'llamada', 'workshop', 'ensayo', 'foro', 'touchpoint'],
   gestion: ['seguimiento', 'plan', 'planear', 'agenda', 'agendar', 'fechas', 'visitas', 'proponer', 'coordinar', 'coordinacion', 'sow', 'contrato', 'factura', 'facturar', 'cotizacion', 'administrativo'],
   comunicacion: ['correo', 'mail', 'minuta', 'status', 'reporte', 'responder', 'mensaje', 'nota', 'resumen', 'comunicar'],
