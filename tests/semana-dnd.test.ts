@@ -101,3 +101,30 @@ describe('moverBloqueAction', () => {
     expect(despues.inicio).toBe('16:00')
   })
 })
+
+describe('agendar no clona el bloque', () => {
+  // Una tarea SÍ puede tener varios bloques el mismo día: el reflow la parte en
+  // tramos y el cierre lo contempla. Lo que no puede es tener el MISMO
+  // compromiso dos veces — la pantalla deriva `done` y `descartada` de la TAREA,
+  // así que los clones se ven idénticos y descartar uno parece marcar los dos, y
+  // lo planeado del día, que suma por bloque, lo cuenta doble.
+  it('agendar una tarea que ya tiene bloque ese día revive el que hay', async () => {
+    const { user, week, block } = await bloqueALas('flex', 'flex')
+    const taskId = block.taskId!
+    // El bloque quedó descartado: es el estado que abrió el hueco cuando
+    // descartar dejó de borrarlo.
+    await prisma.block.update({ where: { id: block.id }, data: { done: true } })
+    await prisma.task.update({ where: { id: taskId }, data: { estatus: 'deferred' } })
+
+    const { scheduleTaskAction } = await import('@/app/(app)/dia/dnd-actions')
+    await scheduleTaskAction(taskId, MIERCOLES)
+
+    const bloques = await prisma.block.findMany({ where: { taskId, fecha: new Date(MIERCOLES) } })
+    expect(bloques).toHaveLength(1)
+    expect(bloques[0].id).toBe(block.id)
+    expect(bloques[0].done).toBe(false)
+    expect((await prisma.task.findUniqueOrThrow({ where: { id: taskId } })).estatus).toBe('planned')
+    expect(week.id).toBeTruthy()
+  })
+
+})

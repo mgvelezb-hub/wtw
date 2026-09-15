@@ -63,22 +63,41 @@ export async function scheduleTaskAction(taskId: string, dateStr: string) {
 
   const week = await weekForDate(userId, dateStr)
   const orden = await nextOrden(userId, dateStr)
+
+  // Si la tarea YA tiene bloque ese día, se revive el que hay en vez de crear
+  // otro: agendar dos veces es una intención, no dos compromisos.
+  //
+  // Esto NO significa "una tarea, un bloque por día" — el reflow parte una tarea
+  // en tramos a propósito y el cierre lo contempla. Lo que se cierra es el clon
+  // exacto: el que aparecía al agendar una tarea cuyo bloque seguía en pie
+  // porque descartar dejó de borrarlo. Dos bloques con el MISMO estimado no son
+  // dos tramos; son el mismo compromiso contado dos veces, y la pantalla, que
+  // deriva el estado de la TAREA, los pinta idénticos.
+  const existente = await prisma.block.findFirst({
+    where: { taskId, fecha: new Date(dateStr), tipo: 'tarea', week: { userId } },
+    orderBy: [{ done: 'asc' }, { createdAt: 'asc' }],
+    select: { id: true },
+  })
+
   await prisma.$transaction([
     prisma.task.update({ where: { id: taskId }, data: { estatus: 'planned', weekId: week.id, urgente: false } }),
-    prisma.block.create({
-      data: {
-        weekId: week.id,
-        taskId,
-        fecha: new Date(dateStr),
-        inicio: 'flex',
-        fin: 'flex',
-        tipo: 'tarea',
-        titulo: task.titulo,
-        planMin: task.estimadoMin ?? 60,
-        orden,
-      },
-    }),
+    existente
+      ? prisma.block.update({ where: { id: existente.id }, data: { done: false, orden } })
+      : prisma.block.create({
+          data: {
+            weekId: week.id,
+            taskId,
+            fecha: new Date(dateStr),
+            inicio: 'flex',
+            fin: 'flex',
+            tipo: 'tarea',
+            titulo: task.titulo,
+            planMin: task.estimadoMin ?? 60,
+            orden,
+          },
+        }),
   ])
+
   revalidatePath('/dia')
   revalidatePath('/semana')
 }
