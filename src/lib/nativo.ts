@@ -25,15 +25,15 @@ export function plataforma(): 'ios' | 'android' | 'web' {
 // no del sistema: texto oscuro sobre el tema claro, claro sobre los dos oscuros.
 // Sin esto, la hora se pinta en negro sobre un fondo casi negro.
 //
-// `Style.Light` significa "contenido claro" (texto blanco), no "tema claro" —
-// el nombre invita al error contrario.
+// El enum nombra el FONDO, no el texto: `Style.Dark` es "texto claro para fondos
+// oscuros" y `Style.Light` es "texto oscuro para fondos claros". Leerlo como el
+// color de la letra deja la hora en negro sobre una app casi negra — y así se
+// escribió la primera versión de esto. Al final el nombre del tema y el del
+// estilo coinciden, que es lo que lo hace fácil de invertir.
 export async function barraDeEstado(tema: 'claro' | 'oscuro' | 'fuera'): Promise<void> {
   if (!esNativo()) return
   try {
-    await StatusBar.setStyle({ style: tema === 'claro' ? Style.Dark : Style.Light })
-    // El overlay es lo que deja a la app pintar debajo de la barra; sin él iOS
-    // le reserva su franja y volvemos a ver el fondo nativo.
-    await StatusBar.setOverlaysWebView({ overlay: true })
+    await StatusBar.setStyle({ style: tema === 'claro' ? Style.Light : Style.Dark })
   } catch {
     // Fuera del cascarón, o sin el plugin: la barra la sigue pintando el sistema.
   }

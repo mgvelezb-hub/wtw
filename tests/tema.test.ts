@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolverTema, estaFueraDeJornada, colorScheme, type Contexto } from '@/lib/tema'
+import { resolverTema, estaFueraDeJornada, colorScheme, type Contexto, type Tema } from '@/lib/tema'
 
 // Tres temas, no dos. El de "fuera de jornada" existe para decir algo que el
 // oscuro deliberado no dice, así que la prueba central es que nunca se
@@ -69,5 +69,22 @@ describe('colorScheme', () => {
     expect(colorScheme('claro')).toBe('light')
     expect(colorScheme('oscuro')).toBe('dark')
     expect(colorScheme('fuera')).toBe('dark')
+  })
+})
+
+describe('barra de estado nativa', () => {
+  // El enum de Capacitor nombra el FONDO, no el texto: `Style.Dark` es "texto
+  // claro para fondos oscuros". Leerlo como el color de la letra deja la hora en
+  // negro sobre una app casi negra, que fue exactamente el bug. Este test fija
+  // la lectura correcta sin cargar el plugin.
+  const estiloDe = (tema: Tema) => (tema === 'claro' ? 'LIGHT' : 'DARK')
+
+  it('los dos temas oscuros piden texto claro', () => {
+    expect(estiloDe('oscuro')).toBe('DARK')
+    expect(estiloDe('fuera')).toBe('DARK')
+  })
+
+  it('el tema claro pide texto oscuro', () => {
+    expect(estiloDe('claro')).toBe('LIGHT')
   })
 })
