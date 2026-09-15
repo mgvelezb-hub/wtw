@@ -5,6 +5,7 @@ import { useReloj } from '@/lib/reloj'
 import { useSistemaOscuro } from '@/lib/media-oscura'
 import { useLocalStorage, escribirLocal } from '@/lib/local-store'
 import { diaSemanaMx, nowMinutesMx } from '@/lib/dates'
+import { barraDeEstado } from '@/lib/nativo'
 import {
   CLAVE_AVISO_JORNADA,
   CLAVE_PREFERENCIA,
@@ -54,6 +55,9 @@ export function TemaCliente({ jornada }: { jornada: Jornada }) {
     // Se cachea para que el próximo arranque pinte el tema correcto antes del
     // primer frame — ver `TemaInicial`.
     escribirLocal(CLAVE_TEMA_RESUELTO, tema)
+    // Dentro del cascarón la barra de estado va encima de la app: su color de
+    // texto es parte del tema. Fuera, no hace nada.
+    void barraDeEstado(tema)
   }, [tema])
 
   return null

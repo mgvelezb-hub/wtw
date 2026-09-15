@@ -28,10 +28,17 @@ const config: CapacitorConfig = {
     allowNavigation: [serverHost],
   },
   ios: {
-    contentInset: 'automatic',
-    // Sin esto, el WebView arranca con fondo blanco antes del primer paint y
-    // desentona con `paper`.
-    backgroundColor: '#eef2f2',
+    // 'never', no 'automatic'. Con 'automatic' iOS mete el contenido por debajo
+    // de la barra de estado POR SU CUENTA, y eso pelea con `viewport-fit=cover`,
+    // que le dice a la página que llegue al borde físico: el inset se cuenta dos
+    // veces y entre la barra y la app queda una franja del fondo NATIVO, que no
+    // sabe nada de los tres temas. Con 'never' el WebView va de borde a borde y
+    // el documento pinta todo, incluidas las áreas seguras.
+    contentInset: 'never',
+    // Solo se ve en el instante previo al primer paint. Va en el teal de la
+    // marca —el mismo del icono— porque es el único color que no desentona con
+    // ninguno de los tres temas; los `paper` de cada tema se contradicen entre sí.
+    backgroundColor: '#0A7C82',
     scrollEnabled: true,
   },
 }

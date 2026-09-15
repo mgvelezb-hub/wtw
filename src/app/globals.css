@@ -173,6 +173,10 @@
    ahí aparecía una franja blanca. `html` también, o el rebote la descubre. */
 html {
   background: var(--paper);
+  /* Sin esto, el rebote del scroll en iOS despega el documento y deja ver el
+     fondo del WebView NATIVO, que es un color fijo y no sigue al tema: una
+     franja clara asomando por arriba o por abajo de una app en tema oscuro. */
+  overscroll-behavior: none;
 }
 
 body {

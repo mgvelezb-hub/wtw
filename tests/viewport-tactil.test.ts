@@ -21,8 +21,18 @@ describe('el suelo del documento', () => {
     // fondo del DOCUMENTO, no el de la app. Con `surface` ahí aparecía una
     // franja blanca en el tema claro; en los oscuros habría sido peor.
     const css = readFileSync('src/app/globals.css', 'utf-8')
-    expect(css).toMatch(/html \{\s*background: var\(--paper\);\s*\}/)
-    expect(css).toMatch(/body \{\s*background: var\(--paper\);/)
+    const reglaHtml = css.match(/\bhtml \{[^}]*\}/)?.[0] ?? ''
+    const reglaBody = css.match(/\bbody \{[^}]*\}/)?.[0] ?? ''
+    expect(reglaHtml).toContain('background: var(--paper)')
+    expect(reglaBody).toContain('background: var(--paper)')
+  })
+
+  it('el rebote del scroll no despega el documento', () => {
+    // El rebote deja ver el fondo del WebView NATIVO, que es un color fijo y no
+    // sigue al tema: una franja clara asomando sobre una app en tema oscuro.
+    const css = readFileSync('src/app/globals.css', 'utf-8')
+    const reglaHtml = css.match(/\bhtml \{[^}]*\}/)?.[0] ?? ''
+    expect(reglaHtml).toContain('overscroll-behavior: none')
   })
 })
 

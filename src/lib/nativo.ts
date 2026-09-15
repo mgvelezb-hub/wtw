@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { App } from '@capacitor/app'
 import { LocalNotifications } from '@capacitor/local-notifications'
+import { StatusBar, Style } from '@capacitor/status-bar'
 import { ID_CIERRE, ID_RITUAL, type AvisoLocal } from './avisos-locales'
 import { escribirLocal, useLocalStorage } from './local-store'
 
@@ -17,6 +18,25 @@ export function esNativo(): boolean {
 
 export function plataforma(): 'ios' | 'android' | 'web' {
   return Capacitor.getPlatform() as 'ios' | 'android' | 'web'
+}
+
+// Con el WebView de borde a borde, la barra de estado del sistema —la hora, la
+// batería— queda ENCIMA de la app, así que su color de texto es parte del tema,
+// no del sistema: texto oscuro sobre el tema claro, claro sobre los dos oscuros.
+// Sin esto, la hora se pinta en negro sobre un fondo casi negro.
+//
+// `Style.Light` significa "contenido claro" (texto blanco), no "tema claro" —
+// el nombre invita al error contrario.
+export async function barraDeEstado(tema: 'claro' | 'oscuro' | 'fuera'): Promise<void> {
+  if (!esNativo()) return
+  try {
+    await StatusBar.setStyle({ style: tema === 'claro' ? Style.Dark : Style.Light })
+    // El overlay es lo que deja a la app pintar debajo de la barra; sin él iOS
+    // le reserva su franja y volvemos a ver el fondo nativo.
+    await StatusBar.setOverlaysWebView({ overlay: true })
+  } catch {
+    // Fuera del cascarón, o sin el plugin: la barra la sigue pintando el sistema.
+  }
 }
 
 // Si estamos dentro del cascarón es un hecho del entorno, no estado de React:
