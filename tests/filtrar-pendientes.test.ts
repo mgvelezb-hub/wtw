@@ -54,3 +54,34 @@ describe('filtrarPendientes', () => {
     expect(filtrarPendientes(BANDEJA, { proyecto: 'Cuervo', texto: 'gemelo' }).map((t) => t.id)).toEqual(['2'])
   })
 })
+
+describe('el filtro compartido de /inbox', () => {
+  // La pantalla tiene DOS listas sobre el mismo backlog: el panel de lote (solo
+  // lo que no trae clase) y la lista completa. Comparten filtro a propósito —
+  // con uno por lista, "Confirmar clases" escribiría sobre filas que el filtro
+  // sacó de la vista.
+  const TODO = [
+    { id: '1', titulo: 'Auditar output', proyecto: 'Cuervo', tipo: null },
+    { id: '2', titulo: 'Documentar el gemelo', proyecto: 'Cuervo', tipo: 'analisis' },
+    { id: '3', titulo: 'QA del punto de venta', proyecto: 'Recaudería Rulas', tipo: null },
+  ]
+  const sinClase = TODO.filter((t) => t.tipo === null)
+
+  it('el mismo filtro recorta las dos listas de forma consistente', () => {
+    const f = { proyecto: 'Cuervo' }
+    expect(filtrarPendientes(TODO, f).map((t) => t.id)).toEqual(['1', '2'])
+    // Lo que el lote confirmaría con ese filtro puesto es un subconjunto de lo
+    // que la lista está mostrando: nunca escribe fuera de la vista.
+    const loteVisible = filtrarPendientes(sinClase, f)
+    expect(loteVisible.map((t) => t.id)).toEqual(['1'])
+    const visiblesEnLista = new Set(filtrarPendientes(TODO, f).map((t) => t.id))
+    expect(loteVisible.every((t) => visiblesEnLista.has(t.id))).toBe(true)
+  })
+
+  it('los chips salen del backlog completo, no de lo visible', () => {
+    // Un chip que desaparece al filtrar no es un filtro, es un laberinto.
+    const chips = conteoPorProyecto(TODO).map((g) => g.proyecto)
+    expect(chips).toEqual(['Cuervo', 'Recaudería Rulas'])
+    expect(conteoPorProyecto(filtrarPendientes(TODO, { proyecto: 'Cuervo' })).map((g) => g.proyecto)).toEqual(['Cuervo'])
+  })
+})

@@ -5,6 +5,8 @@ import type { TipoTrabajo } from '@prisma/client'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
 import { TourPrimeraVez } from '@/components/tour-primera-vez'
 import { captureAction, discardAction, etiquetarClasesAction } from './actions'
+import { FiltroBandeja } from '@/components/filtro-bandeja'
+import { filtrarPendientes } from '@/lib/filtrar-pendientes'
 
 type InboxItem = {
   id: string
@@ -27,6 +29,7 @@ export type SugerenciaClase = {
   tipo: TipoTrabajo | null
   fuente: 'historico' | 'semilla' | null
   porque: string | null
+  proyecto: string | null
 }
 
 export function InboxBoard({
@@ -45,6 +48,17 @@ export function InboxBoard({
   sugerencias: SugerenciaClase[]
 }) {
   const [pending, startTransition] = useTransition()
+  // UN solo filtro para las dos listas de la pantalla. Tener uno por lista
+  // dejaría el lote hablando de un recorte distinto al que se está leyendo, y
+  // "Confirmar clases" escribiría sobre filas fuera de la vista.
+  //
+  // Los chips se arman con TODO el backlog, no con lo visible: un chip que
+  // desaparece al filtrar no es un filtro, es un laberinto.
+  const [buscar, setBuscar] = useState('')
+  const [proyectoFiltro, setProyectoFiltro] = useState<string | null>(null)
+  const filtro = { texto: buscar, proyecto: proyectoFiltro }
+  const tasksVisibles = filtrarPendientes(tasks, filtro)
+  const sugerenciasVisibles = filtrarPendientes(sugerencias, filtro)
   const [titulo, setTitulo] = useState('')
   const [herramienta, setHerramienta] = useState('')
   const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo | ''>('')
@@ -93,6 +107,9 @@ export function InboxBoard({
     setEstimadoMin(ajuste.previo)
     setAjuste(null)
   }
+
+  // Lo que el botón de lote va a escribir de verdad, contado antes de tocarlo.
+  const cuantasPorEtiquetar = sugerenciasVisibles.filter((s) => (lote[s.id] ?? s.tipo ?? '') !== '').length
 
   function submit() {
     if (!titulo.trim()) return
@@ -287,6 +304,19 @@ export function InboxBoard({
         </button>
       </form>
 
+      {tasks.length > 0 && (
+        <div className="mb-4">
+          <FiltroBandeja
+            items={tasks}
+            texto={buscar}
+            onTexto={setBuscar}
+            proyecto={proyectoFiltro}
+            onProyecto={setProyectoFiltro}
+            visibles={tasksVisibles.length}
+          />
+        </div>
+      )}
+
       {/* ── Clases en lote ────────────────────────────────────────────────────
           El factor por clase solo calibra si las tareas traen clase, y etiquetar
           una por una es la disciplina PMO que esta app existe para no hacer a
@@ -299,6 +329,9 @@ export function InboxBoard({
           >
             <span className="text-sm font-semibold text-ink">
               {sugerencias.length} {sugerencias.length === 1 ? 'pendiente' : 'pendientes'} sin clase de trabajo
+              {sugerenciasVisibles.length !== sugerencias.length && (
+                <span className="ml-1 font-normal text-muted">· {sugerenciasVisibles.length} con el filtro</span>
+              )}
             </span>
             <span className="lbl text-[10px] text-brand-deep">{loteAbierto ? 'Cerrar' : 'Etiquetar en lote'}</span>
           </button>
@@ -310,7 +343,10 @@ export function InboxBoard({
                 histórico cuando hay una tarea parecida, del vocabulario base cuando no. Revisa y confirma.
               </p>
               <ul className="mt-2 space-y-1">
-                {sugerencias.map((s) => (
+                {sugerenciasVisibles.length === 0 && (
+                  <li className="py-2 text-xs text-faint">Ninguna sin clase coincide con el filtro.</li>
+                )}
+                {sugerenciasVisibles.map((s) => (
                   <li key={s.id} className="flex flex-wrap items-center gap-2 py-1">
                     <span className="min-w-0 flex-1 text-sm text-ink">
                       {s.titulo}
@@ -337,9 +373,11 @@ export function InboxBoard({
                 ))}
               </ul>
               <button
-                disabled={pending}
+                disabled={pending || cuantasPorEtiquetar === 0}
                 onClick={() => {
-                  const pares = sugerencias
+                  // Solo lo VISIBLE: confirmar no puede escribir sobre filas
+                  // que el filtro sacó de la pantalla.
+                  const pares = sugerenciasVisibles
                     .map((s) => ({ id: s.id, tipo: (lote[s.id] ?? s.tipo ?? '') as TipoTrabajo | '' }))
                     .filter((p): p is { id: string; tipo: TipoTrabajo } => p.tipo !== '')
                   if (pares.length === 0) return
@@ -349,9 +387,9 @@ export function InboxBoard({
                     setLoteAbierto(false)
                   })
                 }}
-                className="mt-2 rounded-md bg-brand-deep px-3 py-1.5 text-xs font-bold text-sobre-brand disabled:opacity-50"
+                className="mt-2 min-h-11 rounded-md bg-brand-deep px-3 text-xs font-bold text-sobre-brand disabled:opacity-50"
               >
-                Confirmar clases
+                Confirmar {cuantasPorEtiquetar} {cuantasPorEtiquetar === 1 ? 'clase' : 'clases'}
               </button>
             </>
           )}
@@ -359,7 +397,7 @@ export function InboxBoard({
       )}
 
       <ul>
-        {tasks.map((t) => (
+        {tasksVisibles.map((t) => (
           <li key={t.id} className="hair py-3">
             <div className="flex items-start justify-between gap-2">
               <span className="text-sm font-medium text-ink">{t.titulo}</span>

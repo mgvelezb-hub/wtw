@@ -69,11 +69,23 @@ export async function getFactoresPorClase(userId: string): Promise<Record<TipoTr
 // camino en lote, el factor por clase se queda sin insumo y nunca calibra.
 export async function sugerenciasDeClase(
   userId: string
-): Promise<Array<{ id: string; titulo: string; tipo: TipoTrabajo | null; fuente: 'historico' | 'semilla' | null; porque: string | null }>> {
+): Promise<
+  Array<{
+    id: string
+    titulo: string
+    tipo: TipoTrabajo | null
+    fuente: 'historico' | 'semilla' | null
+    porque: string | null
+    // El proyecto viaja para que el lote se pueda filtrar igual que la lista:
+    // con decenas de pendientes, etiquetar "lo de Cuervo" es una sesión corta y
+    // etiquetar todo de un jalón no lo es.
+    proyecto: string | null
+  }>
+> {
   const [sinClase, etiquetadas] = await Promise.all([
     prisma.task.findMany({
       where: { userId, estatus: 'backlog', tipoTrabajo: null },
-      select: { id: true, titulo: true },
+      select: { id: true, titulo: true, project: { select: { nombre: true } } },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.task.findMany({
@@ -90,7 +102,14 @@ export async function sugerenciasDeClase(
   const historico = etiquetadas as TareaEtiquetada[]
   return sinClase.map((t) => {
     const s = sugerirClase(t.titulo, historico)
-    return { id: t.id, titulo: t.titulo, tipo: s?.tipo ?? null, fuente: s?.fuente ?? null, porque: s?.porque ?? null }
+    return {
+      id: t.id,
+      titulo: t.titulo,
+      tipo: s?.tipo ?? null,
+      fuente: s?.fuente ?? null,
+      porque: s?.porque ?? null,
+      proyecto: t.project?.nombre ?? null,
+    }
   })
 }
 
