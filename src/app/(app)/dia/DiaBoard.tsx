@@ -42,6 +42,8 @@ import { delegarTareaAction, deshacerDelegacionAction } from './actions'
 import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
 import { MenuFlotante } from '@/components/menu-flotante'
 import { Grip } from '@/components/grip'
+import { FiltroBandeja } from '@/components/filtro-bandeja'
+import { filtrarPendientes } from '@/lib/filtrar-pendientes'
 import { marcarDelegableAction } from '@/app/(app)/desarrollo/actions'
 import { ConfirmarQuitar, CampoEnLinea } from '@/components/inline-controls'
 import { AyudaContextual } from '@/components/ayuda-contextual'
@@ -464,6 +466,14 @@ function MetaBloque({ b }: { b: DayBlockView }) {
 export function DiaBoard(p: DiaBoardProps) {
 
   const [pending, startTransition] = useTransition()
+  // Mismo filtro que la bandeja de /semana: con 33 pendientes en 9 proyectos,
+  // elegir lo del día era leer la lista entera.
+  const [buscarPendiente, setBuscarPendiente] = useState('')
+  const [proyectoPendiente, setProyectoPendiente] = useState<string | null>(null)
+  const pendientesVisibles = filtrarPendientes(p.pendientes, {
+    texto: buscarPendiente,
+    proyecto: proyectoPendiente,
+  })
   const [verTerminadas, setVerTerminadas] = useState(false)
   const [verCanceladas, setVerCanceladas] = useState(false)
   const [minutaBlock, setMinutaBlock] = useState<DayBlockView | null>(null)
@@ -945,8 +955,18 @@ export function DiaBoard(p: DiaBoardProps) {
           />
           {/* Desde lg la columna entera ya tiene su propio scroll: un segundo
               scroll anidado aquí adentro pelearía con el de afuera. */}
+          <div className="mt-2.5">
+            <FiltroBandeja
+              items={p.pendientes}
+              texto={buscarPendiente}
+              onTexto={setBuscarPendiente}
+              proyecto={proyectoPendiente}
+              onProyecto={setProyectoPendiente}
+              visibles={pendientesVisibles.length}
+            />
+          </div>
           <div className="mt-2.5 max-h-[32rem] space-y-2 overflow-y-auto text-[0.8125rem] lg:max-h-none lg:overflow-visible">
-            {p.pendientes.map((pe) => (
+            {pendientesVisibles.map((pe) => (
               <PendienteCard
                 key={pe.id}
                 pe={pe}

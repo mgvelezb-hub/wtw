@@ -19,6 +19,8 @@ import {
 import { AyudaContextual } from '@/components/ayuda-contextual'
 import { MenuFlotante } from '@/components/menu-flotante'
 import { Grip } from '@/components/grip'
+import { FiltroBandeja } from '@/components/filtro-bandeja'
+import { filtrarPendientes } from '@/lib/filtrar-pendientes'
 import { TrendCard } from '@/app/(app)/historico/TrendCard'
 import {
   MIN_ALTO_BLOQUE_PX,
@@ -129,6 +131,11 @@ type MovimientoOptimista = {
 
 export function SemanaBoard({ v }: { v: LienzoSemana }) {
   const [pending, startTransition] = useTransition()
+  // El filtro de la bandeja vive en el componente: es una forma de mirar, no una
+  // decisión que valga la pena recordar de un día para otro.
+  const [buscarBandeja, setBuscarBandeja] = useState('')
+  const [proyectoBandeja, setProyectoBandeja] = useState<string | null>(null)
+  const bandejaVisible = filtrarPendientes(v.bandeja, { texto: buscarBandeja, proyecto: proyectoBandeja })
   // Regla 1: nada de `new Date()` como valor inicial. Arranca en null (el
   // servidor y el primer paint coinciden) y se llena al montar.
   const [ahoraMin, setAhoraMin] = useState<number | null>(null)
@@ -525,9 +532,17 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               </span>
               <span className="text-[11px] text-faint">arrastra al lienzo</span>
             </div>
+            <FiltroBandeja
+              items={v.bandeja}
+              texto={buscarBandeja}
+              onTexto={setBuscarBandeja}
+              proyecto={proyectoBandeja}
+              onProyecto={setProyectoBandeja}
+              visibles={bandejaVisible.length}
+            />
             <div className="flex flex-col gap-2">
               {v.bandeja.length === 0 && <p className="text-xs text-faint">Nada suelto. La semana está capturada.</p>}
-              {v.bandeja.map((t) => (
+              {bandejaVisible.map((t) => (
                 <PendienteCard key={t.id} t={t} />
               ))}
             </div>
