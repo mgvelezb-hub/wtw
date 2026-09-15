@@ -68,6 +68,20 @@
   --ok: #15803d;
   --ok-soft: #c7e4de;
 
+  /* Superficies del LIENZO de la semana. Viven como tokens porque se componen
+     en línea —el color de un proyecto viene de la base, no de la hoja— y como
+     constantes de módulo quedaban horneadas con los hex del tema claro: en
+     oscuro, las juntas de Outlook salían como losas casi blancas y la cuadrícula
+     se veía agresiva. La línea de hora apenas debe separar (1.1–1.2 de contraste
+     contra la superficie), no dibujar una reja. */
+  --lienzo-linea: #eef2f1;
+  --lienzo-hoy: #f8fbfa;
+  --junta-fondo: #e3e9e8;
+  --junta-borde: #9fb0ae;
+  /* El texto de la junta iba en #9fb0ae sobre su propio fondo: 1.9:1, ilegible.
+     Es el mismo agujero que tenía `faint`. */
+  --junta-texto: #4c5a59;
+
   --background: var(--surface);
   --foreground: var(--ink);
 }
@@ -102,6 +116,12 @@
   --danger-soft: #33191a;
   --ok: #57c08c;
   --ok-soft: #14312a;
+
+  --lienzo-linea: #222e2c;
+  --lienzo-hoy: #132523;
+  --junta-fondo: #1d2a28;
+  --junta-borde: #4e6764;
+  --junta-texto: #9fb5b2;
 }
 
 /* Fuera de jornada. Mismo contraste que el oscuro —todo pasa 4.5:1— pero con
@@ -132,6 +152,12 @@
   --danger-soft: #331a17;
   --ok: #57c08c;
   --ok-soft: #143128;
+
+  --lienzo-linea: #2c2519;
+  --lienzo-hoy: #2a2117;
+  --junta-fondo: #282016;
+  --junta-borde: #6a5f49;
+  --junta-texto: #bcae97;
 }
 
 /* `@theme inline` es lo que hace que los temas funcionen: en vez de congelar el

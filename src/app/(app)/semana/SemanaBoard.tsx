@@ -41,14 +41,20 @@ import {
   toggleWinAction,
 } from './actions'
 
-// Colores del lienzo que NO son tokens de Tailwind porque se componen en línea
-// (el color del proyecto viene de la base, no de la hoja de estilos) — mismo
-// patrón que `pillStyle` en DiaBoard: relleno del color al ~12% y el color
-// saturado solo en el borde izquierdo de 3px.
-const BRAND = '#0a7c82'
-const GRIS_EXTERNA = '#9fb0ae'
-const FONDO_EXTERNA = '#e3e9e8'
-const LINEA_HORA = '#eef2f1'
+// Colores del lienzo. Se componen en línea porque el color de un proyecto viene
+// de la base y no de la hoja de estilos — mismo patrón que `pillStyle` en
+// DiaBoard: relleno del color al ~12% y el color saturado solo en el borde
+// izquierdo de 3px.
+//
+// Van como `var(--…)` y NO como hex: horneados en el módulo quedaban clavados al
+// tema claro, así que en oscuro las juntas de Outlook se pintaban como losas casi
+// blancas y la cuadrícula se veía como una reja. Los valores por tema están en
+// `globals.css`.
+const BRAND = 'var(--brand)'
+const GRIS_EXTERNA = 'var(--junta-texto)'
+const BORDE_EXTERNA = 'var(--junta-borde)'
+const FONDO_EXTERNA = 'var(--junta-fondo)'
+const LINEA_HORA = 'var(--lienzo-linea)'
 
 function horas(min: number): string {
   const h = Math.floor(min / 60)
@@ -61,12 +67,23 @@ function colorDe(b: LienzoBloque): string {
   return b.proyecto?.color ?? BRAND
 }
 
+// Las tres pinturas de un bloque en un solo lugar. Existe porque el relleno se
+// componía concatenando el sufijo de alfa al color (`${color}1f`), y eso solo
+// funciona con un hex: el color de un proyecto viene de la base y sí lo es, pero
+// los tokens del tema son `var(--…)` y `var(--x)1f` no es CSS válido — el bloque
+// se quedaba sin fondo. `color-mix` acepta las dos formas.
+function pinturaDe(b: LienzoBloque): { fondo: string; borde: string } {
+  if (b.externa) return { fondo: FONDO_EXTERNA, borde: BORDE_EXTERNA }
+  const color = b.proyecto?.color ?? BRAND
+  return { fondo: `color-mix(in srgb, ${color} 12%, transparent)`, borde: color }
+}
+
 // Separación entre carriles vecinos, en px. Los bloques de un grupo de
 // traslape se tocan sin este aire y se leen como uno solo partido.
 const AIRE_CARRIL = 2
 
 function estiloBloque(b: LienzoBloque, destacado: boolean): CSSProperties {
-  const color = colorDe(b)
+  const pintura = pinturaDe(b)
   // El ancho se reparte entre los carriles del grupo de traslape (el service lo
   // calcula con `repartirCarriles`). Con `carriles: 1` esto da el ancho
   // completo, que es el caso normal: la mayoría de los días no colisionan.
@@ -76,8 +93,8 @@ function estiloBloque(b: LienzoBloque, destacado: boolean): CSSProperties {
     height: Math.max(MIN_ALTO_BLOQUE_PX, b.durMin * PX_POR_MIN),
     left: `calc(${b.carril * ancho}% + ${b.carril === 0 ? 4 : AIRE_CARRIL}px)`,
     width: `calc(${ancho}% - ${b.carriles === 1 ? 8 : AIRE_CARRIL * 2}px)`,
-    backgroundColor: b.externa ? FONDO_EXTERNA : `${color}1f`,
-    borderLeftColor: color,
+    backgroundColor: pintura.fondo,
+    borderLeftColor: pintura.borde,
     boxShadow: destacado ? `0 0 0 2px ${BRAND} inset` : undefined,
   }
 }
@@ -309,7 +326,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
       <div className={`flex min-h-dvh flex-col bg-paper lg:flex-row ${pending ? 'opacity-90' : ''}`}>
         <div className="flex min-w-0 flex-1 flex-col">
           {/* ── Barra superior ─────────────────────────────────────────────── */}
-          <div className="flex h-12 shrink-0 flex-wrap items-center gap-3 border-b border-edge bg-surface px-4 sm:px-6">
+          <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-edge bg-surface px-4 py-2 sm:px-6">
             <div className="flex overflow-hidden rounded-md border border-hair text-xs font-semibold">
               <Link href={`/dia?dia=${v.diaSeleccionado}`} className="px-3 py-1.5 text-muted hover:text-brand">
                 Día
@@ -584,7 +601,7 @@ export function SemanaBoard({ v }: { v: LienzoSemana }) {
               <span className="flex items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 rounded-[3px] border-l-[3px]"
-                  style={{ backgroundColor: FONDO_EXTERNA, borderLeftColor: GRIS_EXTERNA }}
+                  style={{ backgroundColor: FONDO_EXTERNA, borderLeftColor: BORDE_EXTERNA }}
                 />
                 Junta de Outlook
               </span>
@@ -689,7 +706,15 @@ function ColumnaDia({
       className="relative border-r last:border-r-0"
       style={{
         borderColor: LINEA_HORA,
-        background: sinJornada ? '#faf7f2' : esHoy ? `#f8fbfa ${FONDO_COLUMNA}` : FONDO_COLUMNA,
+        // `paper` para un día sin jornada: la rejilla vive sobre `surface`, así
+        // que el fondo de la app se lee como "hundido", que es justo lo que ese
+        // día es. Antes era un crema literal — el mismo que DESIGN.md documenta
+        // como el error corregido en agosto.
+        background: sinJornada
+          ? 'var(--paper)'
+          : esHoy
+            ? `var(--lienzo-hoy) ${FONDO_COLUMNA}`
+            : FONDO_COLUMNA,
       }}
     >
       {sinJornada && (
@@ -880,8 +905,8 @@ function ChipFlex({ b }: { b: LienzoBloque }) {
       ref={setNodeRef}
       className="flex items-center gap-1 rounded border-l-[3px] px-1.5 py-1 text-[11px] text-ink"
       style={{
-        backgroundColor: `${colorDe(b)}1f`,
-        borderLeftColor: colorDe(b),
+        backgroundColor: pinturaDe(b).fondo,
+        borderLeftColor: pinturaDe(b).borde,
       }}
       title={`${b.titulo} · ${horas(b.planMin)}`}
     >
