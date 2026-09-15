@@ -14,6 +14,7 @@ import { sugerirClase, type TareaEtiquetada } from '@/lib/sugerir-clase'
 // `server-only`, y el build de producción se cae.
 export { balance, validarCarga, type Balance, type ValidacionCarga } from './carga'
 import type { TipoTrabajo } from '@prisma/client'
+import { PROPORCION_MINIMA_MEDIDA } from '@/lib/medicion'
 
 // Contexto que alimenta los 5 pasos del ritual. Todo se calcula aquí, en el
 // servidor: la IA solo redacta y sugiere sobre estos números ya cerrados. Ver
@@ -206,7 +207,7 @@ async function recapDe(userId: string, isoWeek: string): Promise<RecapAnterior |
   // vuelve el factor no interpretable. El número se sigue exponiendo, pero marcado.
   const cobertura = hechas.length > 0 ? tareasConTiempo / hechas.length : 0
   const proporcionMedida = planMin > 0 ? realMin / planMin : 0
-  const medicionIncompleta = realMin === 0 || cobertura < 0.6 || proporcionMedida < 0.25
+  const medicionIncompleta = realMin === 0 || cobertura < 0.6 || proporcionMedida < PROPORCION_MINIMA_MEDIDA
 
   return {
     isoWeek: week.isoWeek,

@@ -97,3 +97,33 @@ describe('factorPorClase', () => {
     expect(factoresOtro.gestion.factor).toBe(10)
   })
 })
+
+describe('mediciones que no son mediciones', () => {
+  it('una tarea con menos del 25% medido no entra a la muestra', async () => {
+    const user = await crearUsuario(TEST_EMAIL)
+    await tareaMedida(user.id, 'deck', 60, 90)
+    await tareaMedida(user.id, 'deck', 60, 90)
+    await tareaMedida(user.id, 'deck', 120, 150)
+    // 125 planeados, 1 medido: el cronómetro no se prendió. Antes entraba —el
+    // filtro solo descartaba el cero— y arrastraba el factor hacia abajo, que es
+    // justo el error que este cálculo existe para corregir.
+    await tareaMedida(user.id, 'deck', 125, 1)
+
+    const factores = await factorPorClase(user.id)
+    expect(factores.deck.muestras).toBe(3)
+    expect(factores.deck.factor).toBe(1.4)
+  })
+
+  it('descartarla puede dejar la clase por debajo del mínimo, y eso está bien', async () => {
+    const user = await crearUsuario(TEST_EMAIL)
+    await tareaMedida(user.id, 'datos', 60, 70)
+    await tareaMedida(user.id, 'datos', 60, 70)
+    await tareaMedida(user.id, 'datos', 200, 2)
+
+    const factores = await factorPorClase(user.id)
+    // Dos muestras no son un factor. Antes habría publicado uno con la tercera
+    // inventada: preferible no sugerir corrección a sugerir la equivocada.
+    expect(factores.datos.muestras).toBe(2)
+    expect(factores.datos.factor).toBeNull()
+  })
+})

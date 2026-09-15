@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import type { TipoTrabajo } from '@prisma/client'
 import { TIPOS_TRABAJO } from './tipo-trabajo'
+import { medicionUsable } from './medicion'
 
 // Factor de realismo POR CLASE DE REFERENCIA.
 //
@@ -49,10 +50,12 @@ export async function factorPorClase(userId: string): Promise<Record<TipoTrabajo
   for (const t of tasks) {
     if (!t.tipoTrabajo || !t.estimadoMin) continue
     const medidoMin = t.timeEntries.reduce((s, e) => s + e.seconds, 0) / 60
-    // Sin tiempo medido no hay medición que comparar — la tarea se cerró sin
-    // cronómetro. Contarla como muestra metería un cero al numerador y sesgaría el
-    // factor hacia abajo, que es exactamente el error que este cálculo corrige.
-    if (medidoMin <= 0) continue
+    // Sin medición utilizable no hay nada que comparar. El cero era el caso
+    // obvio, pero el cronómetro que no se prendió no deja un hueco: deja un
+    // número chiquito. 1 min medido contra 125 planeados entraba como muestra
+    // válida y empujaba el factor hacia ABAJO — al revés del sesgo que este
+    // cálculo existe para corregir. Mismo umbral que el recap del planeador.
+    if (!medicionUsable(medidoMin, t.estimadoMin)) continue
 
     const acc = acumulado.get(t.tipoTrabajo) ?? { planeado: 0, medido: 0, muestras: 0 }
     acc.planeado += t.estimadoMin
