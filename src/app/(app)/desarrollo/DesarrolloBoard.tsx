@@ -16,6 +16,7 @@ import type { PropuestaView } from './literatura-service'
 import { listarPropuestasAction, registrarPropuestaAction, actualizarPropuestaAction } from './literatura-actions'
 import { AyudaContextual } from '@/components/ayuda-contextual'
 import { CampoEnLinea } from '@/components/inline-controls'
+import { horasTexto as horas } from '@/lib/duracion'
 
 type BitacoraSerializada = {
   tareas: Array<{ id: string; titulo: string; nota: string | null; minutosReales: number; proyecto: string | null }>
@@ -49,13 +50,6 @@ const BTN_MINI =
 const CAMPO =
   'w-full rounded-lg border border-edge bg-surface px-3 py-2 text-sm text-ink transition-colors focus:border-brand focus:outline-none'
 
-function horas(min: number): string {
-  if (min <= 0) return '0h'
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  if (h === 0) return `${m}m`
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
 
 function plural(n: number, singular: string, plural_: string): string {
   return `${n} ${n === 1 ? singular : plural_}`

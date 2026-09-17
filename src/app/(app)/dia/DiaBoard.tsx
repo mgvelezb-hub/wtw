@@ -63,6 +63,7 @@ import {
   descartarTareaAction,
   descartarPendienteAction,
 } from './dnd-actions'
+import { reloj, duracion } from '@/lib/duracion'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LENGUAJE VISUAL "INSTRUMENTO"
@@ -243,22 +244,7 @@ function esCandidataMinuta(b: DayBlockView): boolean {
   return b.tipo === 'junta' || (b.externa && b.bloqueante)
 }
 
-function fmt(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = Math.floor(totalSeconds % 60)
-  return h > 0
-    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${m}:${String(s).padStart(2, '0')}`
-}
 
-// Duración en formato de reloj para las columnas del instrumento: "4:00",
-// "0:45". Se compara de un vistazo contra el cronómetro (que ya sale así) y
-// alinea en tabular-nums, cosa que "1H30" no hacía.
-function hhmm(min: number): string {
-  const total = Math.max(0, Math.round(min))
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`
-}
 
 function liveSeconds(b: DayBlockView, tickMs: number | null): number {
   if (tickMs === null || !b.runningSince) return b.accumulatedSeconds
@@ -694,8 +680,8 @@ export function DiaBoard(p: DiaBoardProps) {
           <div className="mb-2.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 className="lbl">Hoy</h2>
             <p className="num text-xs text-muted">
-              Planeado <b className="font-medium text-ink">{hhmm(p.planeadoMin)}</b> · Real{' '}
-              <b className="font-medium text-ink">{hhmm(p.realMin)}</b> · Factor{' '}
+              Planeado <b className="font-medium text-ink">{duracion(p.planeadoMin)}</b> · Real{' '}
+              <b className="font-medium text-ink">{duracion(p.realMin)}</b> · Factor{' '}
               <b className="font-medium text-ink">{p.factorDia ? p.factorDia.toFixed(2) : '—'}</b>
               {esHoy && (
                 <>
@@ -1060,7 +1046,7 @@ function PendienteCard({
           <Grip />
         </span>
         <span className="num shrink-0 text-[0.6875rem] text-muted">
-          {pe.estimadoMin != null ? hhmm(pe.estimadoMin) : '—'}
+          {pe.estimadoMin != null ? duracion(pe.estimadoMin) : '—'}
         </span>
         <span className="min-w-0 flex-1 text-ink">
           {pe.urgente && <span className="text-danger">★ </span>}
@@ -1242,9 +1228,9 @@ function AhoraFranja({
         <div className="flex flex-col items-end">
           <p className="flex items-baseline gap-1.5">
             <span className={`num text-[2.75rem] font-medium leading-none ${over ? 'text-danger' : 'text-brand-deep'}`}>
-              {fmt(seconds)}
+              {reloj(seconds)}
             </span>
-            <span className="num text-sm text-faint">/ {hhmm(current.planMin)}</span>
+            <span className="num text-sm text-faint">/ {duracion(current.planMin)}</span>
           </p>
           {isRunning && (
             <Link href="/focus" className="mt-1.5 text-[0.6875rem] font-semibold text-brand hover:text-brand-strong">
@@ -1656,13 +1642,18 @@ function FilaBloque({
     </span>
   )
 
-  const duracion = (
+  // Plan arriba, medido abajo. Los dos en DOS segmentos: un total parado es una
+  // duración, no un cronómetro, y apilarlos en formatos distintos era lo que
+  // hacía leer "planeé 0:30 y me tardé 20:00".
+  const columnaTiempos = (
     <span className="hidden text-right sm:block">
       <span className={`num block text-xs ${esActual ? 'font-semibold text-brand-deep' : 'text-muted'}`}>
-        {hhmm(b.planMin)}
+        {duracion(b.planMin)}
       </span>
       {isTarea && seconds > 0 && (
-        <span className={`num block text-[0.6875rem] ${over ? 'text-danger' : 'text-ok'}`}>{fmt(seconds)}</span>
+        <span className={`num block text-[0.6875rem] ${over ? 'text-danger' : 'text-ok'}`}>
+          {duracion(seconds / 60)}
+        </span>
       )}
     </span>
   )
@@ -1683,9 +1674,9 @@ function FilaBloque({
             {!b.bloqueante && !b.done && <span className="shrink-0 text-xs text-faint">informativa</span>}
             {b.done && <span className="shrink-0 text-xs font-semibold text-danger">cancelada</span>}
             {nudgeMinuta && <NudgeMinuta />}
-            <span className="num shrink-0 text-xs text-faint sm:hidden">{hhmm(b.planMin)}</span>
+            <span className="num shrink-0 text-xs text-faint sm:hidden">{duracion(b.planMin)}</span>
           </span>
-          {duracion}
+          {columnaTiempos}
           <span className="flex items-center justify-end gap-1">
             {!b.done && candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}
             {!b.done && enVivo && (
@@ -1789,10 +1780,10 @@ function FilaBloque({
           {b.descartada && <span className="shrink-0 text-xs font-semibold text-danger">descartada</span>}
           {b.fueraDeJornada && !b.done && <span className="shrink-0 text-xs text-warn">fuera de jornada</span>}
           {nudgeMinuta && <NudgeMinuta />}
-          <span className="num shrink-0 text-xs text-faint sm:hidden">{hhmm(b.planMin)}</span>
+          <span className="num shrink-0 text-xs text-faint sm:hidden">{duracion(b.planMin)}</span>
         </span>
 
-        {duracion}
+        {columnaTiempos}
 
         <span className="flex items-center justify-end gap-1">
           {candidataMinuta && <MinutaBoton block={b} onAbrirMinuta={onAbrirMinuta} />}

@@ -14,6 +14,7 @@ import {
   convertirDesvioEnTareaAction,
   type DesvioInput,
 } from './actions'
+import { horasTexto as horas } from '@/lib/duracion'
 
 type Fila = DesvioInput & { key: string }
 
@@ -23,13 +24,6 @@ const A_QUIEN_TOCA_COLOR: Record<string, string> = {
   código: 'bg-brand text-sobre-brand',
 }
 
-function horas(min: number): string {
-  if (min <= 0) return '0h'
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  if (h === 0) return `${m}m`
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
 
 function conStakeholder(causa: DesvioCausa): boolean {
   return causa === 'bomberazo' || causa === 'cambio_prioridad_cliente'

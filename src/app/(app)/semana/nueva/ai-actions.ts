@@ -7,17 +7,13 @@ import { prisma } from '@/lib/prisma'
 import { RECAP, SUGERIR_WINS, ESTIMAR, TRIAGE, PREMORTEM } from './prompts'
 import { contextoPlaneacion, type RecapAnterior } from './service'
 import { extraerJSON } from './parse-json'
+import { horasTexto as horas } from '@/lib/duracion'
 
 // Toda acción de IA del planeador devuelve este sobre en vez de tirar: el wizard
 // tiene que seguir usable a mano si el modelo falla o falta la API key.
 // Ver docs/plans/2026-08-05-planeador-semanal-design.md §Reglas de diseño (2).
 export type ResultadoIA<T> = { ok: true; datos: T } | { ok: false; error: string }
 
-function horas(min: number): string {
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
 
 async function llamar(feature: string, system: string, contenido: string): Promise<ResultadoIA<string>> {
   const session = await verifySession()

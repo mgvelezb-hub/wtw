@@ -3,15 +3,8 @@
 import { useTransition } from 'react'
 import type { DayBlockView } from '@/app/(app)/dia/service'
 import { startTimerAction, stopTimerAction, toggleDodItemAction } from '@/app/(app)/dia/actions'
+import { reloj } from '@/lib/duracion'
 
-function fmt(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = Math.floor(totalSeconds % 60)
-  return h > 0
-    ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${m}:${String(s).padStart(2, '0')}`
-}
 
 export function FocusActivity({
   activity,
@@ -49,7 +42,7 @@ export function FocusActivity({
 
       <p className={`mt-6 num text-8xl font-bold ${over ? 'text-warn-strong' : 'text-white'}`}>
         {over ? '+' : ''}
-        {fmt(display)}
+        {reloj(display)}
       </p>
       <p className="mt-1 text-base text-[#8a8578]">
         {over ? `tiempo extra sobre ${activity.planMin}min planeados` : `restante de ${activity.planMin}min planeados`}

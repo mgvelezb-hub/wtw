@@ -11,6 +11,7 @@ import { recapAction, sugerirWinsAction, estimarAction, triageAction, premortemA
 import { medidaDe, refDeMedida } from './medidas'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO, factorDeClase } from '@/lib/tipo-trabajo'
 import type { TipoTrabajo } from '@prisma/client'
+import { horasTexto as horas } from '@/lib/duracion'
 
 const PASOS = ['Reflejar', 'Wins', 'Vaciar', 'Bloquear', 'Pre-emptar'] as const
 // v3 escopa el draft por semana. Los drafts v2 no dicen a qué semana pertenecen,
@@ -76,13 +77,6 @@ type Draft = {
 
 const WIN_VACIO: WinDraft = { titulo: '', dod: '', siEntonces: '', leverage: null }
 
-function horas(min: number): string {
-  if (min <= 0) return '0h'
-  const h = Math.floor(min / 60)
-  const m = min % 60
-  if (h === 0) return `${m}m`
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
-}
 
 // Se lee en el inicializador de useState, no en un efecto: setState dentro de un
 // efecto provoca renders en cascada (regla react-hooks/set-state-in-effect) y un

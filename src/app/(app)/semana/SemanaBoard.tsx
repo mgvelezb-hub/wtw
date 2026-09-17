@@ -42,6 +42,7 @@ import {
   redimensionarBloqueAction,
   toggleWinAction,
 } from './actions'
+import { horasTexto as horas } from '@/lib/duracion'
 
 // Colores del lienzo. Se componen en línea porque el color de un proyecto viene
 // de la base y no de la hoja de estilos — mismo patrón que `pillStyle` en
@@ -58,11 +59,6 @@ const BORDE_EXTERNA = 'var(--junta-borde)'
 const FONDO_EXTERNA = 'var(--junta-fondo)'
 const LINEA_HORA = 'var(--lienzo-linea)'
 
-function horas(min: number): string {
-  const h = Math.floor(min / 60)
-  const m = Math.round(min % 60)
-  return m === 0 ? `${h}h` : h === 0 ? `${m}m` : `${h}:${String(m).padStart(2, '0')}`
-}
 
 function colorDe(b: LienzoBloque): string {
   if (b.externa) return GRIS_EXTERNA
