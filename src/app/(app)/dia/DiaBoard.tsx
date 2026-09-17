@@ -39,7 +39,8 @@ import {
 import { createManualEntryAction, corregirTiempoMedidoAction } from './timeentry-actions'
 import { crearActividadDelDiaAction, sugerirDuracionAction } from './nueva-actividad-actions'
 import { delegarTareaAction, deshacerDelegacionAction } from './actions'
-import { HERRAMIENTAS } from '@/app/(app)/inbox/service'
+import { crearProyectoAction } from '@/app/(app)/inbox/actions'
+import { SelectConAgregar } from '@/components/select-con-agregar'
 import { MenuFlotante } from '@/components/menu-flotante'
 import { Grip } from '@/components/grip'
 import { FiltroBandeja } from '@/components/filtro-bandeja'
@@ -206,6 +207,8 @@ export type DiaBoardProps = {
   pendientes: PendienteView[]
   stranded: StrandedBlockView[]
   proyectosActivos: ProyectoActivoView[]
+  /** Semillas más lo que el usuario ya usó — ver `listHerramientas`. */
+  herramientas: string[]
   sobrecarga: ResultadoSobrecarga
   // null cuando el día seleccionado no es hoy: el briefing es del arranque, y
   // solo se arranca una vez.
@@ -935,6 +938,7 @@ export function DiaBoard(p: DiaBoardProps) {
             fecha={p.selectedDay}
             wins={p.wins}
             proyectos={p.proyectosActivos}
+            herramientas={p.herramientas}
             factorUsado={p.factorUsado}
             pending={pending}
             startTransition={startTransition}
@@ -1374,6 +1378,7 @@ function NuevaActividad({
   fecha,
   wins,
   proyectos,
+  herramientas,
   factorUsado,
   pending,
   startTransition,
@@ -1381,6 +1386,7 @@ function NuevaActividad({
   fecha: string
   wins: Win[]
   proyectos: ProyectoActivoView[]
+  herramientas: string[]
   factorUsado: number
   pending: boolean
   startTransition: StartTransitionFn
@@ -1389,6 +1395,18 @@ function NuevaActividad({
   const [titulo, setTitulo] = useState('')
   const [projectId, setProjectId] = useState('')
   const [winId, setWinId] = useState('')
+  // La lista vive en estado local además de en las props: un proyecto recién
+  // creado tiene que aparecer seleccionado de inmediato, sin esperar a que el
+  // servidor revalide y repinte la pantalla.
+  const [proyectosLocal, setProyectosLocal] = useState(proyectos.map((pr) => ({ id: pr.id, nombre: pr.nombre })))
+
+  async function crearYSeleccionar(nombre: string) {
+    const creado = await crearProyectoAction(nombre)
+    if (!creado) return
+    setProyectosLocal((l) => (l.some((x) => x.id === creado.id) ? l : [...l, creado]))
+    setProjectId(creado.id)
+  }
+
   const [herramienta, setHerramienta] = useState('')
   const [tipoTrabajo, setTipoTrabajo] = useState('')
   const [minutos, setMinutos] = useState('')
@@ -1440,6 +1458,7 @@ function NuevaActividad({
   const est = Number(minutos)
   const ajustado = Number.isFinite(est) && est > 0 ? Math.round(est * factorUsado) : null
 
+
   return (
     <div className="mt-2.5 space-y-2 rounded-lg border border-edge bg-paper p-2.5">
       <input
@@ -1451,20 +1470,39 @@ function NuevaActividad({
       />
 
       <div className="grid grid-cols-2 gap-2">
-        <select value={projectId} onChange={(e) => setProjectId(e.target.value)} aria-label="Proyecto" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
-          <option value="">Proyecto…</option>
-          {proyectos.map((pr) => <option key={pr.id} value={pr.id}>{pr.nombre}</option>)}
-        </select>
+        <SelectConAgregar
+          valor={projectId}
+          onValor={(v) => {
+            // Un id existente se selecciona; cualquier otra cosa es un nombre
+            // recién tecleado que hay que crear.
+            if (v === '' || proyectosLocal.some((pr) => pr.id === v)) setProjectId(v)
+            else void crearYSeleccionar(v)
+          }}
+          opciones={proyectosLocal.map((pr) => ({ valor: pr.id, texto: pr.nombre }))}
+          etiqueta="Proyecto"
+          vacio="Proyecto…"
+          textoAgregar="+ Nuevo proyecto…"
+          placeholderNuevo="Nombre del proyecto"
+          disabled={pending}
+          className="min-h-11 rounded border border-hair bg-surface px-1.5 text-xs text-muted"
+        />
 
         <select value={winId} onChange={(e) => setWinId(e.target.value)} aria-label="Win de la semana" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
           <option value="">Sin Win</option>
           {wins.map((w) => <option key={w.id} value={w.id}>{w.posicion}. {w.titulo.slice(0, 30)}</option>)}
         </select>
 
-        <select value={herramienta} onChange={(e) => setHerramienta(e.target.value)} aria-label="Herramienta" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
-          <option value="">Herramienta…</option>
-          {HERRAMIENTAS.map((h) => <option key={h} value={h}>{h}</option>)}
-        </select>
+        <SelectConAgregar
+          valor={herramienta}
+          onValor={setHerramienta}
+          opciones={herramientas.map((h) => ({ valor: h, texto: h }))}
+          etiqueta="Herramienta"
+          vacio="Herramienta…"
+          textoAgregar="+ Otra herramienta…"
+          placeholderNuevo="¿Cuál?"
+          disabled={pending}
+          className="min-h-11 rounded border border-hair bg-surface px-1.5 text-xs text-muted"
+        />
 
         <select value={tipoTrabajo} onChange={(e) => setTipoTrabajo(e.target.value)} aria-label="Clase de trabajo" className="rounded border border-hair bg-surface px-1.5 py-1 text-xs text-muted">
           <option value="">Clase…</option>

@@ -9,6 +9,7 @@ import {
   getHerramientaFactors,
   sugerenciasDeClase,
   etiquetarClases,
+  listHerramientas,
 } from '@/app/(app)/inbox/service'
 
 const TEST_EMAIL = 'test-inbox@vp.mx'
@@ -146,6 +147,44 @@ describe('clases en lote', () => {
     expect((await prisma.task.findUniqueOrThrow({ where: { id: otra.id } })).tipoTrabajo).toBe('analisis')
     expect((await prisma.task.findUniqueOrThrow({ where: { id: ajena.id } })).tipoTrabajo).toBeNull()
 
+    await deleteTestUser('test-inbox-otro@vp.mx')
+  })
+})
+
+describe('listHerramientas', () => {
+  // "Otra" no guardaba nada: la tarea quedaba con la cadena literal "Otra" y la
+  // herramienta real se perdía. Ahora se teclea una vez y aparece en la lista
+  // sola — mismo principio que la sugerencia de clase: la fuente buena es el
+  // vocabulario del usuario, no el catálogo que alguien escribió.
+  it('ofrece las semillas más lo que el usuario ya usó', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    await prisma.task.create({ data: { userId: user.id, titulo: 'a', herramienta: 'NinjaTrader' } })
+    await prisma.task.create({ data: { userId: user.id, titulo: 'b', herramienta: 'Figma' } })
+
+    const lista = await listHerramientas(user.id)
+    expect(lista).toContain('NinjaTrader')
+    expect(lista).toContain('Figma')
+    expect(lista).toContain('Excel')
+  })
+
+  it('no repite una herramienta que ya era semilla', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    await prisma.task.create({ data: { userId: user.id, titulo: 'a', herramienta: 'Excel' } })
+    const lista = await listHerramientas(user.id)
+    expect(lista.filter((h) => h === 'Excel')).toHaveLength(1)
+  })
+
+  it('descarta el literal "Otra" que dejó la versión vieja del formulario', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    await prisma.task.create({ data: { userId: user.id, titulo: 'a', herramienta: 'Otra' } })
+    expect(await listHerramientas(user.id)).not.toContain('Otra')
+  })
+
+  it('no mezcla las herramientas de otro usuario', async () => {
+    const user = await prisma.user.create({ data: { email: TEST_EMAIL, nombre: 'T', passwordHash: 'x' } })
+    const otro = await prisma.user.create({ data: { email: 'test-inbox-otro@vp.mx', nombre: 'O', passwordHash: 'x' } })
+    await prisma.task.create({ data: { userId: otro.id, titulo: 'x', herramienta: 'SecretaDeOtro' } })
+    expect(await listHerramientas(user.id)).not.toContain('SecretaDeOtro')
     await deleteTestUser('test-inbox-otro@vp.mx')
   })
 })

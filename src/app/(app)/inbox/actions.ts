@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { verifySession } from '@/lib/auth'
 import type { Alcance, TipoTrabajo } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { createInboxTask, discardTask, etiquetarClases } from './service'
 
 async function userId(): Promise<string> {
@@ -41,4 +42,24 @@ export async function etiquetarClasesAction(pares: Array<{ id: string; tipo: Tip
 export async function discardAction(taskId: string) {
   await discardTask(taskId, await userId())
   revalidatePath('/inbox')
+}
+
+// Crear un proyecto desde el formulario de captura, sin salir de él.
+//
+// `upsert` por nombre y no `create`: si el proyecto ya existe —porque se tecleó
+// con otra capitalización o porque ya estaba en la lista— se devuelve el que hay
+// en vez de duplicarlo. Dos "Liverpool" partirían el ledger de horas en dos.
+export async function crearProyectoAction(nombre: string): Promise<{ id: string; nombre: string } | null> {
+  const limpio = nombre.trim()
+  if (limpio === '') return null
+  const uid = await userId()
+  const proyecto = await prisma.project.upsert({
+    where: { userId_nombre: { userId: uid, nombre: limpio } },
+    create: { userId: uid, nombre: limpio },
+    update: {},
+    select: { id: true, nombre: true },
+  })
+  revalidatePath('/inbox')
+  revalidatePath('/dia')
+  return proyecto
 }

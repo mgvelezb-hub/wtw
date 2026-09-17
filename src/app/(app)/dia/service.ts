@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { listHerramientas } from '@/app/(app)/inbox/service'
 import { runningEntry, stopTimer } from '@/app/api/v1/timer/service'
 import { getWeek } from '@/app/api/v1/weeks/service'
 import { capacityForWeek } from '@/app/api/v1/capacity/service'
@@ -213,7 +214,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     ? getStrandedBlocks(userId, todayStr)
     : Promise.resolve([])
 
-  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos, sobrecarga, briefing] =
+  const [week, capacidad, blocks, pendientesRaw, stranded, proyectosActivos, sobrecarga, briefing, herramientas] =
     await Promise.all([
       getWeek(userId, isoWeek),
       capacityForWeek(userId, isoWeek),
@@ -235,6 +236,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
       esHoy
         ? strandedPromise.then((s) => briefingDe(userId, new Date(todayStr), s.length))
         : Promise.resolve(null),
+      listHerramientas(userId),
     ])
 
   // Las delegadas no suman: esas horas ya no son de Mau. Siguen visibles en el
@@ -279,6 +281,7 @@ export async function getDiaView(userId: string, isoWeek: string, dateStr: strin
     pendientes,
     stranded,
     proyectosActivos,
+    herramientas,
     sobrecarga,
     briefing,
   }

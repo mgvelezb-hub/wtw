@@ -4,7 +4,8 @@ import { useMemo, useState, useTransition } from 'react'
 import type { TipoTrabajo } from '@prisma/client'
 import { TIPO_TRABAJO_LABEL, TIPOS_TRABAJO } from '@/lib/tipo-trabajo'
 import { TourPrimeraVez } from '@/components/tour-primera-vez'
-import { captureAction, discardAction, etiquetarClasesAction } from './actions'
+import { captureAction, crearProyectoAction, discardAction, etiquetarClasesAction } from './actions'
+import { SelectConAgregar } from '@/components/select-con-agregar'
 import { FiltroBandeja } from '@/components/filtro-bandeja'
 import { filtrarPendientes } from '@/lib/filtrar-pendientes'
 
@@ -61,6 +62,16 @@ export function InboxBoard({
   const sugerenciasVisibles = filtrarPendientes(sugerencias, filtro)
   const [titulo, setTitulo] = useState('')
   const [herramienta, setHerramienta] = useState('')
+  // Un proyecto recién creado tiene que aparecer seleccionado sin esperar a que
+  // el servidor revalide.
+  const [proyectosLocal, setProyectosLocal] = useState(proyectos)
+
+  async function crearYSeleccionar(nombre: string) {
+    const creado = await crearProyectoAction(nombre)
+    if (!creado) return
+    setProyectosLocal((l) => (l.some((x) => x.id === creado.id) ? l : [...l, creado]))
+    setProjectId(creado.id)
+  }
   const [tipoTrabajo, setTipoTrabajo] = useState<TipoTrabajo | ''>('')
   const [projectId, setProjectId] = useState('')
   const [aliado, setAliado] = useState(false)
@@ -163,38 +174,37 @@ export function InboxBoard({
         />
 
         <div className="grid grid-cols-2 gap-2">
-          <select
-            value={herramienta}
-            onChange={(e) => {
-              setHerramienta(e.target.value)
+          <SelectConAgregar
+            valor={herramienta}
+            onValor={(v) => {
+              setHerramienta(v)
+              // El ajuste vigente se calculó con la herramienta anterior:
+              // encadenarlo sobre otra sería inflación, no corrección.
               setAjuste(null)
             }}
+            opciones={herramientas.map((h) => ({ valor: h, texto: h }))}
+            etiqueta="Herramienta"
+            vacio="Herramienta…"
+            textoAgregar="+ Otra herramienta…"
+            placeholderNuevo="¿Cuál?"
             disabled={pending}
-            aria-label="Herramienta"
-            className="rounded-md border border-hair px-2 py-2 text-sm text-ink"
-          >
-            <option value="">Herramienta…</option>
-            {herramientas.map((h) => (
-              <option key={h} value={h}>
-                {h}
-              </option>
-            ))}
-          </select>
+            className="min-h-11 rounded-md border border-hair px-2 text-sm text-ink"
+          />
 
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
+          <SelectConAgregar
+            valor={projectId}
+            onValor={(v) => {
+              if (v === '' || proyectosLocal.some((pr) => pr.id === v)) setProjectId(v)
+              else void crearYSeleccionar(v)
+            }}
+            opciones={proyectosLocal.map((pr) => ({ valor: pr.id, texto: pr.nombre }))}
+            etiqueta="Proyecto"
+            vacio="Sin proyecto"
+            textoAgregar="+ Nuevo proyecto…"
+            placeholderNuevo="Nombre del proyecto"
             disabled={pending}
-            aria-label="Proyecto"
-            className="rounded-md border border-hair px-2 py-2 text-sm text-ink"
-          >
-            <option value="">Sin proyecto</option>
-            {proyectos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nombre}
-              </option>
-            ))}
-          </select>
+            className="min-h-11 rounded-md border border-hair px-2 text-sm text-ink"
+          />
 
           <select
             value={tipoTrabajo}

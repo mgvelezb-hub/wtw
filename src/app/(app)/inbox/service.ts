@@ -3,6 +3,10 @@ import type { Alcance, TipoTrabajo } from '@prisma/client'
 import { factorPorClase, type FactorClase } from '@/lib/factor-clase'
 import { sugerirClase, type TareaEtiquetada } from '@/lib/sugerir-clase'
 
+// Semillas para el arranque en frío. NO son el catálogo: `herramienta` es texto
+// libre en la base y la lista de verdad se arma con lo que el usuario ya usó
+// —ver `listHerramientas`—. Mismo principio que la sugerencia de clase: la
+// fuente buena es su vocabulario, no el mío.
 export const HERRAMIENTAS = [
   'Excel',
   'PowerPoint',
@@ -13,8 +17,30 @@ export const HERRAMIENTAS = [
   'AnyLogic',
   'Claude',
   'Outlook',
-  'Otra',
 ] as const
+
+/**
+ * Las herramientas que ofrece el selector: las semillas más TODO lo que el
+ * usuario ya escribió alguna vez.
+ *
+ * Existe porque "Otra" no guardaba nada: elegirla dejaba la tarea con la cadena
+ * literal "Otra" y la herramienta real se perdía. Ahora se teclea una vez y a
+ * partir de ahí aparece en la lista sola, sin que nadie mantenga un catálogo.
+ */
+export async function listHerramientas(userId: string): Promise<string[]> {
+  const usadas = await prisma.task.findMany({
+    where: { userId, herramienta: { not: null } },
+    select: { herramienta: true },
+    distinct: ['herramienta'],
+  })
+  const todas = new Set<string>(HERRAMIENTAS)
+  for (const t of usadas) {
+    const h = t.herramienta?.trim()
+    // "Otra" viene de la versión vieja del formulario y no es una herramienta.
+    if (h && h !== 'Otra') todas.add(h)
+  }
+  return [...todas].sort((a, b) => a.localeCompare(b, 'es'))
+}
 
 export async function listInbox(userId: string) {
   return prisma.task.findMany({
